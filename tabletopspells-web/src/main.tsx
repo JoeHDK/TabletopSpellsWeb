@@ -9,6 +9,7 @@ import CharacterSelectPage from './pages/CharacterSelectPage'
 import CharacterOverviewPage from './pages/CharacterOverviewPage'
 import SpellListPage from './pages/SpellListPage'
 import PrepareSpellsPage from './pages/PrepareSpellsPage'
+import SearchSpellsPage from './pages/SearchSpellsPage'
 import SpellsPerDayPage from './pages/SpellsPerDayPage'
 import SpellLogPage from './pages/SpellLogPage'
 import StatsPage from './pages/StatsPage'
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/characters/:id" element={<ProtectedRoute><CharacterOverviewPage /></ProtectedRoute>} />
           <Route path="/characters/:id/spells" element={<ProtectedRoute><SpellListPage /></ProtectedRoute>} />
           <Route path="/characters/:id/prepare" element={<ProtectedRoute><PrepareSpellsPage /></ProtectedRoute>} />
+          <Route path="/characters/:id/search-spells" element={<ProtectedRoute><SearchSpellsPage /></ProtectedRoute>} />
           <Route path="/characters/:id/spells-per-day" element={<ProtectedRoute><SpellsPerDayPage /></ProtectedRoute>} />
           <Route path="/characters/:id/spell-log" element={<ProtectedRoute><SpellLogPage /></ProtectedRoute>} />
           <Route path="/characters/:id/stats" element={<ProtectedRoute><StatsPage /></ProtectedRoute>} />

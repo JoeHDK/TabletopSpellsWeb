@@ -1,10 +1,11 @@
 import { useRef } from 'react'
+import React from 'react'
 import type { Spell } from '../types'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 
-interface Props { spell: Spell; onClose: () => void }
+interface Props { spell: Spell; onClose: () => void; footer?: React.ReactNode }
 
-export default function SpellDetailModal({ spell, onClose }: Props) {
+export default function SpellDetailModal({ spell, onClose, footer }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null)
   useFocusTrap(dialogRef, onClose)
 
@@ -46,6 +47,12 @@ export default function SpellDetailModal({ spell, onClose }: Props) {
             </div>
           )}
         </div>
+
+        {footer && (
+          <div className="sticky bottom-0 bg-gray-900 px-6 py-4 border-t border-gray-800 flex gap-3">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -15,14 +15,22 @@ export default function CharacterOverviewPage() {
   if (isLoading) return <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">Loading…</div>
   if (!character) return <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">Not found</div>
 
-  const navItems = [
-    { label: '📖 Spells', path: 'spells' },
-    { label: '⚡ Prepare', path: 'prepare' },
-    { label: '🔮 Slots', path: 'spells-per-day' },
-    { label: '📜 Log', path: 'spell-log' },
-    { label: '📊 Stats', path: 'stats' },
-    { label: '🎨 Theme', path: 'theme' },
-  ]
+  const navItems = character.isDivineCaster
+    ? [
+        { label: '📖 Spell List', path: 'spells' },
+        { label: '🔮 Slots', path: 'spells-per-day' },
+        { label: '📜 Log', path: 'spell-log' },
+        { label: '📊 Stats', path: 'stats' },
+        { label: '🎨 Theme', path: 'theme' },
+      ]
+    : [
+        { label: '📖 Spell List', path: 'spells' },
+        { label: '🔍 Search Spells', path: 'search-spells' },
+        { label: '🔮 Slots', path: 'spells-per-day' },
+        { label: '📜 Log', path: 'spell-log' },
+        { label: '📊 Stats', path: 'stats' },
+        { label: '🎨 Theme', path: 'theme' },
+      ]
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -36,11 +44,13 @@ export default function CharacterOverviewPage() {
 
       <main className="max-w-2xl mx-auto p-6">
         <div className="grid grid-cols-2 gap-4">
-          {navItems.map((item) => (
+          {navItems.map((item, idx) => (
             <Link
               key={item.path}
               to={`/characters/${id}/${item.path}`}
-              className="bg-gray-900 hover:bg-gray-800 rounded-xl p-6 text-center transition-colors"
+              className={`bg-gray-900 hover:bg-gray-800 rounded-xl p-6 text-center transition-colors ${
+                navItems.length % 2 !== 0 && idx === navItems.length - 1 ? 'col-span-2' : ''
+              }`}
             >
               <span className="text-2xl block mb-2">{item.label.split(' ')[0]}</span>
               <span className="text-sm font-medium">{item.label.split(' ').slice(1).join(' ')}</span>
