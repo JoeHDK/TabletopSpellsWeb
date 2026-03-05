@@ -139,28 +139,49 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
         )}
       </div>
 
-      {selectedSpell && (
-        <SpellDetailModal
-          spell={selectedSpell}
-          onClose={() => setSelectedSpell(null)}
-          footer={
-            <>
-              <button
-                onClick={() => removeMutation.mutate(selectedSpell)}
-                className="flex-1 py-2 rounded-lg bg-red-900/60 hover:bg-red-900 text-red-300 text-sm font-medium transition-colors"
-              >
-                Remove
-              </button>
-              <button
-                onClick={() => { setSelectedSpell(null); setCastingSpell(selectedSpell) }}
-                className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors"
-              >
-                Cast
-              </button>
-            </>
-          }
-        />
-      )}
+      {selectedSpell && (() => {
+        const charClass = resolveClassName(character.characterClass)
+        const spellLvl = getLevelForClass(selectedSpell.spell_level, charClass) ?? parseFirstLevel(selectedSpell.spell_level)
+        const isCantrip = spellLvl === 0
+        const canCast = isCantrip || Object.entries(character.maxSpellsPerDay ?? {}).some(([slvl, max]) => {
+          const slotLevel = Number(slvl)
+          if (slotLevel < spellLvl) return false
+          const slotData = slotsData.find((s) => s.spellLevel === slotLevel)
+          return max - (slotData?.usedSlots ?? 0) > 0
+        })
+        return (
+          <SpellDetailModal
+            spell={selectedSpell}
+            onClose={() => setSelectedSpell(null)}
+            footer={
+              <>
+                <button
+                  onClick={() => removeMutation.mutate(selectedSpell)}
+                  className="flex-1 py-2 rounded-lg bg-red-900/60 hover:bg-red-900 text-red-300 text-sm font-medium transition-colors"
+                >
+                  Remove
+                </button>
+                <button
+                  onClick={() => {
+                    if (isCantrip) {
+                      castMutation.mutate({ spell: selectedSpell, slotLevel: 0 })
+                    } else {
+                      setSelectedSpell(null)
+                      setCastingSpell(selectedSpell)
+                    }
+                  }}
+                  disabled={!canCast}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    canCast ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  Cast
+                </button>
+              </>
+            }
+          />
+        )
+      })()}
 
       {castingSpell && (
         <CastModal
@@ -184,6 +205,7 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [levelFilter, setLevelFilter] = useState<number | undefined>()
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null)
   const [castingSpell, setCastingSpell] = useState<Spell | null>(null)
 
@@ -204,14 +226,18 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
     preparedList.filter((p) => p.isPrepared || p.isAlwaysPrepared).map((p) => p.spellId)
   )
   const favoriteIds = new Set(preparedList.filter((p) => p.isFavorite).map((p) => p.spellId))
+  // isAlwaysPrepared spells (domain/oath spells) don't count against the daily limit
+  const preparedCount = preparedList.filter((p) => p.isPrepared && !p.isAlwaysPrepared).length
 
   const classSpells = useMemo(() => {
     const charClass = resolveClassName(character.characterClass)
+    const favIds = new Set(preparedList.filter((p) => p.isFavorite).map((p) => p.spellId))
     return allSpells
       .filter((s) => getLevelForClass(s.spell_level, charClass) !== null)
       .filter((s) => {
+        if (showFavoritesOnly && !favIds.has(s.id ?? s.name!)) return false
         if (search && !s.name?.toLowerCase().includes(search.toLowerCase())) return false
-        if (levelFilter !== undefined) return getLevelForClass(s.spell_level, charClass) === levelFilter
+        if (!showFavoritesOnly && levelFilter !== undefined) return getLevelForClass(s.spell_level, charClass) === levelFilter
         return true
       })
       .sort((a, b) => {
@@ -220,7 +246,7 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
         if (aLvl !== bLvl) return aLvl - bLvl
         return (a.name ?? '').localeCompare(b.name ?? '')
       })
-  }, [allSpells, search, levelFilter, character])
+  }, [allSpells, search, levelFilter, showFavoritesOnly, preparedList, character])
 
   const prepareMutation = useMutation({
     mutationFn: (spell: Spell) => {
@@ -280,6 +306,9 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
     },
   })
 
+  const spellcastingMod = getSpellcastingModifier(character.abilityScores, character.characterClass)
+  const maxPrepared = character.level + spellcastingMod
+
   function hasAvailableSlot(spell: Spell): boolean {
     const charClass = resolveClassName(character.characterClass)
     const lvl = getLevelForClass(spell.spell_level, charClass) ?? 0
@@ -297,7 +326,7 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(`/characters/${characterId}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
         <h1 className="text-lg font-bold flex-1">Spell List</h1>
-        <span className="text-sm text-amber-400">{preparedIds.size} prepared</span>
+        <span className="text-sm text-amber-400">{preparedCount}/{maxPrepared} prepared</span>
       </header>
 
       <div className="p-4 space-y-3">
@@ -307,18 +336,36 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
           className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-amber-500 focus:outline-none"
         />
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[undefined, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((l) => (
             <button
-              key={l ?? 'all'}
-              onClick={() => setLevelFilter(l)}
-              aria-pressed={levelFilter === l}
+              onClick={() => { setShowFavoritesOnly(false); setLevelFilter(undefined) }}
+              aria-pressed={!showFavoritesOnly && levelFilter === undefined}
               className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                levelFilter === l ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                !showFavoritesOnly && levelFilter === undefined ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
             >
-              {l === undefined ? 'All' : l === 0 ? 'Cantrip' : `Level ${l}`}
+              All
             </button>
-          ))}
+            <button
+              onClick={() => { setShowFavoritesOnly(true); setLevelFilter(undefined) }}
+              aria-pressed={showFavoritesOnly}
+              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
+                showFavoritesOnly ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              ⭐ Favorites
+            </button>
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((l) => (
+              <button
+                key={l}
+                onClick={() => { setShowFavoritesOnly(false); setLevelFilter(l) }}
+                aria-pressed={!showFavoritesOnly && levelFilter === l}
+                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
+                  !showFavoritesOnly && levelFilter === l ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {l === 0 ? 'Cantrip' : `Level ${l}`}
+              </button>
+            ))}
         </div>
       </div>
 
@@ -369,6 +416,8 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
         const key = selectedSpell.id ?? selectedSpell.name!
         const isPrepared = preparedIds.has(key)
         const isFavorite = favoriteIds.has(key)
+        const isAlwaysPrepared = preparedList.find((p) => p.spellId === key)?.isAlwaysPrepared ?? false
+        const atMax = !isPrepared && !isAlwaysPrepared && preparedCount >= maxPrepared
         const canCast = isPrepared && hasAvailableSlot(selectedSpell)
         return (
           <SpellDetailModal
@@ -385,21 +434,37 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
                   {isFavorite ? '⭐ Unfavorite' : '☆ Favorite'}
                 </button>
                 <button
-                  onClick={() => prepareMutation.mutate(selectedSpell)}
+                  onClick={() => !atMax && prepareMutation.mutate(selectedSpell)}
+                  disabled={atMax}
+                  title={atMax ? `Prepared spells limit reached (${maxPrepared})` : undefined}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isPrepared ? 'bg-amber-800 text-amber-100 hover:bg-amber-900' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    isPrepared
+                      ? 'bg-amber-800 text-amber-100 hover:bg-amber-900'
+                      : atMax
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
                 >
                   {isPrepared ? '◇ Unprepare' : '✦ Prepare'}
                 </button>
-                {canCast && (
-                  <button
-                    onClick={() => { setSelectedSpell(null); setCastingSpell(selectedSpell) }}
-                    className="flex-1 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors"
-                  >
-                    Cast
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    const charClass = resolveClassName(character.characterClass)
+                    const lvl = getLevelForClass(selectedSpell.spell_level, charClass) ?? 0
+                    if (lvl === 0) {
+                      castMutation.mutate({ spell: selectedSpell, slotLevel: 0 })
+                    } else {
+                      setSelectedSpell(null)
+                      setCastingSpell(selectedSpell)
+                    }
+                  }}
+                  disabled={!canCast}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    canCast ? 'bg-violet-600 hover:bg-violet-700 text-white' : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  Cast
+                </button>
               </>
             }
           />
@@ -417,6 +482,21 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
       )}
     </div>
   )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getSpellcastingModifier(scores: Record<string, number>, charClass: string): number {
+  const relevant: Record<string, string> = {
+    Cleric: 'Wisdom', Druid: 'Wisdom', Shaman: 'Wisdom', Inquisitor: 'Wisdom',
+    Paladin: 'Charisma', Oracle: 'Charisma',
+    Wizard: 'Intelligence', Artificer: 'Intelligence',
+    Sorcerer: 'Charisma', Bard: 'Charisma', Warlock: 'Charisma',
+  }
+  const key = relevant[charClass] ?? 'Wisdom'
+  return Math.floor(((scores[key] ?? 10) - 10) / 2)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

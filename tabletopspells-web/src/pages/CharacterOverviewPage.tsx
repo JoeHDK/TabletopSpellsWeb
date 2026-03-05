@@ -18,18 +18,16 @@ export default function CharacterOverviewPage() {
   const navItems = character.isDivineCaster
     ? [
         { label: '📖 Spell List', path: 'spells' },
-        { label: '🔮 Slots', path: 'spells-per-day' },
+        { label: '🔮 Spells per day', path: 'spells-per-day' },
         { label: '📜 Log', path: 'spell-log' },
         { label: '📊 Stats', path: 'stats' },
-        { label: '🎨 Theme', path: 'theme' },
       ]
     : [
         { label: '📖 Spell List', path: 'spells' },
         { label: '🔍 Search Spells', path: 'search-spells' },
-        { label: '🔮 Slots', path: 'spells-per-day' },
+        { label: '🔮 Spells per day', path: 'spells-per-day' },
         { label: '📜 Log', path: 'spell-log' },
         { label: '📊 Stats', path: 'stats' },
-        { label: '🎨 Theme', path: 'theme' },
       ]
 
   return (

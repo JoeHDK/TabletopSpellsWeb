@@ -13,7 +13,6 @@ import SearchSpellsPage from './pages/SearchSpellsPage'
 import SpellsPerDayPage from './pages/SpellsPerDayPage'
 import SpellLogPage from './pages/SpellLogPage'
 import StatsPage from './pages/StatsPage'
-import ThemePage from './pages/ThemePage'
 
 const queryClient = new QueryClient()
 
@@ -32,7 +31,6 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/characters/:id/spells-per-day" element={<ProtectedRoute><SpellsPerDayPage /></ProtectedRoute>} />
           <Route path="/characters/:id/spell-log" element={<ProtectedRoute><SpellLogPage /></ProtectedRoute>} />
           <Route path="/characters/:id/stats" element={<ProtectedRoute><StatsPage /></ProtectedRoute>} />
-          <Route path="/characters/:id/theme" element={<ProtectedRoute><ThemePage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
