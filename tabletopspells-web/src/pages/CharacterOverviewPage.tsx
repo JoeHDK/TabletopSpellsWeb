@@ -55,6 +55,13 @@ export default function CharacterOverviewPage() {
             </Link>
           ))}
         </div>
+        <Link
+          to="/items"
+          className="mt-4 flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 rounded-xl p-4 text-center transition-colors w-full"
+        >
+          <span className="text-2xl">🗡️</span>
+          <span className="text-sm font-medium">Search Items</span>
+        </Link>
       </main>
     </div>
   )

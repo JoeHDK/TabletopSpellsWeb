@@ -96,6 +96,22 @@ export interface CharacterTheme {
   customColors: Record<string, string>
 }
 
+export interface Item {
+  index: string
+  name: string
+  item_type: 'magic' | 'equipment'
+  category: string
+  rarity: string
+  description: string
+  requires_attunement: boolean
+  attunement_note?: string
+  cost?: string
+  weight?: number
+  damage?: string
+  properties: string[]
+  source: string
+}
+
 export interface AuthResponse {
   token: string
   username: string

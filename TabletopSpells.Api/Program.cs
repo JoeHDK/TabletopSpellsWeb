@@ -60,6 +60,7 @@ builder.Services.AddCors(options =>
 // Services
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddSingleton<SpellService>();
+builder.Services.AddSingleton<ItemService>();
 
 // Controllers
 builder.Services.AddControllers()
