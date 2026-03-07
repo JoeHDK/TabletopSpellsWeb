@@ -13,6 +13,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<SpellsPerDayEntity> SpellsPerDay => Set<SpellsPerDayEntity>();
     public DbSet<SpellCastLogEntity> SpellCastLogs => Set<SpellCastLogEntity>();
     public DbSet<CharacterThemeEntity> CharacterThemes => Set<CharacterThemeEntity>();
+    public DbSet<CustomItemEntity> CustomItems => Set<CustomItemEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -46,6 +47,12 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .HasOne(t => t.Character)
             .WithMany(c => c.Themes)
             .HasForeignKey(t => t.CharacterId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<CustomItemEntity>()
+            .HasOne(i => i.User)
+            .WithMany(u => u.CustomItems)
+            .HasForeignKey(i => i.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

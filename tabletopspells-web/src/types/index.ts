@@ -117,3 +117,33 @@ export interface AuthResponse {
   username: string
   userId: string
 }
+
+export interface CustomItem {
+  id: string
+  name: string
+  item_type: 'magic' | 'equipment'
+  category?: string
+  rarity?: string
+  description?: string
+  requires_attunement: boolean
+  attunement_note?: string
+  cost?: string
+  weight?: number
+  damage?: string
+  properties: string[]
+  createdAt: string
+}
+
+export interface SaveCustomItemRequest {
+  name: string
+  item_type: 'magic' | 'equipment'
+  category?: string
+  rarity?: string
+  description?: string
+  requires_attunement: boolean
+  attunement_note?: string
+  cost?: string
+  weight?: number
+  damage?: string
+  properties: string[]
+}

@@ -1,10 +1,30 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { itemsApi } from '../api/items'
-import type { Item } from '../types'
+import { customItemsApi } from '../api/customItems'
+import CustomItemFormModal from '../components/CustomItemFormModal'
+import type { Item, CustomItem, SaveCustomItemRequest } from '../types'
 
 const RARITIES = ['Common', 'Uncommon', 'Rare', 'Very Rare', 'Legendary', 'Artifact', 'Varies']
+
+function customItemToItem(ci: CustomItem): Item {
+  return {
+    index: ci.id,
+    name: ci.name,
+    item_type: ci.item_type,
+    category: ci.category ?? '',
+    rarity: ci.rarity ?? '',
+    description: ci.description ?? '',
+    requires_attunement: ci.requires_attunement,
+    attunement_note: ci.attunement_note,
+    cost: ci.cost,
+    weight: ci.weight,
+    damage: ci.damage,
+    properties: ci.properties,
+    source: 'Custom',
+  }
+}
 
 function ItemDetailModal({ item, onClose }: { item: Item; onClose: () => void }) {
   return (
@@ -64,14 +84,48 @@ function rarityColor(rarity: string) {
 
 export default function SearchItemsPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
   const [search, setSearch] = useState('')
   const [rarityFilter, setRarityFilter] = useState<string | undefined>()
   const [typeFilter, setTypeFilter] = useState<string | undefined>()
+  const [isCustomTab, setIsCustomTab] = useState(false)
+
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<CustomItem | undefined>()
 
   const { data: allItems = [], isLoading } = useQuery({
     queryKey: ['items'],
     queryFn: () => itemsApi.getAll(),
+  })
+
+  const { data: customItems = [], isLoading: customLoading } = useQuery({
+    queryKey: ['custom-items'],
+    queryFn: () => customItemsApi.getAll(),
+    enabled: isCustomTab,
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (data: SaveCustomItemRequest) => customItemsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['custom-items'] })
+      setFormOpen(false)
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: SaveCustomItemRequest }) => customItemsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['custom-items'] })
+      setFormOpen(false)
+      setEditingItem(undefined)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => customItemsApi.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['custom-items'] }),
   })
 
   const filtered = useMemo(() => {
@@ -83,80 +137,186 @@ export default function SearchItemsPage() {
     })
   }, [allItems, search, rarityFilter, typeFilter])
 
+  const filteredCustom = useMemo(() => {
+    if (!search) return customItems
+    return customItems.filter((item) => item.name.toLowerCase().includes(search.toLowerCase()))
+  }, [customItems, search])
+
+  const handleSave = (data: SaveCustomItemRequest) => {
+    if (editingItem) {
+      updateMutation.mutate({ id: editingItem.id, data })
+    } else {
+      createMutation.mutate(data)
+    }
+  }
+
+  const isSaving = createMutation.isPending || updateMutation.isPending
+
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
         <h1 className="text-lg font-bold flex-1">Search Items</h1>
-        <span className="text-xs text-gray-500">{filtered.length} items</span>
+        {isCustomTab
+          ? <button
+              onClick={() => { setEditingItem(undefined); setFormOpen(true) }}
+              className="text-sm bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded-lg transition-colors"
+            >
+              + New
+            </button>
+          : <span className="text-xs text-gray-500">{filtered.length} items</span>
+        }
       </header>
 
       <div className="p-4 space-y-3">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search items…"
+          placeholder={isCustomTab ? 'Search your items…' : 'Search items…'}
           className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none"
         />
 
+        {/* Tab row */}
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {[undefined, 'magic', 'equipment'].map((t) => (
-            <button
-              key={t ?? 'all'}
-              onClick={() => setTypeFilter(t)}
-              aria-pressed={typeFilter === t}
-              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                typeFilter === t ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              {t === undefined ? 'All' : t === 'magic' ? '✨ Magic' : '🗡 Equipment'}
-            </button>
-          ))}
+          {[
+            { label: 'All', type: undefined, custom: false },
+            { label: '✨ Magic', type: 'magic', custom: false },
+            { label: '🗡 Equipment', type: 'equipment', custom: false },
+            { label: '⚒ Custom', type: undefined, custom: true },
+          ].map(({ label, type, custom }) => {
+            const active = custom ? isCustomTab : !isCustomTab && typeFilter === type
+            return (
+              <button
+                key={label}
+                onClick={() => {
+                  setIsCustomTab(custom)
+                  if (!custom) setTypeFilter(type)
+                }}
+                aria-pressed={active}
+                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
+                  active ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {[undefined, ...RARITIES].map((r) => (
-            <button
-              key={r ?? 'all-rarity'}
-              onClick={() => setRarityFilter(r)}
-              aria-pressed={rarityFilter === r}
-              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                rarityFilter === r ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              {r ?? 'Any Rarity'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
-        {isLoading ? (
-          <div className="text-center text-gray-400 py-12">Loading items…</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center text-gray-400 py-12">No items found</div>
-        ) : (
-          filtered.map((item) => (
-            <button
-              key={item.index}
-              onClick={() => setSelectedItem(item)}
-              className="w-full bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 text-left transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{item.name}</span>
-                {item.requires_attunement && <span className="text-xs text-amber-400">◈</span>}
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-indigo-400">{item.category}</span>
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${rarityColor(item.rarity)}`}>{item.rarity}</span>
-                {item.damage && <span className="text-xs text-gray-500">{item.damage}</span>}
-              </div>
-            </button>
-          ))
+        {/* Rarity row (SRD only) */}
+        {!isCustomTab && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {[undefined, ...RARITIES].map((r) => (
+              <button
+                key={r ?? 'all-rarity'}
+                onClick={() => setRarityFilter(r)}
+                aria-pressed={rarityFilter === r}
+                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
+                  rarityFilter === r ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {r ?? 'Any Rarity'}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
+      {/* SRD items list */}
+      {!isCustomTab && (
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+          {isLoading ? (
+            <div className="text-center text-gray-400 py-12">Loading items…</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center text-gray-400 py-12">No items found</div>
+          ) : (
+            filtered.map((item) => (
+              <button
+                key={item.index}
+                onClick={() => setSelectedItem(item)}
+                className="w-full bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 text-left transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{item.name}</span>
+                  {item.requires_attunement && <span className="text-xs text-amber-400">◈</span>}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-indigo-400">{item.category}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${rarityColor(item.rarity)}`}>{item.rarity}</span>
+                  {item.damage && <span className="text-xs text-gray-500">{item.damage}</span>}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Custom items list */}
+      {isCustomTab && (
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+          {customLoading ? (
+            <div className="text-center text-gray-400 py-12">Loading…</div>
+          ) : filteredCustom.length === 0 ? (
+            <div className="text-center text-gray-400 py-12">
+              {customItems.length === 0
+                ? <span>No custom items yet.<br /><span className="text-indigo-400">Tap + New to create one.</span></span>
+                : 'No items match your search'}
+            </div>
+          ) : (
+            filteredCustom.map((item) => (
+              <div
+                key={item.id}
+                className="w-full bg-gray-900 rounded-xl px-4 py-3 flex items-center gap-2"
+              >
+                <button
+                  className="flex-1 text-left"
+                  onClick={() => setSelectedItem(customItemToItem(item))}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{item.name}</span>
+                    {item.requires_attunement && <span className="text-xs text-amber-400">◈</span>}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {item.category && <span className="text-xs text-indigo-400">{item.category}</span>}
+                    {item.rarity && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${rarityColor(item.rarity)}`}>{item.rarity}</span>
+                    )}
+                    {item.damage && <span className="text-xs text-gray-500">{item.damage}</span>}
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setEditingItem(item); setFormOpen(true) }}
+                  className="text-gray-400 hover:text-white px-2 py-1 text-sm transition-colors"
+                  aria-label="Edit"
+                >
+                  ✏
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(`Delete "${item.name}"?`)) deleteMutation.mutate(item.id)
+                  }}
+                  className="text-gray-400 hover:text-red-400 px-2 py-1 text-sm transition-colors"
+                  aria-label="Delete"
+                >
+                  🗑
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {selectedItem && <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />}
+
+      {formOpen && (
+        <CustomItemFormModal
+          item={editingItem}
+          onSave={handleSave}
+          onClose={() => { setFormOpen(false); setEditingItem(undefined) }}
+          isSaving={isSaving}
+        />
+      )}
     </div>
   )
 }
+

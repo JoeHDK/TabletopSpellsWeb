@@ -6,4 +6,5 @@ public class AppUser : IdentityUser
 {
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public ICollection<CharacterEntity> Characters { get; set; } = new List<CharacterEntity>();
+    public ICollection<CustomItemEntity> CustomItems { get; set; } = new List<CustomItemEntity>();
 }

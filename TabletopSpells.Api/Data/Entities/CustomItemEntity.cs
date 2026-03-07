@@ -1,0 +1,24 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace TabletopSpells.Api.Data.Entities;
+
+public class CustomItemEntity
+{
+    [Key] public Guid Id { get; set; } = Guid.NewGuid();
+    [Required] public required string UserId { get; set; }
+    [Required] public required string Name { get; set; }
+    public string ItemType { get; set; } = "magic";
+    public string? Category { get; set; }
+    public string? Rarity { get; set; }
+    public string? Description { get; set; }
+    public bool RequiresAttunement { get; set; }
+    public string? AttunementNote { get; set; }
+    public string? Cost { get; set; }
+    public double? Weight { get; set; }
+    public string? Damage { get; set; }
+    [Column(TypeName = "jsonb")] public string PropertiesJson { get; set; } = "[]";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [ForeignKey(nameof(UserId))] public AppUser? User { get; set; }
+}
