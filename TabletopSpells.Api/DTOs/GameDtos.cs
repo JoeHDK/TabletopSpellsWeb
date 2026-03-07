@@ -1,3 +1,4 @@
+using TabletopSpells.Api.Data.Entities;
 using TabletopSpells.Api.Models.Enums;
 
 namespace TabletopSpells.Api.DTOs;
@@ -60,4 +61,17 @@ public class AddMemberRequest
 public class LinkCharacterRequest
 {
     public Guid CharacterId { get; set; }
+}
+
+public class GiveItemRequest
+{
+    public Guid RecipientCharacterId { get; set; }
+    public ItemSource ItemSource { get; set; }
+    public string? SrdItemIndex { get; set; }
+    public Guid? CustomItemId { get; set; }
+    public required string Name { get; set; }
+    public int Quantity { get; set; } = 1;
+    public int? AcBonus { get; set; }
+    public string? DamageOverride { get; set; }
+    public string? Notes { get; set; }
 }

@@ -24,6 +24,10 @@ public class CharacterEntity
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    public int MaxHp { get; set; }
+    public int CurrentHp { get; set; }
+    public int BaseArmorClass { get; set; } = 10;
+
     public Guid? GameRoomId { get; set; }
     [ForeignKey(nameof(GameRoomId))] public GameRoomEntity? GameRoom { get; set; }
 
@@ -32,4 +36,5 @@ public class CharacterEntity
     public ICollection<SpellsPerDayEntity> SpellsPerDay { get; set; } = new List<SpellsPerDayEntity>();
     public ICollection<SpellCastLogEntity> SpellCastLogs { get; set; } = new List<SpellCastLogEntity>();
     public ICollection<CharacterThemeEntity> Themes { get; set; } = new List<CharacterThemeEntity>();
+    public ICollection<CharacterInventoryItemEntity> Inventory { get; set; } = new List<CharacterInventoryItemEntity>();
 }

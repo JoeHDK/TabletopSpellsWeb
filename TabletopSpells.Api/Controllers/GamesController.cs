@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using TabletopSpells.Api.Data;
 using TabletopSpells.Api.Data.Entities;
 using TabletopSpells.Api.DTOs;
@@ -228,6 +229,34 @@ public class GamesController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/give-item")]
+    public async Task<IActionResult> GiveItem(Guid id, [FromBody] GiveItemRequest req)
+    {
+        if (!await IsDmOrAdmin(id)) return Forbid();
+
+        var recipientChar = await _db.Characters
+            .FirstOrDefaultAsync(c => c.Id == req.RecipientCharacterId && c.GameRoomId == id);
+        if (recipientChar == null) return NotFound("Recipient character not found in this game.");
+
+        var item = new CharacterInventoryItemEntity
+        {
+            CharacterId = req.RecipientCharacterId,
+            ItemSource = req.ItemSource,
+            SrdItemIndex = req.SrdItemIndex,
+            CustomItemId = req.CustomItemId,
+            Name = req.Name,
+            Quantity = req.Quantity,
+            AcBonus = req.AcBonus,
+            DamageOverride = req.DamageOverride,
+            Notes = req.Notes,
+            GrantedByUserId = UserId,
+        };
+
+        _db.InventoryItems.Add(item);
+        await _db.SaveChangesAsync();
+        return Ok();
+    }
+
     private async Task<bool> IsMember(Guid gameId) =>
         await _db.GameMembers.AnyAsync(m => m.GameRoomId == gameId && m.UserId == UserId)
         || await IsGlobalAdmin();
@@ -245,8 +274,55 @@ public class GamesController : ControllerBase
         return user?.IsAdmin ?? false;
     }
 
-    private static string GenerateInviteCode()
+    [HttpGet("{id:guid}/party")]
+    public async Task<IActionResult> GetParty(Guid id)
     {
+        if (!await IsMember(id)) return Forbid();
+
+        var characters = await _db.Characters
+            .Where(c => c.GameRoomId == id)
+            .Include(c => c.User)
+            .Include(c => c.Inventory)
+            .ToListAsync();
+
+        var result = characters.Select(c =>
+        {
+            var abilityScores = JsonConvert.DeserializeObject<Dictionary<string, int>>(c.AbilityScoresJson) ?? new();
+            var wisScore = abilityScores.GetValueOrDefault("Wisdom", 10);
+            var wisMod = (wisScore - 10) / 2;
+            var passivePerception = 10 + wisMod;
+
+            var spellsUsed = JsonConvert.DeserializeObject<Dictionary<int, int>>(c.SpellsUsedTodayJson) ?? new();
+            var maxSpells = JsonConvert.DeserializeObject<Dictionary<int, int>>(c.MaxSpellsPerDayJson) ?? new();
+            var slotsRemaining = maxSpells.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value - spellsUsed.GetValueOrDefault(kvp.Key, 0));
+
+            var equipmentAcBonus = c.Inventory
+                .Where(i => i.IsEquipped && i.AcBonus.HasValue)
+                .Sum(i => i.AcBonus!.Value);
+
+            return new PartyMemberDto
+            {
+                CharacterId = c.Id,
+                CharacterName = c.Name,
+                OwnerUsername = c.User?.UserName ?? "",
+                OwnerUserId = c.UserId,
+                CharacterClass = c.CharacterClass.ToString(),
+                Level = c.Level,
+                CurrentHp = c.CurrentHp,
+                MaxHp = c.MaxHp,
+                BaseArmorClass = c.BaseArmorClass,
+                EquipmentAcBonus = equipmentAcBonus,
+                PassivePerception = passivePerception,
+                SpellSlotsRemaining = slotsRemaining,
+            };
+        });
+
+        return Ok(result);
+    }
+
+    private static string GenerateInviteCode()    {
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         var random = new Random();
         return new string(Enumerable.Range(0, 6).Select(_ => chars[random.Next(chars.Length)]).ToArray());

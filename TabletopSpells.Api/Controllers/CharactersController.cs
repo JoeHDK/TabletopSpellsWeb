@@ -89,6 +89,19 @@ public class CharactersController : ControllerBase
         return NoContent();
     }
 
+    [HttpPatch("{id:guid}/hp")]
+    public async Task<IActionResult> UpdateHp(Guid id, [FromBody] UpdateHpRequest req)
+    {
+        var entity = await _db.Characters.FirstOrDefaultAsync(x => x.Id == id && x.UserId == UserId);
+        if (entity == null) return NotFound();
+
+        entity.CurrentHp = Math.Clamp(req.CurrentHp, 0, entity.MaxHp > 0 ? entity.MaxHp : int.MaxValue);
+        if (req.MaxHp.HasValue) entity.MaxHp = Math.Max(0, req.MaxHp.Value);
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(MapToDto(entity));
+    }
+
     private static CharacterDto MapToDto(CharacterEntity e) => new()
     {
         Id = e.Id,
@@ -104,5 +117,9 @@ public class CharactersController : ControllerBase
         AlwaysPreparedSpells = JsonConvert.DeserializeObject<List<string>>(e.AlwaysPreparedSpellsJson) ?? new(),
         CreatedAt = e.CreatedAt,
         UpdatedAt = e.UpdatedAt,
+        MaxHp = e.MaxHp,
+        CurrentHp = e.CurrentHp,
+        BaseArmorClass = e.BaseArmorClass,
+        GameRoomId = e.GameRoomId,
     };
 }

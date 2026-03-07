@@ -1,10 +1,20 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { gamesApi } from '../api/games'
 import { charactersApi } from '../api/characters'
 import { useAuthStore } from '../store/authStore'
-import type { AddMemberRequest } from '../types'
+import type { AddMemberRequest, GiveItemRequest, ItemSource } from '../types'
+
+const defaultGiveForm = (): Omit<GiveItemRequest, 'recipientCharacterId'> & { acBonusStr: string } => ({
+  name: '',
+  itemSource: 'SRD' as ItemSource,
+  srdItemIndex: '',
+  quantity: 1,
+  acBonusStr: '',
+  damageOverride: '',
+  notes: '',
+})
 
 export default function GamePage() {
   const { id } = useParams<{ id: string }>()
@@ -16,6 +26,10 @@ export default function GamePage() {
   const [addUsername, setAddUsername] = useState('')
   const [addError, setAddError] = useState('')
   const [showLinkChar, setShowLinkChar] = useState(false)
+  const [showGiveItem, setShowGiveItem] = useState(false)
+  const [giveForm, setGiveForm] = useState(defaultGiveForm())
+  const [giveRecipientId, setGiveRecipientId] = useState('')
+  const [giveError, setGiveError] = useState('')
 
   const { data: game, isLoading } = useQuery({
     queryKey: ['game', id],
@@ -65,6 +79,17 @@ export default function GamePage() {
       qc.invalidateQueries({ queryKey: ['game', id] })
       qc.invalidateQueries({ queryKey: ['characters'] })
     },
+  })
+
+  const giveItemMutation = useMutation({
+    mutationFn: (req: GiveItemRequest) => gamesApi.giveItem(id!, req),
+    onSuccess: () => {
+      setShowGiveItem(false)
+      setGiveForm(defaultGiveForm())
+      setGiveRecipientId('')
+      setGiveError('')
+    },
+    onError: () => setGiveError('Failed to give item. Check the recipient character.'),
   })
 
   const copyInviteCode = () => {
@@ -238,6 +263,133 @@ export default function GamePage() {
             </div>
           )}
         </section>
+
+        {/* DM Actions */}
+        {isDM && (
+          <>
+            {/* Party Overview link */}
+            <section>
+              <Link
+                to={`/games/${id}/party`}
+                className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
+              >
+                <span className="text-2xl">🧙</span>
+                <div>
+                  <p className="font-medium">Party Overview</p>
+                  <p className="text-xs text-gray-400">HP, AC, Passive Perception, Spell Slots</p>
+                </div>
+                <span className="ml-auto text-gray-500">→</span>
+              </Link>
+            </section>
+
+            {/* Give Item */}
+            <section className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Give Item</h2>
+                <button
+                  onClick={() => setShowGiveItem(v => !v)}
+                  className="text-sm text-indigo-400 hover:text-indigo-300"
+                >
+                  {showGiveItem ? 'Cancel' : '+ Give Item'}
+                </button>
+              </div>
+
+              {showGiveItem && (
+                <div className="bg-gray-900 rounded-xl p-4 space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Recipient Character</label>
+                    <select
+                      className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:outline-none text-sm"
+                      value={giveRecipientId}
+                      onChange={e => setGiveRecipientId(e.target.value)}
+                    >
+                      <option value="">Select character…</option>
+                      {game.characters.map(c => (
+                        <option key={c.characterId} value={c.characterId}>
+                          {c.characterName} ({c.ownerUsername})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Item Name *</label>
+                      <input
+                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                        value={giveForm.name}
+                        onChange={e => setGiveForm(f => ({ ...f, name: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Source</label>
+                      <select
+                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:outline-none text-sm"
+                        value={giveForm.itemSource}
+                        onChange={e => setGiveForm(f => ({ ...f, itemSource: e.target.value as ItemSource }))}
+                      >
+                        <option value="SRD">SRD Item</option>
+                        <option value="Custom">Custom Item</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Quantity</label>
+                      <input
+                        type="number" min={1}
+                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                        value={giveForm.quantity}
+                        onChange={e => setGiveForm(f => ({ ...f, quantity: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">AC Bonus</label>
+                      <input
+                        type="number"
+                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                        placeholder="Leave blank if none"
+                        value={giveForm.acBonusStr}
+                        onChange={e => setGiveForm(f => ({ ...f, acBonusStr: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Damage</label>
+                      <input
+                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                        placeholder="e.g. 1d8+3"
+                        value={giveForm.damageOverride ?? ''}
+                        onChange={e => setGiveForm(f => ({ ...f, damageOverride: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Notes</label>
+                      <input
+                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                        value={giveForm.notes ?? ''}
+                        onChange={e => setGiveForm(f => ({ ...f, notes: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  {giveError && <p className="text-red-400 text-sm">{giveError}</p>}
+                  <button
+                    disabled={giveItemMutation.isPending || !giveForm.name || !giveRecipientId}
+                    onClick={() => giveItemMutation.mutate({
+                      recipientCharacterId: giveRecipientId,
+                      itemSource: giveForm.itemSource,
+                      srdItemIndex: giveForm.srdItemIndex,
+                      name: giveForm.name,
+                      quantity: giveForm.quantity,
+                      acBonus: giveForm.acBonusStr ? Number(giveForm.acBonusStr) : undefined,
+                      damageOverride: giveForm.damageOverride,
+                      notes: giveForm.notes,
+                    })}
+                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 py-2 rounded-lg text-sm"
+                  >
+                    Give Item
+                  </button>
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </div>
     </div>
   )

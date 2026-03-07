@@ -8,4 +8,6 @@ export const charactersApi = {
   update: (id: string, req: UpdateCharacterRequest) =>
     api.put<Character>(`/characters/${id}`, req).then((r) => r.data),
   delete: (id: string) => api.delete(`/characters/${id}`),
+  updateHp: (id: string, currentHp: number, maxHp?: number) =>
+    api.patch<Character>(`/characters/${id}/hp`, { currentHp, maxHp }).then((r) => r.data),
 }

@@ -1,0 +1,38 @@
+using TabletopSpells.Api.Data.Entities;
+
+namespace TabletopSpells.Api.DTOs;
+
+public class InventoryItemDto
+{
+    public Guid Id { get; set; }
+    public string ItemSource { get; set; } = "";
+    public string? SrdItemIndex { get; set; }
+    public Guid? CustomItemId { get; set; }
+    public string Name { get; set; } = "";
+    public int Quantity { get; set; }
+    public bool IsEquipped { get; set; }
+    public string? EquippedSlot { get; set; }
+    public int? AcBonus { get; set; }
+    public string? DamageOverride { get; set; }
+    public string? Notes { get; set; }
+    public string? GrantedByUsername { get; set; }
+    public DateTime AcquiredAt { get; set; }
+}
+
+public class AddInventoryItemRequest
+{
+    public ItemSource ItemSource { get; set; }
+    public string? SrdItemIndex { get; set; }
+    public Guid? CustomItemId { get; set; }
+    public required string Name { get; set; }
+    public int Quantity { get; set; } = 1;
+    public int? AcBonus { get; set; }
+    public string? DamageOverride { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class EquipItemRequest
+{
+    public bool IsEquipped { get; set; }
+    public InventorySlot? Slot { get; set; }
+}

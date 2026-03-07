@@ -20,6 +20,10 @@ export interface Character {
   alwaysPreparedSpells: string[]
   createdAt: string
   updatedAt: string
+  maxHp: number
+  currentHp: number
+  baseArmorClass: number
+  gameRoomId?: string
 }
 
 export interface CreateCharacterRequest {
@@ -200,4 +204,70 @@ export interface AddMemberRequest {
 
 export interface LinkCharacterRequest {
   characterId: string
+}
+
+export type InventorySlot = 'Armor' | 'Weapon' | 'Offhand' | 'Accessory'
+export type ItemSource = 'SRD' | 'Custom'
+
+export interface InventoryItem {
+  id: string
+  itemSource: ItemSource
+  srdItemIndex?: string
+  customItemId?: string
+  name: string
+  quantity: number
+  isEquipped: boolean
+  equippedSlot?: InventorySlot
+  acBonus?: number
+  damageOverride?: string
+  notes?: string
+  grantedByUsername?: string
+  acquiredAt: string
+}
+
+export interface AddInventoryItemRequest {
+  itemSource: ItemSource
+  srdItemIndex?: string
+  customItemId?: string
+  name: string
+  quantity: number
+  acBonus?: number
+  damageOverride?: string
+  notes?: string
+}
+
+export interface EquipItemRequest {
+  isEquipped: boolean
+  slot?: InventorySlot
+}
+
+export interface PartyMember {
+  characterId: string
+  characterName: string
+  ownerUsername: string
+  ownerUserId: string
+  characterClass: string
+  level: number
+  currentHp: number
+  maxHp: number
+  baseArmorClass: number
+  equipmentAcBonus: number
+  passivePerception: number
+  spellSlotsRemaining: Record<number, number>
+}
+
+export interface GiveItemRequest {
+  recipientCharacterId: string
+  itemSource: ItemSource
+  srdItemIndex?: string
+  customItemId?: string
+  name: string
+  quantity: number
+  acBonus?: number
+  damageOverride?: string
+  notes?: string
+}
+
+export interface SendItemRequest {
+  recipientCharacterId: string
 }

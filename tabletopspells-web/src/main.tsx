@@ -15,6 +15,8 @@ import SpellLogPage from './pages/SpellLogPage'
 import StatsPage from './pages/StatsPage'
 import SearchItemsPage from './pages/SearchItemsPage'
 import GamePage from './pages/GamePage'
+import PartyOverviewPage from './pages/PartyOverviewPage'
+import InventoryPage from './pages/InventoryPage'
 
 const queryClient = new QueryClient()
 
@@ -33,8 +35,10 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/characters/:id/spells-per-day" element={<ProtectedRoute><SpellsPerDayPage /></ProtectedRoute>} />
           <Route path="/characters/:id/spell-log" element={<ProtectedRoute><SpellLogPage /></ProtectedRoute>} />
           <Route path="/characters/:id/stats" element={<ProtectedRoute><StatsPage /></ProtectedRoute>} />
+          <Route path="/characters/:id/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
           <Route path="/items" element={<ProtectedRoute><SearchItemsPage /></ProtectedRoute>} />
           <Route path="/games/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
+          <Route path="/games/:id/party" element={<ProtectedRoute><PartyOverviewPage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

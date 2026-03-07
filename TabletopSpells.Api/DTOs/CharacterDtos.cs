@@ -17,6 +17,10 @@ public class CharacterDto
     public List<string> AlwaysPreparedSpells { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public int MaxHp { get; set; }
+    public int CurrentHp { get; set; }
+    public int BaseArmorClass { get; set; }
+    public Guid? GameRoomId { get; set; }
 }
 
 public class CreateCharacterRequest
@@ -37,4 +41,32 @@ public class UpdateCharacterRequest
     public Dictionary<string, int>? AbilityScores { get; set; }
     public Dictionary<int, int>? MaxSpellsPerDay { get; set; }
     public Dictionary<int, int>? SpellsUsedToday { get; set; }
+    public int? BaseArmorClass { get; set; }
+}
+
+public class UpdateHpRequest
+{
+    public int CurrentHp { get; set; }
+    public int? MaxHp { get; set; }
+}
+
+public class SendItemRequest
+{
+    public Guid RecipientCharacterId { get; set; }
+}
+
+public class PartyMemberDto
+{
+    public Guid CharacterId { get; set; }
+    public string CharacterName { get; set; } = "";
+    public string OwnerUsername { get; set; } = "";
+    public string OwnerUserId { get; set; } = "";
+    public string CharacterClass { get; set; } = "";
+    public int Level { get; set; }
+    public int CurrentHp { get; set; }
+    public int MaxHp { get; set; }
+    public int BaseArmorClass { get; set; }
+    public int EquipmentAcBonus { get; set; }
+    public int PassivePerception { get; set; }
+    public Dictionary<int, int> SpellSlotsRemaining { get; set; } = new();
 }

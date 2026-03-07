@@ -16,6 +16,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<CustomItemEntity> CustomItems => Set<CustomItemEntity>();
     public DbSet<GameRoomEntity> GameRooms => Set<GameRoomEntity>();
     public DbSet<GameMemberEntity> GameMembers => Set<GameMemberEntity>();
+    public DbSet<CharacterInventoryItemEntity> InventoryItems => Set<CharacterInventoryItemEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -89,5 +90,25 @@ public class AppDbContext : IdentityDbContext<AppUser>
         builder.Entity<GameRoomEntity>()
             .HasIndex(g => g.InviteCode)
             .IsUnique();
+
+        builder.Entity<CharacterInventoryItemEntity>()
+            .HasOne(i => i.Character)
+            .WithMany(c => c.Inventory)
+            .HasForeignKey(i => i.CharacterId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<CharacterInventoryItemEntity>()
+            .HasOne(i => i.CustomItem)
+            .WithMany()
+            .HasForeignKey(i => i.CustomItemId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
+
+        builder.Entity<CharacterInventoryItemEntity>()
+            .HasOne(i => i.GrantedBy)
+            .WithMany()
+            .HasForeignKey(i => i.GrantedByUserId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
     }
 }
