@@ -73,6 +73,7 @@ public class CharactersController : ControllerBase
         if (req.AbilityScores != null) entity.AbilityScoresJson = JsonConvert.SerializeObject(req.AbilityScores);
         if (req.MaxSpellsPerDay != null) entity.MaxSpellsPerDayJson = JsonConvert.SerializeObject(req.MaxSpellsPerDay);
         if (req.SpellsUsedToday != null) entity.SpellsUsedTodayJson = JsonConvert.SerializeObject(req.SpellsUsedToday);
+        if (req.BaseArmorClass.HasValue) entity.BaseArmorClass = req.BaseArmorClass.Value;
 
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();

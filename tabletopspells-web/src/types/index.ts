@@ -42,6 +42,7 @@ export interface UpdateCharacterRequest {
   abilityScores?: Record<string, number>
   maxSpellsPerDay?: Record<number, number>
   spellsUsedToday?: Record<number, number>
+  baseArmorClass?: number
 }
 
 export interface Spell {
