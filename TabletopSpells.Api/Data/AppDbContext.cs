@@ -17,6 +17,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<GameRoomEntity> GameRooms => Set<GameRoomEntity>();
     public DbSet<GameMemberEntity> GameMembers => Set<GameMemberEntity>();
     public DbSet<CharacterInventoryItemEntity> InventoryItems => Set<CharacterInventoryItemEntity>();
+    public DbSet<NotificationEntity> Notifications => Set<NotificationEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -110,5 +111,11 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .HasForeignKey(i => i.GrantedByUserId)
             .OnDelete(DeleteBehavior.SetNull)
             .IsRequired(false);
+
+        builder.Entity<NotificationEntity>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -145,6 +145,18 @@ public class GamesController : ControllerBase
             Role = GameRole.Player,
         };
         _db.GameMembers.Add(membership);
+
+        var game = await _db.GameRooms.FindAsync(id);
+        var inviterName = User.Identity?.Name ?? "The DM";
+        _db.Notifications.Add(new NotificationEntity
+        {
+            UserId = targetUser.Id,
+            Type = NotificationType.GameInvite,
+            Title = "You've been added to a game",
+            Message = $"{inviterName} added you to \"{game?.Name ?? "a game"}\".",
+            Link = $"/games/{id}",
+        });
+
         await _db.SaveChangesAsync();
 
         return Ok(new GameMemberDto
@@ -253,6 +265,18 @@ public class GamesController : ControllerBase
         };
 
         _db.InventoryItems.Add(item);
+
+        var game = await _db.GameRooms.FindAsync(id);
+        var giver = User.Identity?.Name ?? "The DM";
+        _db.Notifications.Add(new NotificationEntity
+        {
+            UserId = recipientChar.UserId,
+            Type = NotificationType.ItemReceived,
+            Title = "You received an item",
+            Message = $"{giver} gave \"{req.Name}\" (×{req.Quantity}) to {recipientChar.Name} in \"{game?.Name ?? "your game"}\".",
+            Link = $"/characters/{recipientChar.Id}/inventory",
+        });
+
         await _db.SaveChangesAsync();
         return Ok();
     }

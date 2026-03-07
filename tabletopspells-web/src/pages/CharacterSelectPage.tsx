@@ -7,6 +7,7 @@ import { useCharacterStore } from '../store/characterStore'
 import { useAuthStore } from '../store/authStore'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import DarkModeToggle from '../components/DarkModeToggle'
+import NotificationBell from '../components/NotificationBell'
 import type { Character, CreateCharacterRequest, CharacterClass, Game } from '../types'
 
 const CLASSES: CharacterClass[] = [
@@ -83,6 +84,7 @@ export default function CharacterSelectPage() {
         <div className="flex items-center gap-4">
           <span className="text-gray-400 text-sm">{username}</span>
           <button onClick={logout} className="text-gray-400 hover:text-white text-sm">Sign out</button>
+          <NotificationBell />
           <DarkModeToggle />
         </div>
       </header>

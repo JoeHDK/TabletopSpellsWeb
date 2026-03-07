@@ -271,3 +271,15 @@ export interface GiveItemRequest {
 export interface SendItemRequest {
   recipientCharacterId: string
 }
+
+export type NotificationType = 'GameInvite' | 'ItemReceived' | 'ItemSent'
+
+export interface Notification {
+  id: string
+  type: NotificationType
+  title: string
+  message: string
+  link?: string
+  isRead: boolean
+  createdAt: string
+}

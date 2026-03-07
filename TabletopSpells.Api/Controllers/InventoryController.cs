@@ -106,6 +106,16 @@ public class InventoryController : ControllerBase
         item.IsEquipped = false;
         item.EquippedSlot = null;
         item.GrantedByUserId = UserId;
+
+        _db.Notifications.Add(new Data.Entities.NotificationEntity
+        {
+            UserId = recipientChar.UserId,
+            Type = Data.Entities.NotificationType.ItemReceived,
+            Title = "You received an item",
+            Message = $"{User.Identity?.Name ?? "A player"} sent \"{item.Name}\" (×{item.Quantity}) to {recipientChar.Name}.",
+            Link = $"/characters/{recipientChar.Id}/inventory",
+        });
+
         await _db.SaveChangesAsync();
         return NoContent();
     }
