@@ -1,15 +1,13 @@
-import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { spellsPerDayApi } from '../api/spells'
 import { charactersApi } from '../api/characters'
+import EditableNumber from '../components/EditableNumber'
 
 export default function SpellsPerDayPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const [editingLevel, setEditingLevel] = useState<number | null>(null)
-  const [inputValue, setInputValue] = useState('')
 
   const { data: character } = useQuery({
     queryKey: ['character', id],
@@ -25,10 +23,7 @@ export default function SpellsPerDayPage() {
   const updateMaxMutation = useMutation({
     mutationFn: (newMax: Record<number, number>) =>
       charactersApi.update(id!, { maxSpellsPerDay: newMax }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['character', id] })
-      setEditingLevel(null)
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
   })
 
   const resetMutation = useMutation({
@@ -49,17 +44,8 @@ export default function SpellsPerDayPage() {
 
   const maxSlotMap = character?.maxSpellsPerDay ?? {}
 
-  const openEdit = (level: number) => {
-    setEditingLevel(level)
-    setInputValue(String(maxSlotMap[level] ?? 0))
-  }
-
-  const saveMax = () => {
-    if (editingLevel === null) return
-    const newVal = parseInt(inputValue, 10)
-    if (isNaN(newVal) || newVal < 0) return
-    const updated = { ...maxSlotMap, [editingLevel]: newVal }
-    updateMaxMutation.mutate(updated)
+  const handleMaxChange = (level: number, value: number) => {
+    updateMaxMutation.mutate({ ...maxSlotMap, [level]: value })
   }
 
   return (
@@ -78,20 +64,26 @@ export default function SpellsPerDayPage() {
 
           return (
             <div key={level} className="bg-gray-900 rounded-xl p-4">
-              <p className="font-semibold mb-3">Level {level}</p>
-              <button
-                onClick={() => openEdit(level)}
-                className="w-full relative h-10 bg-gray-800 rounded-lg overflow-hidden border border-gray-700 hover:border-indigo-500 transition-colors"
-                aria-label={`Level ${level}: ${used} of ${max} used. Tap to configure.`}
-              >
+              <div className="relative flex items-center justify-center mb-2">
+                <p className="absolute left-0 font-semibold">Level {level}</p>
+                <div className="flex items-center gap-1 text-sm">
+                  <span className="text-gray-300 font-medium">{used}</span>
+                  <span className="text-gray-600">/</span>
+                  <EditableNumber
+                    value={max}
+                    onChange={v => handleMaxChange(level, v)}
+                    min={0}
+                    label={`Level ${level} max slots`}
+                    className="font-bold text-indigo-300"
+                  />
+                </div>
+              </div>
+              <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                 <div
-                  className="absolute inset-y-0 left-0 bg-indigo-600 transition-all duration-300"
+                  className="h-full bg-indigo-600 rounded-full transition-all duration-300"
                   style={{ width: `${pct}%` }}
                 />
-                <span className="absolute inset-0 flex items-center justify-center text-sm font-medium z-10">
-                  {max === 0 ? <span className="text-gray-500">Tap to configure</span> : `${used} / ${max}`}
-                </span>
-              </button>
+              </div>
             </div>
           )
         })}
@@ -106,34 +98,6 @@ export default function SpellsPerDayPage() {
           🌙 Long Rest — Reset All Slots
         </button>
       </div>
-
-      {editingLevel !== null && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setEditingLevel(null)}>
-          <div className="bg-gray-900 rounded-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold mb-1">Level {editingLevel} Spells</h2>
-            <p className="text-sm text-gray-400 mb-4">How many level {editingLevel} spells can you cast per day?</p>
-            <input
-              type="number"
-              min={0}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && saveMax()}
-              autoFocus
-              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-center text-2xl font-bold mb-4"
-            />
-            <div className="flex gap-3">
-              <button onClick={() => setEditingLevel(null)} className="flex-1 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm transition-colors">Cancel</button>
-              <button
-                onClick={saveMax}
-                disabled={updateMaxMutation.isPending}
-                className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

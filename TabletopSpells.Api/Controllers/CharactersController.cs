@@ -74,6 +74,8 @@ public class CharactersController : ControllerBase
         if (req.MaxSpellsPerDay != null) entity.MaxSpellsPerDayJson = JsonConvert.SerializeObject(req.MaxSpellsPerDay);
         if (req.SpellsUsedToday != null) entity.SpellsUsedTodayJson = JsonConvert.SerializeObject(req.SpellsUsedToday);
         if (req.BaseArmorClass.HasValue) entity.BaseArmorClass = req.BaseArmorClass.Value;
+        if (req.SavingThrowProficiencies != null) entity.SavingThrowProficienciesJson = JsonConvert.SerializeObject(req.SavingThrowProficiencies);
+        if (req.SkillProficiencies != null) entity.SkillProficienciesJson = JsonConvert.SerializeObject(req.SkillProficiencies);
 
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -90,8 +92,52 @@ public class CharactersController : ControllerBase
         return NoContent();
     }
 
-    [HttpPatch("{id:guid}/hp")]
-    public async Task<IActionResult> UpdateHp(Guid id, [FromBody] UpdateHpRequest req)
+    [HttpPost("{id:guid}/avatar")]
+    [RequestSizeLimit(10_000_000)]
+    public async Task<ActionResult<CharacterDto>> UploadAvatar(Guid id, IFormFile file)
+    {
+        var entity = await _db.Characters.FirstOrDefaultAsync(x => x.Id == id && x.UserId == UserId);
+        if (entity == null) return NotFound();
+
+        if (file.Length > 8_000_000)
+            return BadRequest("Image must be under 8 MB.");
+
+        // Read bytes and validate file signature (magic bytes) — ContentType is client-controlled and cannot be trusted
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        var bytes = ms.ToArray();
+
+        string? detectedMime = DetectImageMime(bytes);
+        if (detectedMime == null)
+            return BadRequest("File must be a valid JPEG, PNG, GIF, or WebP image.");
+
+        entity.AvatarBase64 = $"data:{detectedMime};base64,{Convert.ToBase64String(bytes)}";
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(MapToDto(entity));
+    }
+
+    private static string? DetectImageMime(byte[] bytes)
+    {
+        if (bytes.Length < 4) return null;
+        // JPEG: FF D8 FF
+        if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return "image/jpeg";
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        if (bytes.Length >= 8 &&
+            bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47 &&
+            bytes[4] == 0x0D && bytes[5] == 0x0A && bytes[6] == 0x1A && bytes[7] == 0x0A)
+            return "image/png";
+        // GIF: GIF87a or GIF89a
+        if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return "image/gif";
+        // WebP: RIFF????WEBP
+        if (bytes.Length >= 12 &&
+            bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 &&
+            bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50)
+            return "image/webp";
+        return null;
+    }
+
+    [HttpPatch("{id:guid}/hp")]    public async Task<IActionResult> UpdateHp(Guid id, [FromBody] UpdateHpRequest req)
     {
         var entity = await _db.Characters.FirstOrDefaultAsync(x => x.Id == id && x.UserId == UserId);
         if (entity == null) return NotFound();
@@ -101,6 +147,14 @@ public class CharactersController : ControllerBase
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(MapToDto(entity));
+    }
+
+    private static List<string> DeserializeList(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        var trimmed = json.TrimStart();
+        if (!trimmed.StartsWith('[')) return new();
+        return JsonConvert.DeserializeObject<List<string>>(json) ?? new();
     }
 
     private static CharacterDto MapToDto(CharacterEntity e) => new()
@@ -115,12 +169,15 @@ public class CharactersController : ControllerBase
         AbilityScores = JsonConvert.DeserializeObject<Dictionary<string, int>>(e.AbilityScoresJson) ?? new(),
         MaxSpellsPerDay = JsonConvert.DeserializeObject<Dictionary<int, int>>(e.MaxSpellsPerDayJson) ?? new(),
         SpellsUsedToday = JsonConvert.DeserializeObject<Dictionary<int, int>>(e.SpellsUsedTodayJson) ?? new(),
-        AlwaysPreparedSpells = JsonConvert.DeserializeObject<List<string>>(e.AlwaysPreparedSpellsJson) ?? new(),
+        AlwaysPreparedSpells = DeserializeList(e.AlwaysPreparedSpellsJson),
+        SavingThrowProficiencies = DeserializeList(e.SavingThrowProficienciesJson),
+        SkillProficiencies = DeserializeList(e.SkillProficienciesJson),
         CreatedAt = e.CreatedAt,
         UpdatedAt = e.UpdatedAt,
         MaxHp = e.MaxHp,
         CurrentHp = e.CurrentHp,
         BaseArmorClass = e.BaseArmorClass,
         GameRoomId = e.GameRoomId,
+        AvatarBase64 = e.AvatarBase64,
     };
 }

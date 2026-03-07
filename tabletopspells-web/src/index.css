@@ -12,14 +12,14 @@ input[type=number] {
 }
 
 /* Light mode overrides — dark is the default; .light on <html> switches to light */
-html.light .bg-gray-950 { background-color: #f8fafc; }
+html.light .bg-gray-950 { background-color: #e2e8f0; }
 html.light .bg-gray-900 { background-color: #ffffff; }
 html.light .bg-gray-800 { background-color: #f1f5f9; }
 html.light .bg-gray-700 { background-color: #e2e8f0; }
 
 html.light .hover\:bg-gray-900:hover { background-color: #f1f5f9; }
-html.light .hover\:bg-gray-800:hover { background-color: #e2e8f0; }
-html.light .hover\:bg-gray-700:hover { background-color: #cbd5e1; }
+html.light .hover\:bg-gray-800:hover { background-color: #eef2f7; }
+html.light .hover\:bg-gray-700:hover { background-color: #e2e8f0; }
 
 html.light .text-white  { color: #0f172a; }
 html.light .text-gray-300 { color: #475569; }

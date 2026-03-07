@@ -204,8 +204,8 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
-  const [levelFilter, setLevelFilter] = useState<number | undefined>()
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  type Filter = 'all' | 'prepared' | 'favorites' | number
+  const [filter, setFilter] = useState<Filter>('all')
   const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null)
   const [castingSpell, setCastingSpell] = useState<Spell | null>(null)
 
@@ -226,36 +226,48 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
     preparedList.filter((p) => p.isPrepared || p.isAlwaysPrepared).map((p) => p.spellId)
   )
   const favoriteIds = new Set(preparedList.filter((p) => p.isFavorite).map((p) => p.spellId))
-  // isAlwaysPrepared spells (domain/oath spells) don't count against the daily limit
-  const preparedCount = preparedList.filter((p) => p.isPrepared && !p.isAlwaysPrepared).length
+  // Only count spells that actually exist in the spell database to avoid stale/orphaned rows inflating the count
+  const knownSpellIds = useMemo(() => new Set(allSpells.map(s => s.id ?? s.name!)), [allSpells])
+  const preparedCount = preparedList.filter(
+    (p) => p.isPrepared && !p.isAlwaysPrepared && knownSpellIds.has(p.spellId)
+  ).length
 
-  const classSpells = useMemo(() => {
+  const visibleSpells = useMemo(() => {
     const charClass = resolveClassName(character.characterClass)
-    const favIds = new Set(preparedList.filter((p) => p.isFavorite).map((p) => p.spellId))
-    return allSpells
-      .filter((s) => getLevelForClass(s.spell_level, charClass) !== null)
-      .filter((s) => {
-        if (showFavoritesOnly && !favIds.has(s.id ?? s.name!)) return false
-        if (search && !s.name?.toLowerCase().includes(search.toLowerCase())) return false
-        if (!showFavoritesOnly && levelFilter !== undefined) return getLevelForClass(s.spell_level, charClass) === levelFilter
-        return true
-      })
-      .sort((a, b) => {
-        const aLvl = getLevelForClass(a.spell_level, charClass) ?? parseFirstLevel(a.spell_level)
-        const bLvl = getLevelForClass(b.spell_level, charClass) ?? parseFirstLevel(b.spell_level)
-        if (aLvl !== bLvl) return aLvl - bLvl
-        return (a.name ?? '').localeCompare(b.name ?? '')
-      })
-  }, [allSpells, search, levelFilter, showFavoritesOnly, preparedList, character])
+    const q = search.toLowerCase()
+
+    let pool: Spell[]
+    if (filter === 'all') {
+      // All filter: search the entire spell database (no class restriction)
+      pool = allSpells
+    } else if (filter === 'prepared') {
+      pool = allSpells.filter((s) => preparedIds.has(s.id ?? s.name!))
+    } else if (filter === 'favorites') {
+      pool = allSpells.filter((s) => favoriteIds.has(s.id ?? s.name!))
+    } else {
+      // Level filter: restrict to class spells at that level
+      pool = allSpells.filter((s) => getLevelForClass(s.spell_level, charClass) === filter)
+    }
+
+    if (q) pool = pool.filter((s) => s.name?.toLowerCase().includes(q))
+
+    return pool.sort((a, b) => {
+      const aLvl = getLevelForClass(a.spell_level, charClass) ?? parseFirstLevel(a.spell_level)
+      const bLvl = getLevelForClass(b.spell_level, charClass) ?? parseFirstLevel(b.spell_level)
+      if (aLvl !== bLvl) return aLvl - bLvl
+      return (a.name ?? '').localeCompare(b.name ?? '')
+    })
+  }, [allSpells, search, filter, preparedList, character])
 
   const prepareMutation = useMutation({
     mutationFn: (spell: Spell) => {
       const key = spell.id ?? spell.name!
-      const isPrepared = preparedIds.has(key)
       const existing = preparedList.find((p) => p.spellId === key)
+      // Toggle the isPrepared flag directly — don't use preparedIds which conflates isAlwaysPrepared
+      const currentlyPrepared = existing?.isPrepared ?? false
       return preparedSpellsApi.upsert(characterId, key, {
         spellId: key,
-        isPrepared: !isPrepared,
+        isPrepared: !currentlyPrepared,
         isAlwaysPrepared: existing?.isAlwaysPrepared ?? false,
         isFavorite: existing?.isFavorite ?? false,
         isDomainSpell: existing?.isDomainSpell ?? false,
@@ -278,6 +290,23 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
         isAlwaysPrepared: existing?.isAlwaysPrepared ?? false,
         isFavorite: !isFavorite,
         isDomainSpell: existing?.isDomainSpell ?? false,
+      })
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] }),
+  })
+
+  const alwaysPreparedMutation = useMutation({
+    mutationFn: (spell: Spell) => {
+      const key = spell.id ?? spell.name!
+      const existing = preparedList.find((p) => p.spellId === key)
+      const currentlyAlways = existing?.isAlwaysPrepared ?? false
+      return preparedSpellsApi.upsert(characterId, key, {
+        spellId: key,
+        // Removing always-prepared also clears manual prepare so it doesn't linger
+        isPrepared: currentlyAlways ? false : (existing?.isPrepared ?? false),
+        isAlwaysPrepared: !currentlyAlways,
+        isFavorite: existing?.isFavorite ?? false,
+        isDomainSpell: !currentlyAlways, // treat as domain/oath spell when marking always prepared
       })
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] }),
@@ -337,19 +366,28 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
         />
         <div className="flex gap-2 overflow-x-auto pb-1">
             <button
-              onClick={() => { setShowFavoritesOnly(false); setLevelFilter(undefined) }}
-              aria-pressed={!showFavoritesOnly && levelFilter === undefined}
+              onClick={() => setFilter('all')}
+              aria-pressed={filter === 'all'}
               className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                !showFavoritesOnly && levelFilter === undefined ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                filter === 'all' ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
             >
               All
             </button>
             <button
-              onClick={() => { setShowFavoritesOnly(true); setLevelFilter(undefined) }}
-              aria-pressed={showFavoritesOnly}
+              onClick={() => setFilter('prepared')}
+              aria-pressed={filter === 'prepared'}
               className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                showFavoritesOnly ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                filter === 'prepared' ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              ✦ Prepared
+            </button>
+            <button
+              onClick={() => setFilter('favorites')}
+              aria-pressed={filter === 'favorites'}
+              className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
+                filter === 'favorites' ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
             >
               ⭐ Favorites
@@ -357,10 +395,10 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
             {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((l) => (
               <button
                 key={l}
-                onClick={() => { setShowFavoritesOnly(false); setLevelFilter(l) }}
-                aria-pressed={!showFavoritesOnly && levelFilter === l}
+                onClick={() => setFilter(l)}
+                aria-pressed={filter === l}
                 className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${
-                  !showFavoritesOnly && levelFilter === l ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  filter === l ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                 }`}
               >
                 {l === 0 ? 'Cantrip' : `Level ${l}`}
@@ -372,10 +410,10 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
         {isLoading ? (
           <div className="text-center text-gray-400 py-12">Loading spells…</div>
-        ) : classSpells.length === 0 ? (
+        ) : visibleSpells.length === 0 ? (
           <div className="text-center text-gray-400 py-12">No spells found</div>
         ) : (
-          classSpells.map((spell) => {
+          visibleSpells.map((spell) => {
             const key = spell.id ?? spell.name!
             const isPrepared = preparedIds.has(key)
             const isFavorite = favoriteIds.has(key)
@@ -414,58 +452,78 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
 
       {selectedSpell && (() => {
         const key = selectedSpell.id ?? selectedSpell.name!
-        const isPrepared = preparedIds.has(key)
+        const existing = preparedList.find((p) => p.spellId === key)
+        const isPrepared = existing?.isPrepared ?? false
+        const isAlwaysPrepared = existing?.isAlwaysPrepared ?? false
         const isFavorite = favoriteIds.has(key)
-        const isAlwaysPrepared = preparedList.find((p) => p.spellId === key)?.isAlwaysPrepared ?? false
         const atMax = !isPrepared && !isAlwaysPrepared && preparedCount >= maxPrepared
-        const canCast = isPrepared && hasAvailableSlot(selectedSpell)
+        const canCast = (isPrepared || isAlwaysPrepared) && hasAvailableSlot(selectedSpell)
         return (
           <SpellDetailModal
             spell={selectedSpell}
             onClose={() => setSelectedSpell(null)}
             footer={
-              <>
-                <button
-                  onClick={() => favoriteMutation.mutate(selectedSpell)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isFavorite ? 'bg-amber-900/60 text-amber-300 hover:bg-amber-900' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                  }`}
-                >
-                  {isFavorite ? '⭐ Unfavorite' : '☆ Favorite'}
-                </button>
-                <button
-                  onClick={() => !atMax && prepareMutation.mutate(selectedSpell)}
-                  disabled={atMax}
-                  title={atMax ? `Prepared spells limit reached (${maxPrepared})` : undefined}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isPrepared
-                      ? 'bg-amber-800 text-amber-100 hover:bg-amber-900'
-                      : atMax
-                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
-                >
-                  {isPrepared ? '◇ Unprepare' : '✦ Prepare'}
-                </button>
-                <button
-                  onClick={() => {
-                    const charClass = resolveClassName(character.characterClass)
-                    const lvl = getLevelForClass(selectedSpell.spell_level, charClass) ?? 0
-                    if (lvl === 0) {
-                      castMutation.mutate({ spell: selectedSpell, slotLevel: 0 })
-                    } else {
-                      setSelectedSpell(null)
-                      setCastingSpell(selectedSpell)
-                    }
-                  }}
-                  disabled={!canCast}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    canCast ? 'bg-violet-600 hover:bg-violet-700 text-white' : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  Cast
-                </button>
-              </>
+              <div className="flex flex-col gap-2 w-full">
+                {/* Row 1: domain/oath toggle + favorite */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => alwaysPreparedMutation.mutate(selectedSpell)}
+                    title={isAlwaysPrepared ? 'Remove oath/domain designation' : 'Mark as oath or domain spell — always prepared, never uses a slot'}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isAlwaysPrepared
+                        ? 'bg-violet-800 text-violet-100 hover:bg-violet-900'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                    }`}
+                  >
+                    {isAlwaysPrepared ? '◈ Oath/Domain' : '◇ Mark Oath/Domain'}
+                  </button>
+                  <button
+                    onClick={() => favoriteMutation.mutate(selectedSpell)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isFavorite ? 'bg-amber-900/60 text-amber-300 hover:bg-amber-900' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {isFavorite ? '⭐' : '☆'}
+                  </button>
+                </div>
+                {/* Row 2: prepare + cast */}
+                <div className="flex gap-2">
+                  {!isAlwaysPrepared && (
+                    <button
+                      onClick={() => !atMax && prepareMutation.mutate(selectedSpell)}
+                      disabled={atMax}
+                      title={atMax ? `Prepared spells limit reached (${maxPrepared})` : undefined}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isPrepared
+                          ? 'bg-amber-800 text-amber-100 hover:bg-amber-900'
+                          : atMax
+                          ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      }`}
+                    >
+                      {isPrepared ? '◇ Unprepare' : '✦ Prepare'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      const charClass = resolveClassName(character.characterClass)
+                      const lvl = getLevelForClass(selectedSpell.spell_level, charClass) ?? 0
+                      if (lvl === 0) {
+                        castMutation.mutate({ spell: selectedSpell, slotLevel: 0 })
+                      } else {
+                        setSelectedSpell(null)
+                        setCastingSpell(selectedSpell)
+                      }
+                    }}
+                    disabled={!canCast}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      canCast ? 'bg-violet-600 hover:bg-violet-700 text-white' : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Cast
+                  </button>
+                </div>
+              </div>
             }
           />
         )

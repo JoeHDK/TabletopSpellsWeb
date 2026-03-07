@@ -19,6 +19,9 @@ public class ItemsController : ControllerBase
         [FromQuery] string? rarity,
         [FromQuery] string? itemType)
     {
+        if (search?.Length > 100)
+            return BadRequest("Search query must be 100 characters or fewer.");
+
         var items = _itemService.Search(search, category, rarity, itemType);
         return Ok(items);
     }

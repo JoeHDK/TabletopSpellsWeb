@@ -17,6 +17,9 @@ public class SpellsController : ControllerBase
     [HttpGet("{game}")]
     public IActionResult GetAll(Game game, [FromQuery] string? search, [FromQuery] int? level)
     {
+        if (search?.Length > 100)
+            return BadRequest("Search query must be 100 characters or fewer.");
+
         var spells = _spellService.GetSpells(game);
 
         if (!string.IsNullOrWhiteSpace(search))

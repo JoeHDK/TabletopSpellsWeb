@@ -10,4 +10,11 @@ export const charactersApi = {
   delete: (id: string) => api.delete(`/characters/${id}`),
   updateHp: (id: string, currentHp: number, maxHp?: number) =>
     api.patch<Character>(`/characters/${id}/hp`, { currentHp, maxHp }).then((r) => r.data),
+  uploadAvatar: (id: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post<Character>(`/characters/${id}/avatar`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
 }

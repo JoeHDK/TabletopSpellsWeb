@@ -22,6 +22,7 @@ public class TokenService
             new Claim(JwtRegisteredClaimNames.Sub, user.Id),
             new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName!),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim("isDm", (user.IsDm || user.IsAdmin).ToString().ToLower()),
         };
 
         var token = new JwtSecurityToken(

@@ -30,7 +30,7 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(result.Errors.Select(e => e.Description));
 
-        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id));
+        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin));
     }
 
     [HttpPost("login")]
@@ -40,6 +40,6 @@ public class AuthController : ControllerBase
         if (user == null || !await _userManager.CheckPasswordAsync(user, req.Password))
             return Unauthorized("Invalid username or password.");
 
-        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id));
+        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin));
     }
 }

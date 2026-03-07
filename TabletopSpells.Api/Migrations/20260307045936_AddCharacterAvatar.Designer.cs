@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TabletopSpells.Api.Data;
@@ -11,9 +12,11 @@ using TabletopSpells.Api.Data;
 namespace TabletopSpells.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260307045936_AddCharacterAvatar")]
+    partial class AddCharacterAvatar
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -179,9 +182,6 @@ namespace TabletopSpells.Api.Migrations
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsDm")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
 
@@ -278,14 +278,6 @@ namespace TabletopSpells.Api.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<string>("SavingThrowProficienciesJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("SkillProficienciesJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
 
                     b.Property<string>("SpellsUsedTodayJson")
                         .IsRequired()

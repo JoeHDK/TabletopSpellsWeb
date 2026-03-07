@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using TabletopSpells.Api.Data.Entities;
 using TabletopSpells.Api.Models.Enums;
 
@@ -45,16 +46,19 @@ public class GameSummaryDto
 
 public class CreateGameRequest
 {
+    [Required, StringLength(100, MinimumLength = 1)]
     public required string Name { get; set; }
 }
 
 public class JoinGameRequest
 {
+    [Required, StringLength(20, MinimumLength = 6)]
     public required string InviteCode { get; set; }
 }
 
 public class AddMemberRequest
 {
+    [Required, StringLength(50, MinimumLength = 3)]
     public required string Username { get; set; }
 }
 
@@ -67,11 +71,17 @@ public class GiveItemRequest
 {
     public Guid RecipientCharacterId { get; set; }
     public ItemSource ItemSource { get; set; }
+    [StringLength(100)]
     public string? SrdItemIndex { get; set; }
     public Guid? CustomItemId { get; set; }
+    [Required, StringLength(100, MinimumLength = 1)]
     public required string Name { get; set; }
+    [Range(1, 9999)]
     public int Quantity { get; set; } = 1;
+    [Range(0, 99)]
     public int? AcBonus { get; set; }
+    [StringLength(100)]
     public string? DamageOverride { get; set; }
+    [StringLength(500)]
     public string? Notes { get; set; }
 }

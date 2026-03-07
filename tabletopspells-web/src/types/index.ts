@@ -18,12 +18,15 @@ export interface Character {
   maxSpellsPerDay: Record<number, number>
   spellsUsedToday: Record<number, number>
   alwaysPreparedSpells: string[]
+  savingThrowProficiencies: string[]
+  skillProficiencies: string[]
   createdAt: string
   updatedAt: string
   maxHp: number
   currentHp: number
   baseArmorClass: number
   gameRoomId?: string
+  avatarBase64?: string
 }
 
 export interface CreateCharacterRequest {
@@ -43,6 +46,8 @@ export interface UpdateCharacterRequest {
   maxSpellsPerDay?: Record<number, number>
   spellsUsedToday?: Record<number, number>
   baseArmorClass?: number
+  savingThrowProficiencies?: string[]
+  skillProficiencies?: string[]
 }
 
 export interface Spell {
@@ -121,6 +126,7 @@ export interface AuthResponse {
   token: string
   username: string
   userId: string
+  isDm: boolean
 }
 
 export interface CustomItem {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { itemsApi } from '../api/items'
 import { customItemsApi } from '../api/customItems'
+import { useAuthStore } from '../store/authStore'
 import CustomItemFormModal from '../components/CustomItemFormModal'
 import type { Item, CustomItem, SaveCustomItemRequest } from '../types'
 
@@ -85,6 +86,7 @@ function rarityColor(rarity: string) {
 export default function SearchItemsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const isDm = useAuthStore((s) => s.isDm)
 
   const [search, setSearch] = useState('')
   const [rarityFilter, setRarityFilter] = useState<string | undefined>()
@@ -158,12 +160,14 @@ export default function SearchItemsPage() {
         <button onClick={() => navigate(-1)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
         <h1 className="text-lg font-bold flex-1">Search Items</h1>
         {isCustomTab
-          ? <button
-              onClick={() => { setEditingItem(undefined); setFormOpen(true) }}
-              className="text-sm bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded-lg transition-colors"
-            >
-              + New
-            </button>
+          ? isDm
+            ? <button
+                onClick={() => { setEditingItem(undefined); setFormOpen(true) }}
+                className="text-sm bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded-lg transition-colors"
+              >
+                + New
+              </button>
+            : null
           : <span className="text-xs text-gray-500">{filtered.length} items</span>
         }
       </header>
@@ -284,22 +288,26 @@ export default function SearchItemsPage() {
                     {item.damage && <span className="text-xs text-gray-500">{item.damage}</span>}
                   </div>
                 </button>
-                <button
-                  onClick={() => { setEditingItem(item); setFormOpen(true) }}
-                  className="text-gray-400 hover:text-white px-2 py-1 text-sm transition-colors"
-                  aria-label="Edit"
-                >
-                  ✏
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm(`Delete "${item.name}"?`)) deleteMutation.mutate(item.id)
-                  }}
-                  className="text-gray-400 hover:text-red-400 px-2 py-1 text-sm transition-colors"
-                  aria-label="Delete"
-                >
-                  🗑
-                </button>
+                {isDm && (
+                  <>
+                    <button
+                      onClick={() => { setEditingItem(item); setFormOpen(true) }}
+                      className="text-gray-400 hover:text-white px-2 py-1 text-sm transition-colors"
+                      aria-label="Edit"
+                    >
+                      ✏
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete "${item.name}"?`)) deleteMutation.mutate(item.id)
+                      }}
+                      className="text-gray-400 hover:text-red-400 px-2 py-1 text-sm transition-colors"
+                      aria-label="Delete"
+                    >
+                      🗑
+                    </button>
+                  </>
+                )}
               </div>
             ))
           )}

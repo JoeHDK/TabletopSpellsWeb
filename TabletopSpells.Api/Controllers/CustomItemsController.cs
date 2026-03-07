@@ -16,6 +16,7 @@ public class CustomItemsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    private bool IsDm => User.FindFirstValue("isDm") == "true";
 
     public CustomItemsController(AppDbContext db) => _db = db;
 
@@ -33,6 +34,8 @@ public class CustomItemsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] SaveCustomItemRequest req)
     {
+        if (!IsDm) return Forbid();
+
         var entity = new CustomItemEntity
         {
             UserId = UserId,
@@ -57,6 +60,7 @@ public class CustomItemsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] SaveCustomItemRequest req)
     {
+        if (!IsDm) return Forbid();
         var entity = await _db.CustomItems.FirstOrDefaultAsync(i => i.Id == id && i.UserId == UserId);
         if (entity is null) return NotFound();
 
@@ -79,6 +83,7 @@ public class CustomItemsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
+        if (!IsDm) return Forbid();
         var entity = await _db.CustomItems.FirstOrDefaultAsync(i => i.Id == id && i.UserId == UserId);
         if (entity is null) return NotFound();
 

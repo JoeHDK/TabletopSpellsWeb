@@ -20,6 +20,8 @@ public class CharacterEntity
     [Column(TypeName = "jsonb")] public string MaxSpellsPerDayJson { get; set; } = "{}";
     [Column(TypeName = "jsonb")] public string SpellsUsedTodayJson { get; set; } = "{}";
     [Column(TypeName = "jsonb")] public string AlwaysPreparedSpellsJson { get; set; } = "[]";
+    [Column(TypeName = "jsonb")] public string SavingThrowProficienciesJson { get; set; } = "[]";
+    [Column(TypeName = "jsonb")] public string SkillProficienciesJson { get; set; } = "[]";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -30,6 +32,8 @@ public class CharacterEntity
 
     public Guid? GameRoomId { get; set; }
     [ForeignKey(nameof(GameRoomId))] public GameRoomEntity? GameRoom { get; set; }
+
+    public string? AvatarBase64 { get; set; }
 
     [ForeignKey(nameof(UserId))] public AppUser? User { get; set; }
     public ICollection<PreparedSpellEntity> PreparedSpells { get; set; } = new List<PreparedSpellEntity>();

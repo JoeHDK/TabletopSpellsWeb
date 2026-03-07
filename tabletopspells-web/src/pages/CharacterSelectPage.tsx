@@ -111,11 +111,20 @@ export default function CharacterSelectPage() {
           <div className="space-y-3">
             {characters.map((c) => (
               <div key={c.id} className="bg-gray-900 rounded-xl p-4 flex items-center gap-4 hover:bg-gray-800 transition-colors">
-                <button onClick={() => selectCharacter(c)} className="flex-1 text-left">
-                  <p className="font-semibold text-lg">{c.name}</p>
-                  <p className="text-sm text-gray-400">
-                    {c.characterClass} • Level {c.level} • {c.gameType === 'dnd5e' ? 'D&D 5e' : 'Pathfinder 1e'}
-                  </p>
+                <button onClick={() => selectCharacter(c)} className="flex-1 text-left flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center shrink-0">
+                    {c.avatarBase64 ? (
+                      <img src={c.avatarBase64} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-lg">🧙</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-lg">{c.name}</p>
+                    <p className="text-sm text-gray-400">
+                      {c.characterClass} • Level {c.level} • {c.gameType === 'dnd5e' ? 'D&D 5e' : 'Pathfinder 1e'}
+                    </p>
+                  </div>
                 </button>
                 <button
                   onClick={() => deleteMutation.mutate(c.id)}

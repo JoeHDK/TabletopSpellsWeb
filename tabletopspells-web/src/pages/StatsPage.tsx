@@ -3,12 +3,101 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
 import { inventoryApi } from '../api/inventory'
+import EditableNumber from '../components/EditableNumber'
+import { resizeImage } from '../utils/resizeImage'
 import type { UpdateCharacterRequest } from '../types'
 
 const ABILITY_KEYS = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']
 const ABILITY_SHORT: Record<string, string> = {
   Strength: 'STR', Dexterity: 'DEX', Constitution: 'CON',
   Intelligence: 'INT', Wisdom: 'WIS', Charisma: 'CHA',
+}
+
+const DND5E_SKILLS = [
+  { name: 'Acrobatics', ability: 'Dexterity' },
+  { name: 'Animal Handling', ability: 'Wisdom' },
+  { name: 'Arcana', ability: 'Intelligence' },
+  { name: 'Athletics', ability: 'Strength' },
+  { name: 'Deception', ability: 'Charisma' },
+  { name: 'History', ability: 'Intelligence' },
+  { name: 'Insight', ability: 'Wisdom' },
+  { name: 'Intimidation', ability: 'Charisma' },
+  { name: 'Investigation', ability: 'Intelligence' },
+  { name: 'Medicine', ability: 'Wisdom' },
+  { name: 'Nature', ability: 'Intelligence' },
+  { name: 'Perception', ability: 'Wisdom' },
+  { name: 'Performance', ability: 'Charisma' },
+  { name: 'Persuasion', ability: 'Charisma' },
+  { name: 'Religion', ability: 'Intelligence' },
+  { name: 'Sleight of Hand', ability: 'Dexterity' },
+  { name: 'Stealth', ability: 'Dexterity' },
+  { name: 'Survival', ability: 'Wisdom' },
+]
+
+const PF1E_SKILLS = [
+  { name: 'Acrobatics', ability: 'Dexterity' },
+  { name: 'Appraise', ability: 'Intelligence' },
+  { name: 'Bluff', ability: 'Charisma' },
+  { name: 'Climb', ability: 'Strength' },
+  { name: 'Diplomacy', ability: 'Charisma' },
+  { name: 'Disable Device', ability: 'Dexterity' },
+  { name: 'Disguise', ability: 'Charisma' },
+  { name: 'Escape Artist', ability: 'Dexterity' },
+  { name: 'Fly', ability: 'Dexterity' },
+  { name: 'Handle Animal', ability: 'Charisma' },
+  { name: 'Heal', ability: 'Wisdom' },
+  { name: 'Intimidate', ability: 'Charisma' },
+  { name: 'Know: Arcana', ability: 'Intelligence' },
+  { name: 'Know: History', ability: 'Intelligence' },
+  { name: 'Know: Nature', ability: 'Intelligence' },
+  { name: 'Know: Planes', ability: 'Intelligence' },
+  { name: 'Know: Religion', ability: 'Intelligence' },
+  { name: 'Linguistics', ability: 'Intelligence' },
+  { name: 'Perception', ability: 'Wisdom' },
+  { name: 'Perform', ability: 'Charisma' },
+  { name: 'Ride', ability: 'Dexterity' },
+  { name: 'Sense Motive', ability: 'Wisdom' },
+  { name: 'Sleight of Hand', ability: 'Dexterity' },
+  { name: 'Spellcraft', ability: 'Intelligence' },
+  { name: 'Stealth', ability: 'Dexterity' },
+  { name: 'Survival', ability: 'Wisdom' },
+  { name: 'Swim', ability: 'Strength' },
+  { name: 'Use Magic Device', ability: 'Charisma' },
+]
+
+const PF1E_SAVES = [
+  { name: 'Fortitude', ability: 'Constitution' },
+  { name: 'Reflex', ability: 'Dexterity' },
+  { name: 'Will', ability: 'Wisdom' },
+]
+
+// D&D 5e: fixed skill proficiency count at character creation
+const DND5E_SKILL_LIMIT: Record<string, number> = {
+  Barbarian: 2, Bard: 3, Cleric: 2, Druid: 2, Fighter: 2,
+  Monk: 2, Paladin: 2, Ranger: 3, Rogue: 4, Sorcerer: 2,
+  Warlock: 2, Wizard: 2, Artificer: 2,
+}
+
+// Pathfinder 1e: base skill ranks per level (add INT mod × level for total)
+const PF1E_SKILL_RANKS_PER_LEVEL: Record<string, number> = {
+  Alchemist: 4, Barbarian: 4, Bard: 6, Cleric: 2, Druid: 4,
+  Fighter: 2, Inquisitor: 6, Magus: 2, Mesmerist: 6, Monk: 4,
+  Occultist: 4, Oracle: 4, Paladin: 2, Psychic: 2, Ranger: 6,
+  Rogue: 8, Shaman: 4, Sorcerer: 2, Spiritualist: 4, Summoner: 2,
+  Witch: 2, Wizard: 2,
+}
+
+// Spellcasting ability by class (D&D 5e and Pathfinder 1e)
+const CASTER_ABILITY: Record<string, string> = {
+  // D&D 5e
+  Bard: 'Charisma', Cleric: 'Wisdom', Druid: 'Wisdom',
+  Paladin: 'Charisma', Ranger: 'Wisdom', Sorcerer: 'Charisma',
+  Warlock: 'Charisma', Wizard: 'Intelligence', Artificer: 'Intelligence',
+  // Pathfinder 1e
+  Alchemist: 'Intelligence', Inquisitor: 'Wisdom', Magus: 'Intelligence',
+  Mesmerist: 'Charisma', Occultist: 'Intelligence', Oracle: 'Charisma',
+  Psychic: 'Intelligence', Shaman: 'Wisdom', Spiritualist: 'Wisdom',
+  Summoner: 'Charisma', Witch: 'Intelligence',
 }
 
 const SUBCLASSES:Record<string, string[]> = {
@@ -93,6 +182,20 @@ export default function StatsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
   })
 
+  const avatarMutation = useMutation({
+    mutationFn: (file: File) => charactersApi.uploadAvatar(id!, file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
+  })
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const resized = await resizeImage(file, 256, 0.85)
+      avatarMutation.mutate(resized)
+    }
+    e.target.value = ''
+  }
+
   if (isLoading || !character) return (
     <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">Loading…</div>
   )
@@ -105,6 +208,8 @@ export default function StatsPage() {
     baseArmorClass: draft?.baseArmorClass ?? character.baseArmorClass,
     currentHp: draft?.currentHp ?? character.currentHp,
     maxHp: draft?.maxHp ?? character.maxHp,
+    savingThrowProficiencies: draft?.savingThrowProficiencies ?? character.savingThrowProficiencies ?? [],
+    skillProficiencies: draft?.skillProficiencies ?? character.skillProficiencies ?? [],
   }
 
   const patch = (fields: Partial<typeof d>) => setDraft(prev => ({ ...prev, ...fields }))
@@ -124,6 +229,36 @@ export default function StatsPage() {
   const abilityMod = (key: string) => Math.floor(((d.abilityScores[key] ?? 10) - 10) / 2)
   const passivePerception = 10 + abilityMod('Wisdom')
   const initiative = abilityMod('Dexterity')
+  const profBonusNum = Math.floor((d.level - 1) / 4) + 2
+
+  const toggleSaveProficiency = (key: string) => {
+    const updated = d.savingThrowProficiencies.includes(key)
+      ? d.savingThrowProficiencies.filter(k => k !== key)
+      : [...d.savingThrowProficiencies, key]
+    patch({ savingThrowProficiencies: updated })
+  }
+
+  const toggleSkillProficiency = (name: string) => {
+    const updated = d.skillProficiencies.includes(name)
+      ? d.skillProficiencies.filter(n => n !== name)
+      : [...d.skillProficiencies, name]
+    patch({ skillProficiencies: updated })
+  }
+
+  const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
+  const skillList = character.gameType === 'pathfinder1e' ? PF1E_SKILLS : DND5E_SKILLS
+  const saveList = character.gameType === 'pathfinder1e' ? PF1E_SAVES : ABILITY_KEYS.map(k => ({ name: k, ability: k }))
+
+  const castingAbility = CASTER_ABILITY[character.characterClass]
+  const castingAbilityMod = castingAbility ? abilityMod(castingAbility) : null
+  const spellSaveDC = castingAbilityMod !== null ? 8 + profBonusNum + castingAbilityMod : null
+  const spellAttackBonus = castingAbilityMod !== null ? profBonusNum + castingAbilityMod : null
+
+  const maxSkillProficiencies = character.gameType === 'pathfinder1e'
+    ? (PF1E_SKILL_RANKS_PER_LEVEL[character.characterClass] ?? 2) * d.level
+      + Math.max(0, abilityMod('Intelligence')) * d.level
+    : DND5E_SKILL_LIMIT[character.characterClass] ?? 2
+  const atSkillLimit = d.skillProficiencies.length >= maxSkillProficiencies
 
   const subclassList = SUBCLASSES[character.characterClass] ?? []
 
@@ -175,58 +310,80 @@ export default function StatsPage() {
       <div className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-4 py-5 space-y-4">
 
         {/* Identity */}
-        <section className="bg-gray-900 rounded-2xl p-4 space-y-3">
-          <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Identity</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {/* Class — display only */}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Class</p>
-              <p className="font-medium">{character.characterClass}</p>
-            </div>
+        <section className="bg-gray-900 rounded-2xl p-4">
+          <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-3">Identity</h2>
+          <div className="flex gap-4">
 
-            {/* Level stepper */}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Level</p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => patch({ level: Math.max(1, d.level - 1) })}
-                  className="w-7 h-7 bg-gray-800 hover:bg-gray-700 rounded-full text-lg leading-none transition-colors"
-                >−</button>
-                <span className="min-w-[28px] text-center font-bold text-xl">{d.level}</span>
-                <button
-                  onClick={() => patch({ level: Math.min(20, d.level + 1) })}
-                  className="w-7 h-7 bg-gray-800 hover:bg-gray-700 rounded-full text-lg leading-none transition-colors"
-                >+</button>
+            {/* Left: stats */}
+            <div className="flex-1 space-y-3">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Class</p>
+                  <p className="font-medium text-sm">{character.characterClass}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Level</p>
+                  <EditableNumber
+                    value={d.level}
+                    onChange={v => patch({ level: v })}
+                    min={1} max={20}
+                    label="Level"
+                    className="font-bold text-lg"
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">System</p>
+                  <p className="font-medium text-sm">{character.gameType === 'dnd5e' ? 'D&D 5e' : 'Pathfinder 1e'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Caster</p>
+                  <p className="font-medium text-sm">{character.isDivineCaster ? 'Divine' : 'Arcane'}</p>
+                </div>
+              </div>
+
+              {/* Subclass */}
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Subclass</p>
+                {subclassList.length > 0 ? (
+                  <select
+                    className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
+                    value={d.subclass ?? 'None'}
+                    onChange={e => patch({ subclass: e.target.value })}
+                  >
+                    <option value="None">— None —</option>
+                    {subclassList.map(s => (
+                      <option key={s} value={s}>{formatSubclass(s, character.characterClass)}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-sm text-gray-400">{formatSubclass(d.subclass ?? '', character.characterClass)}</p>
+                )}
               </div>
             </div>
 
-            {/* Subclass */}
-            <div className="col-span-2">
-              <p className="text-xs text-gray-500 mb-1">Subclass</p>
-              {subclassList.length > 0 ? (
-                <select
-                  className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                  value={d.subclass ?? 'None'}
-                  onChange={e => patch({ subclass: e.target.value })}
-                >
-                  <option value="None">— None —</option>
-                  {subclassList.map(s => (
-                    <option key={s} value={s}>{formatSubclass(s, character.characterClass)}</option>
-                  ))}
-                </select>
-              ) : (
-                <p className="text-sm text-gray-400">{formatSubclass(d.subclass ?? '', character.characterClass)}</p>
-              )}
+            {/* Right: avatar */}
+            <div className="flex flex-col items-center justify-center gap-2 shrink-0">
+              <label className="relative cursor-pointer group" title="Click to upload avatar">
+                <div className="w-24 h-24 rounded-full bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
+                  {character.avatarBase64 ? (
+                    <img src={character.avatarBase64} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-4xl select-none">🧙</span>
+                  )}
+                  {avatarMutation.isPending && (
+                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
+                      <span className="text-xs text-white">...</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-full transition-colors flex items-center justify-center">
+                    <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity font-medium">Change</span>
+                  </div>
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+              </label>
+              <p className="text-xs text-gray-600">Tap to change</p>
             </div>
 
-            <div>
-              <p className="text-xs text-gray-500 mb-1">System</p>
-              <p className="font-medium text-sm">{character.gameType === 'dnd5e' ? 'D&D 5e' : 'Pathfinder 1e'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Caster Type</p>
-              <p className="font-medium text-sm">{character.isDivineCaster ? 'Divine' : 'Arcane'}</p>
-            </div>
           </div>
         </section>
 
@@ -238,30 +395,22 @@ export default function StatsPage() {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs text-gray-500">Hit Points</span>
-              <div className="flex items-center gap-2 text-sm">
-                <button
-                  onClick={() => patch({ currentHp: Math.max(0, d.currentHp - 1) })}
-                  className="w-7 h-7 bg-gray-800 hover:bg-red-900/50 rounded-full text-base leading-none transition-colors"
-                >−</button>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number" min={0} max={d.maxHp || 999}
-                    value={d.currentHp}
-                    onChange={e => patch({ currentHp: Math.max(0, Number(e.target.value)) })}
-                    className="w-12 text-center bg-transparent font-bold text-lg focus:outline-none focus:border-b border-indigo-400"
-                  />
-                  <span className="text-gray-500">/</span>
-                  <input
-                    type="number" min={0}
-                    value={d.maxHp}
-                    onChange={e => patch({ maxHp: Math.max(0, Number(e.target.value)) })}
-                    className="w-12 text-center bg-transparent text-gray-400 focus:outline-none focus:border-b border-indigo-400"
-                  />
-                </div>
-                <button
-                  onClick={() => patch({ currentHp: Math.min(d.maxHp || 999, d.currentHp + 1) })}
-                  className="w-7 h-7 bg-gray-800 hover:bg-green-900/50 rounded-full text-base leading-none transition-colors"
-                >+</button>
+              <div className="flex items-center gap-1 text-sm">
+                <EditableNumber
+                  value={d.currentHp}
+                  onChange={v => patch({ currentHp: Math.min(v, d.maxHp) })}
+                  min={0} max={d.maxHp}
+                  label="Current HP"
+                  className="w-12 text-center font-bold text-lg"
+                />
+                <span className="text-gray-500">/</span>
+                <EditableNumber
+                  value={d.maxHp}
+                  onChange={v => patch({ maxHp: v, currentHp: Math.min(d.currentHp, v) })}
+                  min={0}
+                  label="Max HP"
+                  className="w-12 text-center text-gray-400"
+                />
               </div>
             </div>
             <div className="bg-gray-700 rounded-full h-2 overflow-hidden">
@@ -269,18 +418,17 @@ export default function StatsPage() {
             </div>
           </div>
 
-          {/* AC, Initiative, Proficiency */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* AC, Initiative, Proficiency, Passive Perception (+ spell stats for casters) */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-800 rounded-xl p-3 text-center">
               <p className="text-xs text-gray-400 mb-1">Armor Class</p>
-              <div className="flex items-center justify-center gap-1">
-                <input
-                  type="number" min={0}
-                  value={d.baseArmorClass}
-                  onChange={e => patch({ baseArmorClass: Number(e.target.value) })}
-                  className="w-12 text-center bg-transparent text-white text-xl font-bold focus:outline-none"
-                />
-              </div>
+              <EditableNumber
+                value={d.baseArmorClass}
+                onChange={v => patch({ baseArmorClass: v })}
+                min={0}
+                label="Base AC"
+                className="text-xl font-bold"
+              />
               {equipmentAcBonus > 0 && (
                 <p className="text-xs text-indigo-400 mt-0.5">+ {equipmentAcBonus} gear</p>
               )}
@@ -295,50 +443,109 @@ export default function StatsPage() {
               <p className="text-xl font-bold">{profBonus(d.level)}</p>
               <p className="text-xs text-gray-500 mt-0.5">Lv {d.level}</p>
             </div>
-          </div>
-
-          {/* Passive Perception */}
-          <div className="flex items-center justify-between text-sm px-1">
-            <span className="text-gray-400">Passive Perception (WIS)</span>
-            <span className="font-semibold">{passivePerception}</span>
-          </div>
-        </section>
-
-        {/* Ability Scores */}
-        <section className="bg-gray-900 rounded-2xl p-4">
-          <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-3">Ability Scores</h2>
-          <div className="grid grid-cols-3 gap-3">
-            {ABILITY_KEYS.map(key => (
-              <div key={key} className="bg-gray-800 rounded-xl p-3 text-center">
-                <p className="text-xs text-gray-400 mb-1">{ABILITY_SHORT[key]}</p>
-                <input
-                  type="number" min={1} max={30}
-                  value={d.abilityScores[key] ?? 10}
-                  onChange={e => patch({ abilityScores: { ...(d.abilityScores), [key]: +e.target.value } })}
-                  className="w-full bg-transparent text-white text-xl font-bold text-center focus:outline-none"
-                />
-                <p className="text-sm text-indigo-400">{mod(d.abilityScores[key] ?? 10)}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Saving Throws (derived, read-only) */}
-        <section className="bg-gray-900 rounded-2xl p-4">
-          <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-3">Saving Throw Modifiers</h2>
-          <div className="grid grid-cols-2 gap-2">
-            {ABILITY_KEYS.map(key => {
-              const m = abilityMod(key)
-              return (
-                <div key={key} className="flex items-center justify-between px-3 py-2 bg-gray-800 rounded-lg text-sm">
-                  <span className="text-gray-400">{key}</span>
-                  <span className="font-semibold">{m >= 0 ? `+${m}` : m}</span>
+            <div className="bg-gray-800 rounded-xl p-3 text-center">
+              <p className="text-xs text-gray-400 mb-1">Passive Perception</p>
+              <p className="text-xl font-bold">{passivePerception}</p>
+              <p className="text-xs text-gray-500 mt-0.5">10 + WIS</p>
+            </div>
+            {spellSaveDC !== null && (
+              <>
+                <div className="bg-gray-800 rounded-xl p-3 text-center">
+                  <p className="text-xs text-gray-400 mb-1">Spell Save DC</p>
+                  <p className="text-xl font-bold">{spellSaveDC}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">8 + prof + {ABILITY_SHORT[castingAbility!]}</p>
                 </div>
-              )
-            })}
+                <div className="bg-gray-800 rounded-xl p-3 text-center">
+                  <p className="text-xs text-gray-400 mb-1">Spell Attack</p>
+                  <p className="text-xl font-bold">{fmtMod(spellAttackBonus!)}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">prof + {ABILITY_SHORT[castingAbility!]}</p>
+                </div>
+              </>
+            )}
           </div>
-          <p className="text-xs text-gray-600 mt-2 text-center">Base modifiers only · proficiency not tracked here</p>
         </section>
+
+        {/* Ability Scores + Saves (left) | Skills (right) */}
+        <div className="flex gap-3 items-start">
+
+          {/* Left column: Ability Scores stacked above Saves */}
+          <div className="flex-1 min-w-0 flex flex-col gap-3">
+
+            {/* Ability Scores */}
+            <section className="bg-gray-900 rounded-2xl p-3">
+              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Ability Scores</h2>
+              <div className="grid grid-cols-2 gap-1.5">
+                {ABILITY_KEYS.map(key => (
+                  <div key={key} className="bg-gray-800 rounded-xl p-2 text-center">
+                    <p className="text-[10px] text-gray-400 mb-0.5">{ABILITY_SHORT[key]}</p>
+                    <EditableNumber
+                      value={d.abilityScores[key] ?? 10}
+                      onChange={v => patch({ abilityScores: { ...d.abilityScores, [key]: v } })}
+                      min={1} max={30}
+                      label={key}
+                      className="text-sm font-bold"
+                    />
+                    <p className="text-[10px] text-indigo-400">{mod(d.abilityScores[key] ?? 10)}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Saving Throws */}
+            <section className="bg-gray-900 rounded-2xl p-3">
+              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Saves</h2>
+              <div className="space-y-0.5">
+                {saveList.map(({ name, ability }) => {
+                  const isProficient = d.savingThrowProficiencies.includes(name)
+                  const total = abilityMod(ability) + (isProficient ? profBonusNum : 0)
+                  return (
+                    <button
+                      key={name}
+                      onClick={() => toggleSaveProficiency(name)}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-800 transition-colors text-left"
+                    >
+                      <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors ${isProficient ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
+                      <span className="flex-1 text-xs truncate">{name}</span>
+                      <span className={`text-xs font-semibold w-6 text-right flex-shrink-0 ${isProficient ? 'text-indigo-300' : 'text-gray-300'}`}>{fmtMod(total)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+
+          </div>
+
+          {/* Skills */}
+          <section className="bg-gray-900 rounded-2xl p-3 flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Skills</h2>
+              <span className={`text-xs font-semibold ${atSkillLimit ? 'text-amber-400' : 'text-gray-500'}`}>
+                {d.skillProficiencies.length}/{maxSkillProficiencies}
+              </span>
+            </div>
+            <div className="space-y-0.5">
+              {skillList.map(({ name, ability }) => {
+                const isProficient = d.skillProficiencies.includes(name)
+                const disabled = !isProficient && atSkillLimit
+                const total = abilityMod(ability) + (isProficient ? profBonusNum : 0)
+                return (
+                  <button
+                    key={name}
+                    onClick={() => !disabled && toggleSkillProficiency(name)}
+                    disabled={disabled}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-gray-800'}`}
+                  >
+                    <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors ${isProficient ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
+                    <span className="flex-1 text-xs truncate">{name}</span>
+                    <span className={`text-xs font-semibold w-6 text-right flex-shrink-0 ${isProficient ? 'text-indigo-300' : 'text-gray-300'}`}>{fmtMod(total)}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-gray-600 mt-2 text-center">Prof {fmtMod(profBonusNum)}</p>
+          </section>
+
+        </div>
 
       </div>
     </div>

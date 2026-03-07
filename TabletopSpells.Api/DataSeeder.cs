@@ -8,12 +8,14 @@ public static class DataSeeder
 {
     public static async Task SeedAdminAsync(IServiceProvider services)
     {
+        var env = services.GetRequiredService<IWebHostEnvironment>();
         var userManager = services.GetRequiredService<UserManager<AppUser>>();
 
         if (await userManager.FindByNameAsync("admin") != null) return;
 
-        // Bypass password policy by hashing directly — for local dev only
-        var hasher = services.GetRequiredService<IPasswordHasher<AppUser>>();
+        // Generate a random password and log it once — never hardcode credentials
+        var password = $"Admin-{Guid.NewGuid():N}".Substring(0, 24);
+
         var admin = new AppUser
         {
             UserName = "admin",
@@ -21,10 +23,20 @@ public static class DataSeeder
             SecurityStamp = Guid.NewGuid().ToString(),
             IsAdmin = true,
         };
-        admin.PasswordHash = hasher.HashPassword(admin, "admin");
+
+        var hasher = services.GetRequiredService<IPasswordHasher<AppUser>>();
+        admin.PasswordHash = hasher.HashPassword(admin, password);
 
         var db = services.GetRequiredService<AppDbContext>();
         db.Users.Add(admin);
         await db.SaveChangesAsync();
+
+        // Print once to stdout so the operator can retrieve it from logs
+        Console.WriteLine("=================================================");
+        Console.WriteLine($"  Admin account created");
+        Console.WriteLine($"  Username : admin");
+        Console.WriteLine($"  Password : {password}");
+        Console.WriteLine("  Change this password after first login.");
+        Console.WriteLine("=================================================");
     }
 }

@@ -19,7 +19,7 @@ export default function LoginPage() {
     try {
       const fn = tab === 'login' ? authApi.login : authApi.register
       const data = await fn(username, password)
-      login(data.token, data.username, data.userId)
+      login(data.token, data.username, data.userId, data.isDm)
       navigate('/characters')
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: string } })?.response?.data ?? 'An error occurred'

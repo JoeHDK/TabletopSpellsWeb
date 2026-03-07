@@ -5,7 +5,8 @@ interface AuthState {
   token: string | null
   username: string | null
   userId: string | null
-  login: (token: string, username: string, userId: string) => void
+  isDm: boolean
+  login: (token: string, username: string, userId: string, isDm: boolean) => void
   logout: () => void
 }
 
@@ -15,8 +16,9 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       username: null,
       userId: null,
-      login: (token, username, userId) => set({ token, username, userId }),
-      logout: () => set({ token: null, username: null, userId: null }),
+      isDm: false,
+      login: (token, username, userId, isDm) => set({ token, username, userId, isDm }),
+      logout: () => set({ token: null, username: null, userId: null, isDm: false }),
     }),
     { name: 'auth' }
   )
