@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+/* Remove browser spinner arrows from all number inputs */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* Light mode overrides — dark is the default; .light on <html> switches to light */
 html.light .bg-gray-950 { background-color: #f8fafc; }
 html.light .bg-gray-900 { background-color: #ffffff; }
