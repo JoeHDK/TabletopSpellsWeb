@@ -41,4 +41,5 @@ public class CharacterEntity
     public ICollection<SpellCastLogEntity> SpellCastLogs { get; set; } = new List<SpellCastLogEntity>();
     public ICollection<CharacterThemeEntity> Themes { get; set; } = new List<CharacterThemeEntity>();
     public ICollection<CharacterInventoryItemEntity> Inventory { get; set; } = new List<CharacterInventoryItemEntity>();
+    public ICollection<CharacterAttackEntity> Attacks { get; set; } = new List<CharacterAttackEntity>();
 }

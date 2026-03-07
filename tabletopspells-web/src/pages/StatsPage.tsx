@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
 import { inventoryApi } from '../api/inventory'
+import { attacksApi } from '../api/attacks'
 import EditableNumber from '../components/EditableNumber'
 import { resizeImage } from '../utils/resizeImage'
-import type { UpdateCharacterRequest } from '../types'
+import type { UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey } from '../types'
 
 const ABILITY_KEYS = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']
 const ABILITY_SHORT: Record<string, string> = {
@@ -153,6 +154,12 @@ export default function StatsPage() {
     enabled: !!id,
   })
 
+  const { data: customAttacks = [] } = useQuery({
+    queryKey: ['attacks', id],
+    queryFn: () => attacksApi.getAll(id!),
+    enabled: !!id,
+  })
+
   const equipmentAcBonus = inventory
     .filter(i => i.isEquipped && i.acBonus != null)
     .reduce((sum, i) => sum + (i.acBonus ?? 0), 0)
@@ -185,6 +192,29 @@ export default function StatsPage() {
   const avatarMutation = useMutation({
     mutationFn: (file: File) => charactersApi.uploadAvatar(id!, file),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
+  })
+
+  // ── Attack form state ──────────────────────────────────────────
+  const BLANK_ATTACK: AddAttackRequest = {
+    name: '', damageFormula: '', damageType: '', abilityMod: 'Strength',
+    useProficiency: true, magicBonus: 0, notes: '',
+  }
+  const [showAttackForm, setShowAttackForm] = useState(false)
+  const [editingAttack, setEditingAttack] = useState<CharacterAttack | null>(null)
+  const [attackForm, setAttackForm] = useState<AddAttackRequest>(BLANK_ATTACK)
+
+  const addAttackMutation = useMutation({
+    mutationFn: (req: AddAttackRequest) => attacksApi.add(id!, req),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attacks', id] }); setShowAttackForm(false); setAttackForm(BLANK_ATTACK) },
+  })
+  const updateAttackMutation = useMutation({
+    mutationFn: ({ attackId, req }: { attackId: string; req: AddAttackRequest }) =>
+      attacksApi.update(id!, attackId, req),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attacks', id] }); setEditingAttack(null); setAttackForm(BLANK_ATTACK) },
+  })
+  const deleteAttackMutation = useMutation({
+    mutationFn: (attackId: string) => attacksApi.remove(id!, attackId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attacks', id] }),
   })
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -464,6 +494,181 @@ export default function StatsPage() {
             )}
           </div>
         </section>
+
+        {/* ── Attacks ─────────────────────────────────────── */}
+        {(() => {
+          // Auto-generate attack profiles from equipped weapons
+          const equippedWeapons = inventory.filter(i => i.isEquipped && (i.equippedSlot === 'Weapon' || i.equippedSlot === 'Offhand'))
+          const RANGED_RE = /\b(bow|crossbow|dart|sling|blowgun|net)\b/i
+          const autoAttacks = equippedWeapons.map(item => {
+            const isRanged = RANGED_RE.test(item.name) || RANGED_RE.test(item.notes ?? '')
+            const ability = isRanged ? 'Dexterity' : 'Strength'
+            const aMod = Math.floor(((d.abilityScores[ability] ?? 10) - 10) / 2)
+            const toHit = aMod + profBonusNum + (item.equippedSlot === 'Offhand' ? -profBonusNum : 0)
+            const dmgBonus = aMod
+            const dmgStr = item.damageOverride
+              ? `${item.damageOverride}${dmgBonus !== 0 ? fmtMod(dmgBonus) : ''}`
+              : fmtMod(dmgBonus)
+            return { id: item.id, name: item.name, toHit, dmgStr, slot: item.equippedSlot, isAuto: true }
+          })
+
+          // Unarmed strike (always available)
+          const strMod = Math.floor(((d.abilityScores['Strength'] ?? 10) - 10) / 2)
+          autoAttacks.push({
+            id: 'unarmed',
+            name: 'Unarmed Strike',
+            toHit: strMod + profBonusNum,
+            dmgStr: `1${fmtMod(strMod)} bludgeoning`,
+            slot: null as any,
+            isAuto: true,
+          })
+
+          // Custom stored attacks
+          const computedCustom = customAttacks.map((atk: CharacterAttack) => {
+            const aMod = atk.abilityMod === 'None' ? 0 : Math.floor(((d.abilityScores[atk.abilityMod] ?? 10) - 10) / 2)
+            const toHit = (atk.useProficiency ? profBonusNum : 0) + aMod + atk.magicBonus
+            const dmgBonus = aMod + atk.magicBonus
+            const dmgStr = atk.damageFormula
+              ? `${atk.damageFormula}${dmgBonus !== 0 ? fmtMod(dmgBonus) : ''}${atk.damageType ? ` ${atk.damageType}` : ''}`
+              : dmgBonus !== 0 ? fmtMod(dmgBonus) : '—'
+            return { ...atk, toHit, dmgStr }
+          })
+
+          const ABILITY_OPTIONS: AbilityModKey[] = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma', 'None']
+
+          return (
+            <section className="bg-gray-900 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Attacks</h2>
+                {!showAttackForm && !editingAttack && (
+                  <button
+                    onClick={() => { setAttackForm(BLANK_ATTACK); setShowAttackForm(true) }}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  >+ Add</button>
+                )}
+              </div>
+
+              {/* Auto-generated weapon attacks */}
+              <div className="space-y-2 mb-3">
+                {autoAttacks.map(atk => (
+                  <div key={atk.id} className="bg-gray-800 rounded-xl px-3 py-2.5 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{atk.name}
+                        <span className="text-[10px] text-gray-500 ml-1.5 font-normal">{atk.slot ?? 'unarmed'}</span>
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">{atk.dmgStr}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs text-gray-400">To Hit</p>
+                      <p className="font-bold text-sm text-indigo-300">{fmtMod(atk.toHit)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Custom stored attacks */}
+              {computedCustom.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {computedCustom.map(atk => (
+                    <div key={atk.id} className="bg-gray-800 rounded-xl px-3 py-2.5 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{atk.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{atk.dmgStr}</p>
+                        {atk.notes && <p className="text-xs text-gray-600 mt-0.5 truncate">{atk.notes}</p>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-gray-400">To Hit</p>
+                        <p className="font-bold text-sm text-indigo-300">{fmtMod(atk.toHit)}</p>
+                      </div>
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button
+                          onClick={() => { setEditingAttack(atk); setAttackForm({ name: atk.name, damageFormula: atk.damageFormula ?? '', damageType: atk.damageType ?? '', abilityMod: atk.abilityMod, useProficiency: atk.useProficiency, magicBonus: atk.magicBonus, notes: atk.notes ?? '', sortOrder: atk.sortOrder }); setShowAttackForm(false) }}
+                          className="text-xs text-gray-500 hover:text-indigo-400 transition-colors"
+                        >✏</button>
+                        <button
+                          onClick={() => deleteAttackMutation.mutate(atk.id)}
+                          className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                        >🗑</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add / Edit form */}
+              {(showAttackForm || editingAttack) && (
+                <div className="bg-gray-800 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-semibold text-gray-300">{editingAttack ? 'Edit Attack' : 'New Attack'}</p>
+                  <input
+                    className="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    placeholder="Name (e.g. Flurry of Blows)"
+                    value={attackForm.name}
+                    onChange={e => setAttackForm(f => ({ ...f, name: e.target.value }))}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      className="bg-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      placeholder="Damage (e.g. 1d6)"
+                      value={attackForm.damageFormula ?? ''}
+                      onChange={e => setAttackForm(f => ({ ...f, damageFormula: e.target.value }))}
+                    />
+                    <input
+                      className="bg-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      placeholder="Type (e.g. bludgeoning)"
+                      value={attackForm.damageType ?? ''}
+                      onChange={e => setAttackForm(f => ({ ...f, damageType: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      className="bg-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      value={attackForm.abilityMod}
+                      onChange={e => setAttackForm(f => ({ ...f, abilityMod: e.target.value as AbilityModKey }))}
+                    >
+                      {ABILITY_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                    <input
+                      type="number"
+                      className="bg-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      placeholder="Magic bonus"
+                      value={attackForm.magicBonus}
+                      onChange={e => setAttackForm(f => ({ ...f, magicBonus: parseInt(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setAttackForm(f => ({ ...f, useProficiency: !f.useProficiency }))}
+                      className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg transition-colors ${attackForm.useProficiency ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400'}`}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full border border-current inline-block" />
+                      Proficient
+                    </button>
+                  </div>
+                  <input
+                    className="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    placeholder="Notes (optional)"
+                    value={attackForm.notes ?? ''}
+                    onChange={e => setAttackForm(f => ({ ...f, notes: e.target.value }))}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={() => { setShowAttackForm(false); setEditingAttack(null); setAttackForm(BLANK_ATTACK) }}
+                      className="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-lg transition-colors"
+                    >Cancel</button>
+                    <button
+                      disabled={!attackForm.name.trim() || addAttackMutation.isPending || updateAttackMutation.isPending}
+                      onClick={() => {
+                        if (editingAttack) updateAttackMutation.mutate({ attackId: editingAttack.id, req: attackForm })
+                        else addAttackMutation.mutate(attackForm)
+                      }}
+                      className="text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+                    >{editingAttack ? 'Save' : 'Add'}</button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )
+        })()}
 
         {/* Ability Scores + Saves (left) | Skills (right) */}
         <div className="flex gap-3 items-start">

@@ -68,6 +68,34 @@ public class SendItemRequest
     public Guid RecipientCharacterId { get; set; }
 }
 
+public class CharacterAttackDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = "";
+    public string? DamageFormula { get; set; }
+    public string? DamageType { get; set; }
+    public string AbilityMod { get; set; } = "Strength";
+    public bool UseProficiency { get; set; }
+    public int MagicBonus { get; set; }
+    public string? Notes { get; set; }
+    public int SortOrder { get; set; }
+}
+
+public class AddAttackRequest
+{
+    [Required, StringLength(100, MinimumLength = 1)]
+    public required string Name { get; set; }
+    public string? DamageFormula { get; set; }
+    public string? DamageType { get; set; }
+    public string AbilityMod { get; set; } = "Strength";
+    public bool UseProficiency { get; set; } = true;
+    public int MagicBonus { get; set; } = 0;
+    public string? Notes { get; set; }
+    public int SortOrder { get; set; } = 0;
+}
+
+public class UpdateAttackRequest : AddAttackRequest { }
+
 public class PartyMemberDto
 {
     public Guid CharacterId { get; set; }

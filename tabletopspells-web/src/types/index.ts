@@ -279,6 +279,33 @@ export interface SendItemRequest {
   recipientCharacterId: string
 }
 
+export type AbilityModKey = 'Strength' | 'Dexterity' | 'Constitution' | 'Intelligence' | 'Wisdom' | 'Charisma' | 'None'
+
+export interface CharacterAttack {
+  id: string
+  name: string
+  damageFormula?: string
+  damageType?: string
+  abilityMod: AbilityModKey
+  useProficiency: boolean
+  magicBonus: number
+  notes?: string
+  sortOrder: number
+}
+
+export interface AddAttackRequest {
+  name: string
+  damageFormula?: string
+  damageType?: string
+  abilityMod: AbilityModKey
+  useProficiency: boolean
+  magicBonus: number
+  notes?: string
+  sortOrder?: number
+}
+
+export type UpdateAttackRequest = AddAttackRequest
+
 export type NotificationType = 'GameInvite' | 'ItemReceived' | 'ItemSent'
 
 export interface Notification {
