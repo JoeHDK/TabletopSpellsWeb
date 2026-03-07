@@ -1,0 +1,280 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using TabletopSpells.Api.Data;
+using TabletopSpells.Api.Data.Entities;
+using TabletopSpells.Api.DTOs;
+using TabletopSpells.Api.Models.Enums;
+
+namespace TabletopSpells.Api.Controllers;
+
+[Authorize]
+[ApiController]
+[Route("api/games")]
+public class GamesController : ControllerBase
+{
+    private readonly AppDbContext _db;
+    private readonly UserManager<AppUser> _userManager;
+
+    public GamesController(AppDbContext db, UserManager<AppUser> userManager)
+    {
+        _db = db;
+        _userManager = userManager;
+    }
+
+    private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+    [HttpGet]
+    public async Task<IActionResult> GetMyGames()
+    {
+        var memberships = await _db.GameMembers
+            .Where(m => m.UserId == UserId)
+            .Include(m => m.GameRoom)
+                .ThenInclude(g => g!.DmUser)
+            .Include(m => m.GameRoom)
+                .ThenInclude(g => g!.Members)
+            .ToListAsync();
+
+        var result = memberships.Select(m => new GameSummaryDto
+        {
+            Id = m.GameRoom!.Id,
+            Name = m.GameRoom.Name,
+            DmUsername = m.GameRoom.DmUser?.UserName ?? "",
+            MyRole = m.Role,
+            MemberCount = m.GameRoom.Members.Count,
+            CreatedAt = m.GameRoom.CreatedAt,
+        });
+
+        return Ok(result);
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetGame(Guid id)
+    {
+        var membership = await _db.GameMembers
+            .FirstOrDefaultAsync(m => m.GameRoomId == id && m.UserId == UserId);
+        if (membership == null) return NotFound();
+
+        var game = await _db.GameRooms
+            .Include(g => g.DmUser)
+            .Include(g => g.Members).ThenInclude(m => m.User)
+            .Include(g => g.Characters).ThenInclude(c => c.User)
+            .FirstOrDefaultAsync(g => g.Id == id);
+
+        if (game == null) return NotFound();
+
+        return Ok(ToDto(game, membership.Role));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateGame([FromBody] CreateGameRequest req)
+    {
+        var inviteCode = GenerateInviteCode();
+        var game = new GameRoomEntity
+        {
+            Name = req.Name,
+            DmUserId = UserId,
+            InviteCode = inviteCode,
+        };
+
+        _db.GameRooms.Add(game);
+
+        var membership = new GameMemberEntity
+        {
+            GameRoomId = game.Id,
+            UserId = UserId,
+            Role = GameRole.DM,
+        };
+        _db.GameMembers.Add(membership);
+
+        await _db.SaveChangesAsync();
+
+        var created = await _db.GameRooms
+            .Include(g => g.DmUser)
+            .Include(g => g.Members).ThenInclude(m => m.User)
+            .Include(g => g.Characters).ThenInclude(c => c.User)
+            .FirstAsync(g => g.Id == game.Id);
+
+        return Ok(ToDto(created, GameRole.DM));
+    }
+
+    [HttpPost("join")]
+    public async Task<IActionResult> JoinByCode([FromBody] JoinGameRequest req)
+    {
+        var game = await _db.GameRooms
+            .Include(g => g.DmUser)
+            .Include(g => g.Members).ThenInclude(m => m.User)
+            .Include(g => g.Characters).ThenInclude(c => c.User)
+            .FirstOrDefaultAsync(g => g.InviteCode == req.InviteCode.Trim().ToUpper());
+
+        if (game == null) return NotFound("Invalid invite code.");
+
+        if (game.Members.Any(m => m.UserId == UserId))
+            return Conflict("You are already a member of this game.");
+
+        var membership = new GameMemberEntity
+        {
+            GameRoomId = game.Id,
+            UserId = UserId,
+            Role = GameRole.Player,
+        };
+        _db.GameMembers.Add(membership);
+        await _db.SaveChangesAsync();
+
+        return Ok(ToDto(game, GameRole.Player));
+    }
+
+    [HttpPost("{id:guid}/members")]
+    public async Task<IActionResult> AddMemberByUsername(Guid id, [FromBody] AddMemberRequest req)
+    {
+        if (!await IsDmOrAdmin(id)) return Forbid();
+
+        var targetUser = await _userManager.FindByNameAsync(req.Username);
+        if (targetUser == null) return NotFound("User not found.");
+
+        if (await _db.GameMembers.AnyAsync(m => m.GameRoomId == id && m.UserId == targetUser.Id))
+            return Conflict("User is already a member.");
+
+        var membership = new GameMemberEntity
+        {
+            GameRoomId = id,
+            UserId = targetUser.Id,
+            Role = GameRole.Player,
+        };
+        _db.GameMembers.Add(membership);
+        await _db.SaveChangesAsync();
+
+        return Ok(new GameMemberDto
+        {
+            UserId = targetUser.Id,
+            Username = targetUser.UserName ?? "",
+            Role = GameRole.Player,
+            JoinedAt = membership.JoinedAt,
+        });
+    }
+
+    [HttpDelete("{id:guid}/members/{userId}")]
+    public async Task<IActionResult> RemoveMember(Guid id, string userId)
+    {
+        var isDmOrAdmin = await IsDmOrAdmin(id);
+        var isSelf = userId == UserId;
+
+        if (!isDmOrAdmin && !isSelf) return Forbid();
+
+        var membership = await _db.GameMembers
+            .FirstOrDefaultAsync(m => m.GameRoomId == id && m.UserId == userId);
+        if (membership == null) return NotFound();
+
+        // DM cannot be removed (only self-delete by leaving)
+        if (membership.Role == GameRole.DM && !isSelf) return Forbid();
+
+        // If DM leaves, delete the game room (cascades members; unlink characters first)
+        if (membership.Role == GameRole.DM)
+        {
+            var characters = await _db.Characters.Where(c => c.GameRoomId == id).ToListAsync();
+            foreach (var c in characters) c.GameRoomId = null;
+            await _db.SaveChangesAsync();
+
+            var gameRoom = await _db.GameRooms.FindAsync(id);
+            if (gameRoom != null) _db.GameRooms.Remove(gameRoom);
+        }
+        else
+        {
+            // Unlink the leaving player's characters
+            var characters = await _db.Characters
+                .Where(c => c.GameRoomId == id && c.UserId == userId)
+                .ToListAsync();
+            foreach (var c in characters) c.GameRoomId = null;
+
+            _db.GameMembers.Remove(membership);
+        }
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/characters")]
+    public async Task<IActionResult> LinkCharacter(Guid id, [FromBody] LinkCharacterRequest req)
+    {
+        if (!await IsMember(id)) return Forbid();
+
+        var character = await _db.Characters
+            .FirstOrDefaultAsync(c => c.Id == req.CharacterId && c.UserId == UserId);
+        if (character == null) return NotFound("Character not found.");
+
+        if (character.GameRoomId.HasValue)
+            return Conflict("Character is already linked to a game. Remove it first.");
+
+        character.GameRoomId = id;
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}/characters/{characterId:guid}")]
+    public async Task<IActionResult> UnlinkCharacter(Guid id, Guid characterId)
+    {
+        var character = await _db.Characters
+            .FirstOrDefaultAsync(c => c.Id == characterId && c.GameRoomId == id);
+        if (character == null) return NotFound();
+
+        var isDmOrAdmin = await IsDmOrAdmin(id);
+        var isOwner = character.UserId == UserId;
+        if (!isDmOrAdmin && !isOwner) return Forbid();
+
+        character.GameRoomId = null;
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private async Task<bool> IsMember(Guid gameId) =>
+        await _db.GameMembers.AnyAsync(m => m.GameRoomId == gameId && m.UserId == UserId)
+        || await IsGlobalAdmin();
+
+    private async Task<bool> IsDmOrAdmin(Guid gameId)
+    {
+        if (await IsGlobalAdmin()) return true;
+        return await _db.GameMembers.AnyAsync(m =>
+            m.GameRoomId == gameId && m.UserId == UserId && m.Role == GameRole.DM);
+    }
+
+    private async Task<bool> IsGlobalAdmin()
+    {
+        var user = await _userManager.FindByIdAsync(UserId);
+        return user?.IsAdmin ?? false;
+    }
+
+    private static string GenerateInviteCode()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        var random = new Random();
+        return new string(Enumerable.Range(0, 6).Select(_ => chars[random.Next(chars.Length)]).ToArray());
+    }
+
+    private static GameRoomDto ToDto(GameRoomEntity g, GameRole myRole) => new()
+    {
+        Id = g.Id,
+        Name = g.Name,
+        DmUserId = g.DmUserId,
+        DmUsername = g.DmUser?.UserName ?? "",
+        InviteCode = g.InviteCode,
+        MyRole = myRole,
+        CreatedAt = g.CreatedAt,
+        Members = g.Members.Select(m => new GameMemberDto
+        {
+            UserId = m.UserId,
+            Username = m.User?.UserName ?? "",
+            Role = m.Role,
+            JoinedAt = m.JoinedAt,
+        }).ToList(),
+        Characters = g.Characters.Select(c => new GameCharacterDto
+        {
+            CharacterId = c.Id,
+            CharacterName = c.Name,
+            OwnerUsername = c.User?.UserName ?? "",
+            CharacterClass = c.CharacterClass.ToString(),
+            Level = c.Level,
+        }).ToList(),
+    };
+}

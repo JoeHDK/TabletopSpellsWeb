@@ -19,6 +19,7 @@ public static class DataSeeder
             UserName = "admin",
             NormalizedUserName = "ADMIN",
             SecurityStamp = Guid.NewGuid().ToString(),
+            IsAdmin = true,
         };
         admin.PasswordHash = hasher.HashPassword(admin, "admin");
 

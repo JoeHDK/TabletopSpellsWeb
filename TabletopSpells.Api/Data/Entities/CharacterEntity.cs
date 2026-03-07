@@ -24,6 +24,9 @@ public class CharacterEntity
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    public Guid? GameRoomId { get; set; }
+    [ForeignKey(nameof(GameRoomId))] public GameRoomEntity? GameRoom { get; set; }
+
     [ForeignKey(nameof(UserId))] public AppUser? User { get; set; }
     public ICollection<PreparedSpellEntity> PreparedSpells { get; set; } = new List<PreparedSpellEntity>();
     public ICollection<SpellsPerDayEntity> SpellsPerDay { get; set; } = new List<SpellsPerDayEntity>();

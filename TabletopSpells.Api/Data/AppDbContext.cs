@@ -14,6 +14,8 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<SpellCastLogEntity> SpellCastLogs => Set<SpellCastLogEntity>();
     public DbSet<CharacterThemeEntity> CharacterThemes => Set<CharacterThemeEntity>();
     public DbSet<CustomItemEntity> CustomItems => Set<CustomItemEntity>();
+    public DbSet<GameRoomEntity> GameRooms => Set<GameRoomEntity>();
+    public DbSet<GameMemberEntity> GameMembers => Set<GameMemberEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -54,5 +56,38 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .WithMany(u => u.CustomItems)
             .HasForeignKey(i => i.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<GameRoomEntity>()
+            .HasOne(g => g.DmUser)
+            .WithMany()
+            .HasForeignKey(g => g.DmUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<GameMemberEntity>()
+            .HasOne(m => m.GameRoom)
+            .WithMany(g => g.Members)
+            .HasForeignKey(m => m.GameRoomId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<GameMemberEntity>()
+            .HasOne(m => m.User)
+            .WithMany(u => u.GameMemberships)
+            .HasForeignKey(m => m.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<CharacterEntity>()
+            .HasOne(c => c.GameRoom)
+            .WithMany(g => g.Characters)
+            .HasForeignKey(c => c.GameRoomId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
+
+        builder.Entity<GameMemberEntity>()
+            .HasIndex(m => new { m.GameRoomId, m.UserId })
+            .IsUnique();
+
+        builder.Entity<GameRoomEntity>()
+            .HasIndex(g => g.InviteCode)
+            .IsUnique();
     }
 }

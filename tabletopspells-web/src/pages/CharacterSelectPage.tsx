@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
+import { gamesApi } from '../api/games'
 import { useCharacterStore } from '../store/characterStore'
 import { useAuthStore } from '../store/authStore'
 import { useFocusTrap } from '../hooks/useFocusTrap'
@@ -20,6 +21,10 @@ export default function CharacterSelectPage() {
   const setActive = useCharacterStore((s) => s.setActiveCharacter)
   const { username, logout } = useAuthStore()
   const [showCreate, setShowCreate] = useState(false)
+  const [showCreateGame, setShowCreateGame] = useState(false)
+  const [showJoinGame, setShowJoinGame] = useState(false)
+  const [gameName, setGameName] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [form, setForm] = useState<CreateCharacterRequest>({
     name: '', characterClass: 'Wizard', gameType: 'dnd5e', level: 1,
   })
@@ -31,6 +36,11 @@ export default function CharacterSelectPage() {
     queryFn: charactersApi.getAll,
   })
 
+  const { data: games = [], isLoading: gamesLoading } = useQuery({
+    queryKey: ['games'],
+    queryFn: gamesApi.getAll,
+  })
+
   const createMutation = useMutation({
     mutationFn: (req: CreateCharacterRequest) => charactersApi.create(req),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['characters'] }); setShowCreate(false) },
@@ -39,6 +49,26 @@ export default function CharacterSelectPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => charactersApi.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['characters'] }),
+  })
+
+  const createGameMutation = useMutation({
+    mutationFn: () => gamesApi.create({ name: gameName }),
+    onSuccess: (game) => {
+      qc.invalidateQueries({ queryKey: ['games'] })
+      setShowCreateGame(false)
+      setGameName('')
+      navigate(`/games/${game.id}`)
+    },
+  })
+
+  const joinGameMutation = useMutation({
+    mutationFn: () => gamesApi.joinByCode({ inviteCode: inviteCode.trim().toUpperCase() }),
+    onSuccess: (game) => {
+      qc.invalidateQueries({ queryKey: ['games'] })
+      setShowJoinGame(false)
+      setInviteCode('')
+      navigate(`/games/${game.id}`)
+    },
   })
 
   const selectCharacter = (c: Character) => {
@@ -94,9 +124,113 @@ export default function CharacterSelectPage() {
             ))}
           </div>
         )}
+
+        {/* Games Section */}
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">Your Games</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowJoinGame(true)}
+                className="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg text-sm font-medium"
+              >
+                Join
+              </button>
+              <button
+                onClick={() => setShowCreateGame(true)}
+                className="bg-indigo-600 hover:bg-indigo-500 px-3 py-2 rounded-lg text-sm font-medium"
+              >
+                + New Game
+              </button>
+            </div>
+          </div>
+
+          {gamesLoading ? (
+            <div className="text-center text-gray-400 py-8">Loading…</div>
+          ) : games.length === 0 ? (
+            <div className="text-center text-gray-400 py-8">
+              <p className="text-lg mb-2">No games yet</p>
+              <p className="text-sm">Create a game or join one with an invite code</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {games.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => navigate(`/games/${g.id}`)}
+                  className="w-full bg-gray-900 hover:bg-gray-800 rounded-xl p-4 text-left transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-lg">{g.name}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${g.myRole === 'DM' ? 'bg-amber-900/50 text-amber-300' : 'bg-indigo-900/50 text-indigo-300'}`}>
+                      {g.myRole}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-0.5">
+                    DM: {g.dmUsername} · {g.memberCount} {g.memberCount === 1 ? 'member' : 'members'}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
-      {/* Create Character Modal */}
+      {/* Create Game Modal */}
+      {showCreateGame && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setShowCreateGame(false)}>
+          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-bold mb-4">New Game</h3>
+            <form onSubmit={(e) => { e.preventDefault(); createGameMutation.mutate() }} className="space-y-4">
+              <div>
+                <label className="text-sm text-gray-300 block mb-1">Game Name</label>
+                <input
+                  required autoFocus value={gameName}
+                  onChange={(e) => setGameName(e.target.value)}
+                  placeholder="e.g. Curse of Strahd"
+                  className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setShowCreateGame(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded-lg">Cancel</button>
+                <button type="submit" disabled={createGameMutation.isPending} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-2 rounded-lg">
+                  {createGameMutation.isPending ? 'Creating…' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Join Game Modal */}
+      {showJoinGame && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setShowJoinGame(false)}>
+          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-bold mb-4">Join Game</h3>
+            <form onSubmit={(e) => { e.preventDefault(); joinGameMutation.mutate() }} className="space-y-4">
+              <div>
+                <label className="text-sm text-gray-300 block mb-1">Invite Code</label>
+                <input
+                  required autoFocus value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. AB3XY7"
+                  maxLength={6}
+                  className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none tracking-widest text-center text-lg font-mono"
+                />
+              </div>
+              {joinGameMutation.isError && (
+                <p className="text-red-400 text-sm">Invalid invite code. Check with your DM.</p>
+              )}
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setShowJoinGame(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded-lg">Cancel</button>
+                <button type="submit" disabled={joinGameMutation.isPending} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-2 rounded-lg">
+                  {joinGameMutation.isPending ? 'Joining…' : 'Join'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {showCreate && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setShowCreate(false)}>
           <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="create-char-title" className="bg-gray-900 rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>

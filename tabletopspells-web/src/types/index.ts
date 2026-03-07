@@ -147,3 +147,57 @@ export interface SaveCustomItemRequest {
   damage?: string
   properties: string[]
 }
+
+export type GameRole = 'DM' | 'Player'
+
+export interface GameMember {
+  userId: string
+  username: string
+  role: GameRole
+  joinedAt: string
+}
+
+export interface GameCharacter {
+  characterId: string
+  characterName: string
+  ownerUsername: string
+  characterClass: string
+  level: number
+}
+
+export interface GameRoom {
+  id: string
+  name: string
+  dmUserId: string
+  dmUsername: string
+  inviteCode: string
+  myRole: GameRole
+  members: GameMember[]
+  characters: GameCharacter[]
+  createdAt: string
+}
+
+export interface GameSummary {
+  id: string
+  name: string
+  dmUsername: string
+  myRole: GameRole
+  memberCount: number
+  createdAt: string
+}
+
+export interface CreateGameRequest {
+  name: string
+}
+
+export interface JoinGameRequest {
+  inviteCode: string
+}
+
+export interface AddMemberRequest {
+  username: string
+}
+
+export interface LinkCharacterRequest {
+  characterId: string
+}
