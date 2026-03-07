@@ -19,6 +19,10 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<CharacterInventoryItemEntity> InventoryItems => Set<CharacterInventoryItemEntity>();
     public DbSet<NotificationEntity> Notifications => Set<NotificationEntity>();
     public DbSet<CharacterAttackEntity> CharacterAttacks => Set<CharacterAttackEntity>();
+    public DbSet<ChatConversationEntity> ChatConversations => Set<ChatConversationEntity>();
+    public DbSet<ChatParticipantEntity> ChatParticipants => Set<ChatParticipantEntity>();
+    public DbSet<ChatMessageEntity> ChatMessages => Set<ChatMessageEntity>();
+    public DbSet<FriendshipEntity> Friendships => Set<FriendshipEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -124,5 +128,66 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .WithMany(c => c.Attacks)
             .HasForeignKey(a => a.CharacterId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ChatConversationEntity>()
+            .HasOne(c => c.GameRoom)
+            .WithMany()
+            .HasForeignKey(c => c.GameRoomId)
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired(false);
+
+        builder.Entity<ChatConversationEntity>()
+            .HasOne(c => c.CreatedBy)
+            .WithMany()
+            .HasForeignKey(c => c.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ChatParticipantEntity>()
+            .HasOne(p => p.Conversation)
+            .WithMany(c => c.Participants)
+            .HasForeignKey(p => p.ConversationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ChatParticipantEntity>()
+            .HasOne(p => p.User)
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ChatParticipantEntity>()
+            .HasIndex(p => new { p.ConversationId, p.UserId })
+            .IsUnique();
+
+        builder.Entity<ChatMessageEntity>()
+            .HasOne(m => m.Conversation)
+            .WithMany(c => c.Messages)
+            .HasForeignKey(m => m.ConversationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ChatMessageEntity>()
+            .HasOne(m => m.Sender)
+            .WithMany()
+            .HasForeignKey(m => m.SenderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ChatMessageEntity>()
+            .HasIndex(m => new { m.ConversationId, m.SentAt });
+
+        builder.Entity<FriendshipEntity>()
+            .HasOne(f => f.Requester)
+            .WithMany()
+            .HasForeignKey(f => f.RequesterId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<FriendshipEntity>()
+            .HasOne(f => f.Addressee)
+            .WithMany()
+            .HasForeignKey(f => f.AddresseeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Each pair of users can only have one friendship row (in either direction)
+        builder.Entity<FriendshipEntity>()
+            .HasIndex(f => new { f.RequesterId, f.AddresseeId })
+            .IsUnique();
     }
 }

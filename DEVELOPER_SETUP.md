@@ -57,6 +57,10 @@ POSTGRES_PASSWORD=tabletopspells_local
 
 # JWT signing key — must be at least 32 characters. Use a long random string in production.
 JWT_KEY=local_dev_jwt_secret_key_must_be_at_least_32_chars_long!
+
+# Chat master key — used to wrap per-conversation AES-256 encryption keys.
+# Must be set or the API will refuse to start. See "Chat Encryption" section below.
+CHAT_MASTER_KEY=local_dev_chat_master_key_change_in_production!
 ```
 
 > **Production:** Generate a strong `JWT_KEY` with `openssl rand -base64 48` or equivalent. Never reuse the dev key.
@@ -139,6 +143,9 @@ Edit `TabletopSpells.Api/appsettings.Development.json`:
   },
   "Cors": {
     "AllowedOrigins": [ "http://localhost:5173" ]
+  },
+  "Chat": {
+    "MasterKey": "local_dev_chat_master_key_change_in_production!"
   }
 }
 ```
@@ -284,6 +291,24 @@ Output will look like:
 
 ---
 
+## Chat Encryption
+
+Chat messages are encrypted at rest using **AES-256-GCM** with a per-conversation key.
+Each conversation key is itself wrapped (AES-256-CBC) using a server master key — `Chat:MasterKey` — so that a database breach alone cannot decrypt messages.
+
+### Setting the master key
+
+Add `CHAT_MASTER_KEY` to your `.env` file and `Chat.MasterKey` to `appsettings.Development.json`.
+
+Generate a strong key:
+```bash
+openssl rand -base64 48
+```
+
+> ⚠️ **Never rotate `CHAT_MASTER_KEY` in production without first re-wrapping all existing conversation keys.** Rotating the key invalidates all stored conversation keys, making existing messages permanently unreadable. This tooling does not currently exist; treat the master key as immutable once messages have been sent.
+
+---
+
 ## API Reference
 
 All endpoints (except `/api/auth/*`) require a JWT Bearer token in the `Authorization` header:
@@ -332,6 +357,37 @@ Password requirements: minimum 8 characters, at least one digit.
 | POST | `/api/gamerooms` | Create a game room (DM) |
 | POST | `/api/gamerooms/join` | Join via invite code |
 | GET | `/api/gamerooms/{id}` | Room details + party |
+
+### Chat
+
+All chat endpoints require authentication. Messages are encrypted server-side; the API returns plaintext to authenticated participants.
+
+The real-time WebSocket hub is at `/hubs/chat`. Connect using `@microsoft/signalr` and pass the JWT via query string (`?access_token=<token>`).
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/chat/conversations` | List your conversations (with unread count) |
+| POST | `/api/chat/conversations/direct` | Get-or-create a DM with another user (`{ targetUserId }`) |
+| POST | `/api/chat/conversations/group` | Create a named group chat (`{ name, participantUserIds[] }`) |
+| GET | `/api/chat/conversations/{id}` | Get conversation details + participant list |
+| POST | `/api/chat/conversations/{id}/participants` | Add a participant (Group admin only, `{ userId }`) |
+| DELETE | `/api/chat/conversations/{id}/participants/{userId}` | Remove participant or leave |
+| GET | `/api/chat/conversations/{id}/messages` | Paginated history (`?before=<msgId>&limit=50`) |
+| POST | `/api/chat/conversations/{id}/messages` | Send a message (`{ content }`) |
+| DELETE | `/api/chat/conversations/{id}/messages/{msgId}` | Soft-delete own message |
+| POST | `/api/chat/conversations/{id}/read` | Mark conversation as read |
+
+**SignalR hub methods (client → server):**
+- `JoinConversation(conversationId)` — subscribe to real-time updates
+- `LeaveConversation(conversationId)` — unsubscribe
+- `SendMessage(conversationId, content)` — send via WebSocket
+
+**SignalR events (server → client):**
+- `ReceiveMessage(MessageDto)` — new message
+- `ConversationCreated(ConversationDto)` — you were added to a new conversation
+- `ParticipantAdded(conversationId, ChatParticipantDto)` — someone joined
+- `ParticipantRemoved(conversationId, userId)` — someone left
+- `MessageDeleted(conversationId, messageId)` — message was deleted
 
 ---
 

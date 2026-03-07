@@ -5,7 +5,7 @@ import { spellsApi, preparedSpellsApi, spellsPerDayApi, spellLogsApi } from '../
 import { charactersApi } from '../api/characters'
 import type { Spell, Character, SpellsPerDay } from '../types'
 import SpellDetailModal from '../components/SpellDetailModal'
-import { getLevelForClass, parseFirstLevel, resolveClassName } from '../utils/spellUtils'
+import { getLevelForClass, parseFirstLevel, resolveClassName, isPreparingCaster } from '../utils/spellUtils'
 
 export default function SpellListPage() {
   const { id } = useParams<{ id: string }>()
@@ -62,6 +62,15 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
       })
   }, [allSpells, preparedList, search, character])
 
+  const canPrepare = isPreparingCaster(character.characterClass)
+
+  const knownSpellIds = useMemo(() => new Set(allSpells.map(s => s.id ?? s.name!)), [allSpells])
+  const preparedCount = canPrepare ? preparedList.filter(
+    (p) => p.isPrepared && knownSpellIds.has(p.spellId)
+  ).length : 0
+  const spellcastingMod = getSpellcastingModifier(character.abilityScores, character.characterClass)
+  const maxPrepared = Math.max(1, character.level + spellcastingMod)
+
   const removeMutation = useMutation({
     mutationFn: (spell: Spell) => preparedSpellsApi.delete(characterId, spell.id ?? spell.name!),
     onSuccess: () => {
@@ -70,9 +79,25 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
     },
   })
 
+  const prepareMutation = useMutation({
+    mutationFn: (spell: Spell) => {
+      const key = spell.id ?? spell.name!
+      const existing = preparedList.find((p) => p.spellId === key)
+      const currentlyPrepared = existing?.isPrepared ?? false
+      return preparedSpellsApi.upsert(characterId, key, {
+        spellId: key,
+        isPrepared: !currentlyPrepared,
+        isAlwaysPrepared: existing?.isAlwaysPrepared ?? false,
+        isFavorite: existing?.isFavorite ?? false,
+        isDomainSpell: existing?.isDomainSpell ?? false,
+      })
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] }),
+  })
+
   const castMutation = useMutation({
-    mutationFn: async ({ spell, slotLevel }: { spell: Spell; slotLevel: number }) => {
-      if (slotLevel > 0) {
+    mutationFn: async ({ spell, slotLevel, castAsRitual }: { spell: Spell; slotLevel: number; castAsRitual?: boolean }) => {
+      if (!castAsRitual && slotLevel > 0) {
         const slotData = slotsData.find((s) => s.spellLevel === slotLevel)
         const used = slotData?.usedSlots ?? 0
         const max = character.maxSpellsPerDay?.[slotLevel] ?? 0
@@ -81,7 +106,7 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
       await spellLogsApi.create(characterId, {
         spellName: spell.name,
         spellLevel: slotLevel,
-        castAsRitual: false,
+        castAsRitual: castAsRitual ?? false,
         success: true,
         sessionId: 0,
       })
@@ -98,7 +123,7 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(`/characters/${characterId}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
         <h1 className="text-lg font-bold flex-1">My Spells</h1>
-        <span className="text-sm text-gray-400">{knownSpells.length} spells</span>
+        {canPrepare && <span className="text-sm text-amber-400">{preparedCount}/{maxPrepared} prepared</span>}
       </header>
 
       <div className="p-4">
@@ -120,15 +145,35 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
             const key = spell.id ?? spell.name!
             const charClass = resolveClassName(character.characterClass)
             const lvl = getLevelForClass(spell.spell_level, charClass) ?? parseFirstLevel(spell.spell_level)
+            const isPrepared = preparedList.find((p) => p.spellId === key)?.isPrepared ?? false
+            const isRitual = spell.ritual
+            // "ritual only" means: this spell can be cast (as ritual) but isn't prepared — only meaningful for preparing casters
+            const ritualOnly = canPrepare && isRitual && !isPrepared && lvl > 0
+            const showUnprepared = canPrepare && !isPrepared && !isRitual && lvl > 0
             return (
               <button
                 key={key}
                 onClick={() => setSelectedSpell(spell)}
-                className="w-full text-left bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
+                className={`w-full text-left rounded-xl px-4 py-3 transition-colors ${
+                  ritualOnly ? 'bg-gray-900/60 hover:bg-gray-800 opacity-75' : 'bg-gray-900 hover:bg-gray-800'
+                }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{spell.name}</span>
-                  <span className="text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded-full">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium truncate">{spell.name}</span>
+                    {isRitual && (
+                      <span className="shrink-0 text-[10px] text-amber-400 border border-amber-400/40 rounded px-1 py-0.5 leading-none">
+                        ritual
+                      </span>
+                    )}
+                    {ritualOnly && (
+                      <span className="shrink-0 text-[10px] text-gray-500 leading-none">unprepared</span>
+                    )}
+                    {showUnprepared && (
+                      <span className="shrink-0 text-[10px] text-gray-500 leading-none">unprepared</span>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded-full">
                     {lvl === 0 ? 'Cantrip' : `L${lvl}`}
                   </span>
                 </div>
@@ -140,15 +185,22 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
       </div>
 
       {selectedSpell && (() => {
+        const key = selectedSpell.id ?? selectedSpell.name!
         const charClass = resolveClassName(character.characterClass)
         const spellLvl = getLevelForClass(selectedSpell.spell_level, charClass) ?? parseFirstLevel(selectedSpell.spell_level)
         const isCantrip = spellLvl === 0
-        const canCast = isCantrip || Object.entries(character.maxSpellsPerDay ?? {}).some(([slvl, max]) => {
+        const existing = preparedList.find((p) => p.spellId === key)
+        const isPrepared = existing?.isPrepared ?? false
+        const isRitual = selectedSpell.ritual
+        const atMax = !isPrepared && preparedCount >= maxPrepared
+        const hasSlot = Object.entries(character.maxSpellsPerDay ?? {}).some(([slvl, max]) => {
           const slotLevel = Number(slvl)
           if (slotLevel < spellLvl) return false
           const slotData = slotsData.find((s) => s.spellLevel === slotLevel)
           return max - (slotData?.usedSlots ?? 0) > 0
         })
+        // Preparing casters (Wizard/Artificer) must have isPrepared=true to cast; others can cast any known spell
+        const canCast = isCantrip || (canPrepare ? (isPrepared || isRitual) && hasSlot : hasSlot)
         return (
           <SpellDetailModal
             spell={selectedSpell}
@@ -161,6 +213,22 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
                 >
                   Remove
                 </button>
+                {canPrepare && !isCantrip && (
+                  <button
+                    onClick={() => !atMax && prepareMutation.mutate(selectedSpell)}
+                    disabled={atMax && !isPrepared}
+                    title={atMax && !isPrepared ? `Prepared spells limit reached (${maxPrepared})` : undefined}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isPrepared
+                        ? 'bg-amber-800 text-amber-100 hover:bg-amber-900'
+                        : atMax
+                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    }`}
+                  >
+                    {isPrepared ? '◇ Unprepare' : '✦ Prepare'}
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     if (isCantrip) {
@@ -188,7 +256,7 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
           spell={castingSpell}
           character={character}
           slots={slotsData}
-          onConfirm={(slotLevel) => castMutation.mutate({ spell: castingSpell, slotLevel })}
+          onConfirm={(slotLevel, castAsRitual) => castMutation.mutate({ spell: castingSpell, slotLevel, castAsRitual })}
           onClose={() => setCastingSpell(null)}
         />
       )}
@@ -313,8 +381,8 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
   })
 
   const castMutation = useMutation({
-    mutationFn: async ({ spell, slotLevel }: { spell: Spell; slotLevel: number }) => {
-      if (slotLevel > 0) {
+    mutationFn: async ({ spell, slotLevel, castAsRitual }: { spell: Spell; slotLevel: number; castAsRitual?: boolean }) => {
+      if (!castAsRitual && slotLevel > 0) {
         const slotData = slotsData.find((s) => s.spellLevel === slotLevel)
         const used = slotData?.usedSlots ?? 0
         const max = character.maxSpellsPerDay?.[slotLevel] ?? 0
@@ -323,7 +391,7 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
       await spellLogsApi.create(characterId, {
         spellName: spell.name,
         spellLevel: slotLevel,
-        castAsRitual: false,
+        castAsRitual: castAsRitual ?? false,
         success: true,
         sessionId: 0,
       })
@@ -534,7 +602,7 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
           spell={castingSpell}
           character={character}
           slots={slotsData}
-          onConfirm={(slotLevel) => castMutation.mutate({ spell: castingSpell, slotLevel })}
+          onConfirm={(slotLevel, castAsRitual) => castMutation.mutate({ spell: castingSpell, slotLevel, castAsRitual })}
           onClose={() => setCastingSpell(null)}
         />
       )}
@@ -565,7 +633,7 @@ function CastModal({ spell, character, slots, onConfirm, onClose }: {
   spell: Spell
   character: Character
   slots: SpellsPerDay[]
-  onConfirm: (slotLevel: number) => void
+  onConfirm: (slotLevel: number, castAsRitual?: boolean) => void
   onClose: () => void
 }) {
   const charClass = resolveClassName(character.characterClass)
@@ -582,7 +650,10 @@ function CastModal({ spell, character, slots, onConfirm, onClose }: {
     })
     .sort((a, b) => a - b)
 
-  const [selectedLevel, setSelectedLevel] = useState<number>(availableLevels[0] ?? baseLevel)
+  // 'ritual' | number (slot level)
+  type Selection = 'ritual' | number
+  const defaultSelection: Selection = spell.ritual ? 'ritual' : (availableLevels[0] ?? baseLevel)
+  const [selected, setSelected] = useState<Selection>(defaultSelection)
 
   if (baseLevel === 0) {
     return (
@@ -599,45 +670,70 @@ function CastModal({ spell, character, slots, onConfirm, onClose }: {
     )
   }
 
+  const noSlotsAvailable = availableLevels.length === 0
+  const canConfirm = selected === 'ritual' || !noSlotsAvailable
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end justify-center p-4 z-50" onClick={onClose}>
       <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-lg font-bold mb-1">Cast {spell.name}</h2>
-        <p className="text-sm text-gray-400 mb-4">Select a spell slot level:</p>
-        {availableLevels.length === 0 ? (
-          <p className="text-red-400 text-sm mb-4">No available spell slots of level {baseLevel} or higher.</p>
-        ) : (
-          <div className="space-y-2 mb-4">
-            {availableLevels.map((lvl) => {
+        <p className="text-sm text-gray-400 mb-4">Select how to cast:</p>
+
+        <div className="space-y-2 mb-4">
+          {/* Ritual option — always first if spell is a ritual */}
+          {spell.ritual && (
+            <button
+              onClick={() => setSelected('ritual')}
+              aria-pressed={selected === 'ritual'}
+              className={`w-full text-left px-4 py-3 rounded-xl flex items-center justify-between transition-colors ${
+                selected === 'ritual' ? 'bg-amber-700 text-white' : 'bg-gray-800 hover:bg-gray-700 text-white'
+              }`}
+            >
+              <span>🕯 Cast as Ritual</span>
+              <span className={`text-sm ${selected === 'ritual' ? 'text-amber-200' : 'text-gray-400'}`}>
+                10 min · no slot
+              </span>
+            </button>
+          )}
+
+          {/* Slot level options */}
+          {noSlotsAvailable && !spell.ritual ? (
+            <p className="text-red-400 text-sm">No available spell slots of level {baseLevel} or higher.</p>
+          ) : (
+            availableLevels.map((lvl) => {
               const slotData = slots.find((s) => s.spellLevel === lvl)
               const used = slotData?.usedSlots ?? 0
               const remaining = (maxSlotMap[lvl] ?? 0) - used
               return (
                 <button
                   key={lvl}
-                  onClick={() => setSelectedLevel(lvl)}
-                  aria-pressed={selectedLevel === lvl}
+                  onClick={() => setSelected(lvl)}
+                  aria-pressed={selected === lvl}
                   className={`w-full text-left px-4 py-3 rounded-xl flex items-center justify-between transition-colors ${
-                    selectedLevel === lvl ? 'bg-indigo-600 text-white' : 'bg-gray-800 hover:bg-gray-700 text-white'
+                    selected === lvl ? 'bg-indigo-600 text-white' : 'bg-gray-800 hover:bg-gray-700 text-white'
                   }`}
                 >
                   <span>Level {lvl}{lvl > baseLevel ? ' (Upcast)' : ''}</span>
-                  <span className={`text-sm ${selectedLevel === lvl ? 'text-indigo-200' : 'text-gray-400'}`}>
+                  <span className={`text-sm ${selected === lvl ? 'text-indigo-200' : 'text-gray-400'}`}>
                     {remaining} slot{remaining !== 1 ? 's' : ''} left
                   </span>
                 </button>
               )
-            })}
-          </div>
-        )}
+            })
+          )}
+        </div>
+
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm transition-colors">Cancel</button>
           <button
-            onClick={() => onConfirm(selectedLevel)}
-            disabled={availableLevels.length === 0}
+            onClick={() => {
+              if (selected === 'ritual') onConfirm(baseLevel, true)
+              else onConfirm(selected as number, false)
+            }}
+            disabled={!canConfirm}
             className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-medium transition-colors"
           >
-            Cast
+            {selected === 'ritual' ? 'Cast (10 min)' : 'Cast'}
           </button>
         </div>
       </div>

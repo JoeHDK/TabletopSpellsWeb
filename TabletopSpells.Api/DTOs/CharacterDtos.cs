@@ -25,6 +25,10 @@ public class CharacterDto
     public int BaseArmorClass { get; set; }
     public Guid? GameRoomId { get; set; }
     public string? AvatarBase64 { get; set; }
+    public int WildShapeUsesRemaining { get; set; }
+    public string? WildShapeBeastName { get; set; }
+    public int? WildShapeBeastCurrentHp { get; set; }
+    public int? WildShapeBeastMaxHp { get; set; }
 }
 
 public class CreateCharacterRequest

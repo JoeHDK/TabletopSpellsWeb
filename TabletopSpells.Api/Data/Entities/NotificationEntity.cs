@@ -8,6 +8,8 @@ public enum NotificationType
     GameInvite,
     ItemReceived,
     ItemSent,
+    FriendRequest,
+    FriendAccepted,
 }
 
 public class NotificationEntity

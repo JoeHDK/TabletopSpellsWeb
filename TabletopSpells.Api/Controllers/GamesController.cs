@@ -8,6 +8,7 @@ using TabletopSpells.Api.Data;
 using TabletopSpells.Api.Data.Entities;
 using TabletopSpells.Api.DTOs;
 using TabletopSpells.Api.Models.Enums;
+using TabletopSpells.Api.Services;
 
 namespace TabletopSpells.Api.Controllers;
 
@@ -18,11 +19,13 @@ public class GamesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly UserManager<AppUser> _userManager;
+    private readonly EncryptionService _encryption;
 
-    public GamesController(AppDbContext db, UserManager<AppUser> userManager)
+    public GamesController(AppDbContext db, UserManager<AppUser> userManager, EncryptionService encryption)
     {
         _db = db;
         _userManager = userManager;
+        _encryption = encryption;
     }
 
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -90,6 +93,23 @@ public class GamesController : ControllerBase
         };
         _db.GameMembers.Add(membership);
 
+        // Create the shared game room chat conversation
+        var chatConv = new ChatConversationEntity
+        {
+            Type = ChatConversationType.GameRoom,
+            Name = req.Name,
+            GameRoomId = game.Id,
+            CreatedByUserId = UserId,
+            EncryptedKeyBase64 = _encryption.GenerateAndEncryptConversationKey(),
+        };
+        _db.ChatConversations.Add(chatConv);
+        _db.ChatParticipants.Add(new ChatParticipantEntity
+        {
+            ConversationId = chatConv.Id,
+            UserId = UserId,
+            IsAdmin = true,
+        });
+
         await _db.SaveChangesAsync();
 
         var created = await _db.GameRooms
@@ -122,6 +142,10 @@ public class GamesController : ControllerBase
             Role = GameRole.Player,
         };
         _db.GameMembers.Add(membership);
+
+        // Add joining user to the game room's chat conversation
+        await AddUserToGameRoomChat(game.Id, UserId);
+
         await _db.SaveChangesAsync();
 
         return Ok(ToDto(game, GameRole.Player));
@@ -156,6 +180,9 @@ public class GamesController : ControllerBase
             Message = $"{inviterName} added you to \"{game?.Name ?? "a game"}\".",
             Link = $"/games/{id}",
         });
+
+        // Add new member to the game room's chat conversation
+        await AddUserToGameRoomChat(id, targetUser.Id);
 
         await _db.SaveChangesAsync();
 
@@ -200,6 +227,9 @@ public class GamesController : ControllerBase
                 .Where(c => c.GameRoomId == id && c.UserId == userId)
                 .ToListAsync();
             foreach (var c in characters) c.GameRoomId = null;
+
+            // Remove from the game room's chat conversation
+            await RemoveUserFromGameRoomChat(id, userId);
 
             _db.GameMembers.Remove(membership);
         }
@@ -377,4 +407,34 @@ public class GamesController : ControllerBase
             Level = c.Level,
         }).ToList(),
     };
+
+    private async Task AddUserToGameRoomChat(Guid gameRoomId, string userId)
+    {
+        var conv = await _db.ChatConversations
+            .FirstOrDefaultAsync(c => c.GameRoomId == gameRoomId && c.Type == ChatConversationType.GameRoom);
+        if (conv == null) return;
+
+        var alreadyParticipant = await _db.ChatParticipants
+            .AnyAsync(p => p.ConversationId == conv.Id && p.UserId == userId);
+        if (alreadyParticipant) return;
+
+        _db.ChatParticipants.Add(new ChatParticipantEntity
+        {
+            ConversationId = conv.Id,
+            UserId = userId,
+            IsAdmin = false,
+        });
+    }
+
+    private async Task RemoveUserFromGameRoomChat(Guid gameRoomId, string userId)
+    {
+        var conv = await _db.ChatConversations
+            .FirstOrDefaultAsync(c => c.GameRoomId == gameRoomId && c.Type == ChatConversationType.GameRoom);
+        if (conv == null) return;
+
+        var participant = await _db.ChatParticipants
+            .FirstOrDefaultAsync(p => p.ConversationId == conv.Id && p.UserId == userId);
+        if (participant != null)
+            _db.ChatParticipants.Remove(participant);
+    }
 }

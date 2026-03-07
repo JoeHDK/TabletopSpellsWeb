@@ -27,6 +27,10 @@ export interface Character {
   baseArmorClass: number
   gameRoomId?: string
   avatarBase64?: string
+  wildShapeUsesRemaining: number
+  wildShapeBeastName: string | null
+  wildShapeBeastCurrentHp: number | null
+  wildShapeBeastMaxHp: number | null
 }
 
 export interface CreateCharacterRequest {
@@ -316,4 +320,100 @@ export interface Notification {
   link?: string
   isRead: boolean
   createdAt: string
+}
+
+// ── Chat ─────────────────────────────────────────────────────────────────────
+
+export type ChatConversationType = 'Direct' | 'GameRoom' | 'Group'
+
+export interface ChatParticipant {
+  userId: string
+  username: string
+  isAdmin: boolean
+  joinedAt: string
+}
+
+export interface ChatMessage {
+  id: string
+  conversationId: string
+  senderId: string
+  senderUsername: string
+  content: string | null
+  sentAt: string
+  isDeleted: boolean
+}
+
+export interface Conversation {
+  id: string
+  type: ChatConversationType
+  name: string | null
+  gameRoomId: string | null
+  participants: ChatParticipant[]
+  lastMessage: ChatMessage | null
+  unreadCount: number
+  createdAt: string
+}
+
+export interface MessagesPage {
+  messages: ChatMessage[]
+  hasMore: boolean
+  nextCursor: string | null
+}
+
+export interface SendMessageRequest {
+  content: string
+}
+
+export interface CreateDirectConversationRequest {
+  targetUserId: string
+}
+
+export interface CreateGroupConversationRequest {
+  name: string
+  participantUserIds: string[]
+}
+
+export interface AddChatParticipantRequest {
+  userId: string
+}
+
+// ── Friends ──────────────────────────────────────────────────────────────────
+
+export type FriendshipStatus = 'Pending' | 'Accepted' | 'Blocked'
+
+export interface Friend {
+  userId: string
+  username: string
+}
+
+export interface FriendRequest {
+  id: string
+  requesterId: string
+  requesterUsername: string
+  createdAt: string
+}
+
+export interface UserSearchResult {
+  userId: string
+  username: string
+  friendshipStatus: FriendshipStatus | null
+}
+
+// ── Wild Shape ────────────────────────────────────────────────────────────────
+
+export interface Beast {
+  name: string
+  cr: number
+  size: string
+  ac: number
+  hp: number
+  str: number
+  dex: number
+  con: number
+  walkSpeed: number
+  flySpeed: number
+  swimSpeed: number
+  climbSpeed: number
+  source: string
+  attacks: { name: string; dice: string; type: string; stat: 'str' | 'dex' }[]
 }

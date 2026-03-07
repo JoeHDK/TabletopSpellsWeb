@@ -17,6 +17,9 @@ import SearchItemsPage from './pages/SearchItemsPage'
 import GamePage from './pages/GamePage'
 import PartyOverviewPage from './pages/PartyOverviewPage'
 import InventoryPage from './pages/InventoryPage'
+import ConversationListPage from './pages/ConversationListPage'
+import ConversationPage from './pages/ConversationPage'
+import FriendsPage from './pages/FriendsPage'
 
 const queryClient = new QueryClient()
 
@@ -39,6 +42,9 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/items" element={<ProtectedRoute><SearchItemsPage /></ProtectedRoute>} />
           <Route path="/games/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
           <Route path="/games/:id/party" element={<ProtectedRoute><PartyOverviewPage /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><ConversationListPage /></ProtectedRoute>} />
+          <Route path="/chat/:id" element={<ProtectedRoute><ConversationPage /></ProtectedRoute>} />
+          <Route path="/friends" element={<ProtectedRoute><FriendsPage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

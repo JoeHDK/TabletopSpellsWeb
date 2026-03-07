@@ -30,14 +30,16 @@ export default function SearchSpellsPage() {
   const knownIds = new Set(preparedList.map((p) => p.spellId))
 
   const addMutation = useMutation({
-    mutationFn: (spell: Spell) =>
-      preparedSpellsApi.upsert(id!, spell.id ?? spell.name!, {
+    mutationFn: (spell: Spell) => {
+      const isCantrip = spell.spell_level === '0' || spell.spell_level === 'Cantrip'
+      return preparedSpellsApi.upsert(id!, spell.id ?? spell.name!, {
         spellId: spell.id ?? spell.name!,
-        isPrepared: false,
+        isPrepared: isCantrip, // cantrips are always "known" (no daily toggle)
         isAlwaysPrepared: false,
         isFavorite: false,
         isDomainSpell: false,
-      }),
+      })
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['preparedSpells', id] }),
   })
 

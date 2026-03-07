@@ -40,6 +40,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': { target: 'http://localhost:3000', changeOrigin: true },
+      '/hubs': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        ws: true, // proxy WebSocket upgrades for SignalR
+      },
     },
   },
 })

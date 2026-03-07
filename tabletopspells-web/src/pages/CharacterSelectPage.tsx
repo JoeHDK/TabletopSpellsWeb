@@ -4,23 +4,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
 import { gamesApi } from '../api/games'
 import { useCharacterStore } from '../store/characterStore'
-import { useAuthStore } from '../store/authStore'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-import DarkModeToggle from '../components/DarkModeToggle'
-import NotificationBell from '../components/NotificationBell'
-import type { Character, CreateCharacterRequest, CharacterClass, Game } from '../types'
+import BurgerMenu from '../components/BurgerMenu'
+import type { Character, CreateCharacterRequest, CharacterClass, Game }from '../types'
 
 const CLASSES: CharacterClass[] = [
-  'Barbarian','Bard','Cleric','Druid','Fighter','Monk','Paladin','Ranger','Rogue',
-  'Sorcerer','Wizard','Warlock','Artificer','Inquisitor','Summoner','Witch',
-  'Alchemist','Magus','Oracle','Shaman','Spiritualist','Occultist','Psychic','Mesmerist',
+  'Alchemist','Artificer','Barbarian','Bard','Cleric','Druid','Fighter',
+  'Inquisitor','Magus','Mesmerist','Monk','Occultist','Oracle','Paladin',
+  'Psychic','Ranger','Rogue','Shaman','Sorcerer','Spiritualist','Summoner',
+  'Warlock','Witch','Wizard',
 ]
 
 export default function CharacterSelectPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const setActive = useCharacterStore((s) => s.setActiveCharacter)
-  const { username, logout } = useAuthStore()
   const [showCreate, setShowCreate] = useState(false)
   const [showCreateGame, setShowCreateGame] = useState(false)
   const [showJoinGame, setShowJoinGame] = useState(false)
@@ -29,6 +27,7 @@ export default function CharacterSelectPage() {
   const [form, setForm] = useState<CreateCharacterRequest>({
     name: '', characterClass: 'Wizard', gameType: 'dnd5e', level: 1,
   })
+  const [confirmDelete, setConfirmDelete] = useState<Character | null>(null)
   const modalRef = useRef<HTMLDivElement>(null)
   useFocusTrap(modalRef, () => setShowCreate(false), showCreate)
 
@@ -81,12 +80,7 @@ export default function CharacterSelectPage() {
     <div className="min-h-screen bg-gray-950 text-white">
       <header className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-indigo-400">⚔️ TabletopSpells</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm">{username}</span>
-          <button onClick={logout} className="text-gray-400 hover:text-white text-sm">Sign out</button>
-          <NotificationBell />
-          <DarkModeToggle />
-        </div>
+        <BurgerMenu />
       </header>
 
       <main className="max-w-2xl mx-auto p-6">
@@ -127,7 +121,7 @@ export default function CharacterSelectPage() {
                   </div>
                 </button>
                 <button
-                  onClick={() => deleteMutation.mutate(c.id)}
+                  onClick={() => setConfirmDelete(c)}
                   aria-label={`Delete ${c.name}`}
                   className="text-red-500 hover:text-red-400 text-sm px-2"
                 >✕</button>
@@ -293,6 +287,35 @@ export default function CharacterSelectPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-bold mb-2">Delete character?</h3>
+            <p className="text-gray-400 text-sm mb-6">
+              <span className="text-white font-semibold">{confirmDelete.name}</span> will be permanently deleted. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded-lg text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteMutation.mutate(confirmDelete.id)
+                  setConfirmDelete(null)
+                }}
+                disabled={deleteMutation.isPending}
+                className="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-lg text-sm font-semibold"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

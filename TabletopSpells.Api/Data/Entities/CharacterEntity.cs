@@ -35,6 +35,12 @@ public class CharacterEntity
 
     public string? AvatarBase64 { get; set; }
 
+    // Wild Shape state (Druid only)
+    public int WildShapeUsesRemaining { get; set; } = 2;
+    public string? WildShapeBeastName { get; set; }
+    public int? WildShapeBeastCurrentHp { get; set; }
+    public int? WildShapeBeastMaxHp { get; set; }
+
     [ForeignKey(nameof(UserId))] public AppUser? User { get; set; }
     public ICollection<PreparedSpellEntity> PreparedSpells { get; set; } = new List<PreparedSpellEntity>();
     public ICollection<SpellsPerDayEntity> SpellsPerDay { get; set; } = new List<SpellsPerDayEntity>();

@@ -346,6 +346,18 @@ namespace TabletopSpells.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("WildShapeBeastCurrentHp")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WildShapeBeastMaxHp")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("WildShapeBeastName")
+                        .HasColumnType("text");
+
+                    b.Property<int>("WildShapeUsesRemaining")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("GameRoomId");
@@ -436,6 +448,108 @@ namespace TabletopSpells.Api.Migrations
                     b.ToTable("CharacterThemes");
                 });
 
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.ChatConversationEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EncryptedKeyBase64")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("GameRoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("GameRoomId");
+
+                    b.ToTable("ChatConversations");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.ChatMessageEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EncryptedContent")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Iv")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("ConversationId", "SentAt");
+
+                    b.ToTable("ChatMessages");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.ChatParticipantEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ConversationId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ChatParticipants");
+                });
+
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.CustomItemEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -490,6 +604,39 @@ namespace TabletopSpells.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("CustomItems");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.FriendshipEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AddresseeId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequesterId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AddresseeId");
+
+                    b.HasIndex("RequesterId", "AddresseeId")
+                        .IsUnique();
+
+                    b.ToTable("Friendships");
                 });
 
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.GameMemberEntity", b =>
@@ -805,6 +952,62 @@ namespace TabletopSpells.Api.Migrations
                     b.Navigation("Character");
                 });
 
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.ChatConversationEntity", b =>
+                {
+                    b.HasOne("TabletopSpells.Api.Data.Entities.AppUser", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TabletopSpells.Api.Data.Entities.GameRoomEntity", "GameRoom")
+                        .WithMany()
+                        .HasForeignKey("GameRoomId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("GameRoom");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.ChatMessageEntity", b =>
+                {
+                    b.HasOne("TabletopSpells.Api.Data.Entities.ChatConversationEntity", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TabletopSpells.Api.Data.Entities.AppUser", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.ChatParticipantEntity", b =>
+                {
+                    b.HasOne("TabletopSpells.Api.Data.Entities.ChatConversationEntity", "Conversation")
+                        .WithMany("Participants")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TabletopSpells.Api.Data.Entities.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.CustomItemEntity", b =>
                 {
                     b.HasOne("TabletopSpells.Api.Data.Entities.AppUser", "User")
@@ -814,6 +1017,25 @@ namespace TabletopSpells.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.FriendshipEntity", b =>
+                {
+                    b.HasOne("TabletopSpells.Api.Data.Entities.AppUser", "Addressee")
+                        .WithMany()
+                        .HasForeignKey("AddresseeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TabletopSpells.Api.Data.Entities.AppUser", "Requester")
+                        .WithMany()
+                        .HasForeignKey("RequesterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Addressee");
+
+                    b.Navigation("Requester");
                 });
 
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.GameMemberEntity", b =>
@@ -912,6 +1134,13 @@ namespace TabletopSpells.Api.Migrations
                     b.Navigation("SpellsPerDay");
 
                     b.Navigation("Themes");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.ChatConversationEntity", b =>
+                {
+                    b.Navigation("Messages");
+
+                    b.Navigation("Participants");
                 });
 
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.GameRoomEntity", b =>

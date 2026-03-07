@@ -12,6 +12,12 @@ export function resolveClassName(characterClass: unknown): string {
   return ''
 }
 
+/** Returns true for classes that prepare spells daily from a spellbook (Wizard, Artificer). */
+export function isPreparingCaster(characterClass: unknown): boolean {
+  const cls = resolveClassName(characterClass)
+  return cls === 'wizard' || cls === 'artificer'
+}
+
 /** Returns the spell level for a specific class, or null if the spell doesn't belong to that class.
  *  Handles formats like "sorcerer 1, wizard 1" and "sorcerer/wizard 3, witch 3". */
 export function getLevelForClass(spellLevel: string | undefined, characterClass: unknown): number | null {

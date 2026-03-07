@@ -142,8 +142,78 @@ public class CharactersController : ControllerBase
         var entity = await _db.Characters.FirstOrDefaultAsync(x => x.Id == id && x.UserId == UserId);
         if (entity == null) return NotFound();
 
-        entity.CurrentHp = Math.Clamp(req.CurrentHp, 0, entity.MaxHp > 0 ? entity.MaxHp : int.MaxValue);
         if (req.MaxHp.HasValue) entity.MaxHp = Math.Max(0, req.MaxHp.Value);
+        entity.CurrentHp = Math.Clamp(req.CurrentHp, 0, entity.MaxHp > 0 ? entity.MaxHp : int.MaxValue);
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(MapToDto(entity));
+    }
+
+    [HttpPatch("{id:guid}/wildshape")]
+    public async Task<IActionResult> UpdateWildShape(Guid id, [FromBody] WildShapeActionRequest req)
+    {
+        var entity = await _db.Characters.FirstOrDefaultAsync(x => x.Id == id && x.UserId == UserId);
+        if (entity == null) return NotFound();
+
+        switch (req.Action.ToLowerInvariant())
+        {
+            case "enter":
+                if (entity.WildShapeUsesRemaining <= 0)
+                    return BadRequest("No Wild Shape uses remaining.");
+                if (string.IsNullOrWhiteSpace(req.BeastName) || req.BeastMaxHp == null)
+                    return BadRequest("BeastName and BeastMaxHp are required to enter Wild Shape.");
+                entity.WildShapeUsesRemaining--;
+                entity.WildShapeBeastName = req.BeastName;
+                entity.WildShapeBeastMaxHp = req.BeastMaxHp.Value;
+                entity.WildShapeBeastCurrentHp = req.BeastCurrentHp ?? req.BeastMaxHp.Value;
+                break;
+
+            case "revert":
+                // Carry excess damage to druid HP when reverting due to 0 beast HP
+                if (entity.WildShapeBeastCurrentHp.HasValue && entity.WildShapeBeastCurrentHp.Value < 0)
+                {
+                    entity.CurrentHp = Math.Max(0, entity.CurrentHp + entity.WildShapeBeastCurrentHp.Value);
+                }
+                entity.WildShapeBeastName = null;
+                entity.WildShapeBeastCurrentHp = null;
+                entity.WildShapeBeastMaxHp = null;
+                break;
+
+            case "damage":
+                if (req.Amount == null || req.Amount <= 0) return BadRequest("Amount must be positive.");
+                if (entity.WildShapeBeastCurrentHp == null) return BadRequest("Not in Wild Shape.");
+                entity.WildShapeBeastCurrentHp = entity.WildShapeBeastCurrentHp.Value - req.Amount.Value;
+                // Auto-revert if beast HP reaches 0 or below
+                if (entity.WildShapeBeastCurrentHp <= 0)
+                {
+                    var excess = entity.WildShapeBeastCurrentHp.Value; // negative
+                    entity.CurrentHp = Math.Max(0, entity.CurrentHp + excess);
+                    entity.WildShapeBeastName = null;
+                    entity.WildShapeBeastCurrentHp = null;
+                    entity.WildShapeBeastMaxHp = null;
+                }
+                break;
+
+            case "heal":
+                if (req.Amount == null || req.Amount <= 0) return BadRequest("Amount must be positive.");
+                if (entity.WildShapeBeastCurrentHp == null || entity.WildShapeBeastMaxHp == null)
+                    return BadRequest("Not in Wild Shape.");
+                entity.WildShapeBeastCurrentHp = Math.Min(
+                    entity.WildShapeBeastCurrentHp.Value + req.Amount.Value,
+                    entity.WildShapeBeastMaxHp.Value);
+                break;
+
+            case "restoreuses":
+                var maxUses = entity.Level >= 20 ? 999 : 2;
+                entity.WildShapeUsesRemaining = req.Amount.HasValue
+                    ? Math.Min(entity.WildShapeUsesRemaining + req.Amount.Value, maxUses)
+                    : maxUses;
+                break;
+
+            default:
+                return BadRequest($"Unknown action '{req.Action}'. Valid: enter, revert, damage, heal, restoreUses.");
+        }
+
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(MapToDto(entity));
@@ -166,9 +236,9 @@ public class CharactersController : ControllerBase
         GameType = e.GameType,
         Level = e.Level,
         IsDivineCaster = e.IsDivineCaster,
-        AbilityScores = JsonConvert.DeserializeObject<Dictionary<string, int>>(e.AbilityScoresJson) ?? new(),
-        MaxSpellsPerDay = JsonConvert.DeserializeObject<Dictionary<int, int>>(e.MaxSpellsPerDayJson) ?? new(),
-        SpellsUsedToday = JsonConvert.DeserializeObject<Dictionary<int, int>>(e.SpellsUsedTodayJson) ?? new(),
+        AbilityScores = JsonConvert.DeserializeObject<Dictionary<string, int>>(e.AbilityScoresJson) ?? [],
+        MaxSpellsPerDay = JsonConvert.DeserializeObject<Dictionary<int, int>>(e.MaxSpellsPerDayJson) ?? [],
+        SpellsUsedToday = JsonConvert.DeserializeObject<Dictionary<int, int>>(e.SpellsUsedTodayJson) ?? [],
         AlwaysPreparedSpells = DeserializeList(e.AlwaysPreparedSpellsJson),
         SavingThrowProficiencies = DeserializeList(e.SavingThrowProficienciesJson),
         SkillProficiencies = DeserializeList(e.SkillProficienciesJson),
@@ -179,5 +249,9 @@ public class CharactersController : ControllerBase
         BaseArmorClass = e.BaseArmorClass,
         GameRoomId = e.GameRoomId,
         AvatarBase64 = e.AvatarBase64,
+        WildShapeUsesRemaining = e.WildShapeUsesRemaining,
+        WildShapeBeastName = e.WildShapeBeastName,
+        WildShapeBeastCurrentHp = e.WildShapeBeastCurrentHp,
+        WildShapeBeastMaxHp = e.WildShapeBeastMaxHp,
     };
 }

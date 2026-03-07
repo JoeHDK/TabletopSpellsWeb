@@ -4,9 +4,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
 import { inventoryApi } from '../api/inventory'
 import { attacksApi } from '../api/attacks'
+import { beastsApi } from '../api/beasts'
 import EditableNumber from '../components/EditableNumber'
+import BeastPickerModal from '../components/BeastPickerModal'
 import { resizeImage } from '../utils/resizeImage'
-import type { UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey } from '../types'
+import { resolveClassName } from '../utils/spellUtils'
+import type { UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey, Beast } from '../types'
 
 const ABILITY_KEYS = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']
 const ABILITY_SHORT: Record<string, string> = {
@@ -136,6 +139,26 @@ function profBonus(level: number): string {
   return `+${pb}`
 }
 
+function crLabel(cr: number): string {
+  if (cr === 0.125) return '1/8'
+  if (cr === 0.25) return '1/4'
+  if (cr === 0.5) return '1/2'
+  return String(cr)
+}
+
+function getWildShapeLimits(level: number, subclass: string): { maxCr: number; allowFly: boolean; allowSwim: boolean } {
+  const isMoon = subclass === 'DruidCircleOfTheMoon'
+  let maxCr: number
+  if (isMoon) {
+    maxCr = level >= 6 ? Math.floor(level / 3) : 1
+  } else {
+    maxCr = level >= 8 ? 1 : level >= 4 ? 0.5 : 0.25
+  }
+  const allowFly = level >= 8
+  const allowSwim = level >= 4
+  return { maxCr, allowFly, allowSwim }
+}
+
 export default function StatsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -160,6 +183,11 @@ export default function StatsPage() {
     enabled: !!id,
   })
 
+  const { data: allBeasts = [] } = useQuery({
+    queryKey: ['beasts'],
+    queryFn: () => beastsApi.getBeasts(),
+  })
+
   const equipmentAcBonus = inventory
     .filter(i => i.isEquipped && i.acBonus != null)
     .reduce((sum, i) => sum + (i.acBonus ?? 0), 0)
@@ -176,11 +204,7 @@ export default function StatsPage() {
 
   const updateMutation = useMutation({
     mutationFn: (req: UpdateCharacterRequest) => charactersApi.update(id!, req),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['character', id] })
-      setDraft(null)
-      setEditingName(false)
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
   })
 
   const hpMutation = useMutation({
@@ -191,6 +215,15 @@ export default function StatsPage() {
 
   const avatarMutation = useMutation({
     mutationFn: (file: File) => charactersApi.uploadAvatar(id!, file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
+  })
+
+  // ── Wild Shape state ──────────────────────────────────────────
+  const [showBeastPicker, setShowBeastPicker] = useState(false)
+
+  const wildShapeMutation = useMutation({
+    mutationFn: (req: Parameters<typeof beastsApi.updateWildShape>[1]) =>
+      beastsApi.updateWildShape(id!, req),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
   })
 
@@ -244,15 +277,23 @@ export default function StatsPage() {
 
   const patch = (fields: Partial<typeof d>) => setDraft(prev => ({ ...prev, ...fields }))
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!draft) return
     const { currentHp, maxHp, ...charUpdate } = draft
-    if (Object.keys(charUpdate).length > 0) updateMutation.mutate(charUpdate)
+    const tasks: Promise<unknown>[] = []
+    if (Object.keys(charUpdate).length > 0) tasks.push(updateMutation.mutateAsync(charUpdate))
     if (currentHp !== undefined || maxHp !== undefined) {
-      hpMutation.mutate({
+      tasks.push(hpMutation.mutateAsync({
         currentHp: currentHp ?? character.currentHp,
         maxHp: maxHp ?? character.maxHp,
-      })
+      }))
+    }
+    try {
+      await Promise.all(tasks)
+      setDraft(null)
+      setEditingName(false)
+    } catch {
+      // Errors are surfaced via updateMutation.isError / hpMutation.isError; draft kept for retry
     }
   }
 
@@ -495,8 +536,160 @@ export default function StatsPage() {
           </div>
         </section>
 
+        {/* ── Wild Shape (Druid level 2+) ───────────────────────── */}
+        {resolveClassName(character.characterClass) === 'druid' && character.level < 2 && (
+          <section className="bg-gray-900 rounded-2xl p-4">
+            <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Wild Shape</h2>
+            <p className="text-sm text-gray-500">Available at level 2.</p>
+          </section>
+        )}
+        {resolveClassName(character.characterClass) === 'druid' && character.level >= 2 && (() => {
+          const limits = getWildShapeLimits(character.level, character.subclass)
+          const inForm = !!character.wildShapeBeastName
+          const uses = character.wildShapeUsesRemaining
+          const maxUses = character.level >= 20 ? Infinity : 2
+          const beastHpPct = (character.wildShapeBeastCurrentHp ?? 0) / (character.wildShapeBeastMaxHp ?? 1) * 100
+          const beastHpColor = beastHpPct > 50 ? 'bg-green-500' : beastHpPct > 25 ? 'bg-amber-500' : 'bg-red-500'
+
+          return (
+            <section className="bg-gray-900 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Wild Shape</h2>
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(maxUses, 4) }).map((_, i) => (
+                    <span key={i} className={`w-3 h-3 rounded-full border-2 ${i < uses ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
+                  ))}
+                  {maxUses === Infinity && <span className="text-xs text-indigo-400">∞</span>}
+                </div>
+              </div>
+
+              {!inForm ? (
+                <div className="flex gap-2">
+                  <button
+                    disabled={uses <= 0 || wildShapeMutation.isPending}
+                    onClick={() => setShowBeastPicker(true)}
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium py-2 rounded-xl transition-colors"
+                  >
+                    🐾 Enter Wild Shape
+                  </button>
+                  <button
+                    disabled={uses >= maxUses || wildShapeMutation.isPending}
+                    onClick={() => wildShapeMutation.mutate({ action: 'restoreUses' })}
+                    title="Short / long rest"
+                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+                  >
+                    ⏳
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🐺</span>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{character.wildShapeBeastName}</p>
+                      <p className="text-xs text-gray-400">Beast form active</p>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-500">Beast HP</span>
+                      <div className="flex items-center gap-1 text-sm">
+                        <EditableNumber
+                          value={character.wildShapeBeastCurrentHp ?? 0}
+                          onChange={v => {
+                            const cur = character.wildShapeBeastCurrentHp ?? 0
+                            const diff = v - cur
+                            if (diff > 0) wildShapeMutation.mutate({ action: 'heal', amount: diff })
+                            else if (diff < 0) wildShapeMutation.mutate({ action: 'damage', amount: -diff })
+                          }}
+                          min={0} max={character.wildShapeBeastMaxHp ?? 999}
+                          label="Beast HP"
+                          className="w-12 text-center font-bold text-lg"
+                        />
+                        <span className="text-gray-500">/</span>
+                        <span className="text-gray-400 w-8 text-center">{character.wildShapeBeastMaxHp}</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-700 rounded-full h-2 overflow-hidden">
+                      <div className={`h-full ${beastHpColor} rounded-full transition-all`} style={{ width: `${Math.max(0, Math.min(100, beastHpPct))}%` }} />
+                    </div>
+                  </div>
+                  <button
+                    disabled={wildShapeMutation.isPending}
+                    onClick={() => wildShapeMutation.mutate({ action: 'revert' })}
+                    className="w-full bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white text-sm font-medium py-2 rounded-xl transition-colors"
+                  >
+                    ↩ Revert to Druid
+                  </button>
+                </div>
+              )}
+
+              {showBeastPicker && (
+                <BeastPickerModal
+                  maxCr={limits.maxCr}
+                  allowFly={limits.allowFly}
+                  allowSwim={limits.allowSwim}
+                  onClose={() => setShowBeastPicker(false)}
+                  onSelect={(beast: Beast) => {
+                    setShowBeastPicker(false)
+                    wildShapeMutation.mutate({
+                      action: 'enter',
+                      beastName: beast.name,
+                      beastMaxHp: beast.hp,
+                      beastCurrentHp: beast.hp,
+                    })
+                  }}
+                />
+              )}
+
+              <p className="text-xs text-gray-600 text-center">
+                Max CR {crLabel(limits.maxCr)}{!limits.allowFly ? ' · No fly' : ''}{!limits.allowSwim ? ' · No swim' : ''}
+              </p>
+            </section>
+          )
+        })()}
+
         {/* ── Attacks ─────────────────────────────────────── */}
         {(() => {
+          // Check if in Wild Shape — show beast attacks instead
+          const inWildShape = !!character.wildShapeBeastName
+          const activeBeast = inWildShape
+            ? allBeasts.find((b: Beast) => b.name === character.wildShapeBeastName)
+            : null
+
+          if (inWildShape && activeBeast) {
+            const beastAttacks = activeBeast.attacks.map((atk, i) => {
+              const score = atk.stat === 'dex' ? activeBeast.dex : activeBeast.str
+              const statMod = Math.floor((score - 10) / 2)
+              const toHit = statMod + profBonusNum
+              const dmgStr = `${atk.dice}${statMod !== 0 ? fmtMod(statMod) : ''} ${atk.type}`
+              return { id: `beast-${i}`, name: atk.name, toHit, dmgStr }
+            })
+            return (
+              <section className="bg-gray-900 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Attacks</h2>
+                  <span className="text-[10px] text-amber-400">{activeBeast.name} form</span>
+                </div>
+                <div className="space-y-2">
+                  {beastAttacks.map(atk => (
+                    <div key={atk.id} className="bg-gray-800 rounded-xl px-3 py-2.5 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{atk.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{atk.dmgStr}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-gray-400">To Hit</p>
+                        <p className="font-bold text-sm text-indigo-300">{fmtMod(atk.toHit)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )
+          }
+
+          // Normal (non-wild-shape) attacks
           // Auto-generate attack profiles from equipped weapons
           const equippedWeapons = inventory.filter(i => i.isEquipped && (i.equippedSlot === 'Weapon' || i.equippedSlot === 'Offhand'))
           const RANGED_RE = /\b(bow|crossbow|dart|sling|blowgun|net)\b/i

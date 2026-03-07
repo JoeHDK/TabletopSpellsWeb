@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
+import { isPreparingCaster } from '../utils/spellUtils'
 
 export default function CharacterOverviewPage() {
   const { id } = useParams<{ id: string }>()
@@ -26,6 +27,7 @@ export default function CharacterOverviewPage() {
     : [
         { label: '📖 Spell List', path: 'spells' },
         { label: '🔍 Search Spells', path: 'search-spells' },
+        ...(isPreparingCaster(character.characterClass) ? [{ label: '✨ Prepare Spells', path: 'prepare' }] : []),
         { label: '🔮 Spells per day', path: 'spells-per-day' },
         { label: '📜 Log', path: 'spell-log' },
         { label: '📊 Stats', path: 'stats' },

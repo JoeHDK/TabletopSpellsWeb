@@ -22,8 +22,14 @@ export default function LoginPage() {
       login(data.token, data.username, data.userId, data.isDm)
       navigate('/characters')
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: string } })?.response?.data ?? 'An error occurred'
-      setError(typeof msg === 'string' ? msg : 'An error occurred')
+      const data = (err as { response?: { data?: unknown } })?.response?.data
+      if (Array.isArray(data)) {
+        setError(data.join(' '))
+      } else if (typeof data === 'string' && data.length > 0) {
+        setError(data)
+      } else {
+        setError('An error occurred. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -72,6 +78,9 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none"
             />
+            {tab === 'register' && (
+              <p className="text-xs text-gray-500 mt-1">At least 8 characters including a number.</p>
+            )}
           </div>
 
           {error && (
