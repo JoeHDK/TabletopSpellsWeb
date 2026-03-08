@@ -1,4 +1,5 @@
 using TabletopSpells.Api.Data.Entities;
+using TabletopSpells.Api.Models.Enums;
 
 namespace TabletopSpells.Api.DTOs;
 
@@ -13,6 +14,7 @@ public class InventoryItemDto
     public bool IsEquipped { get; set; }
     public string? EquippedSlot { get; set; }
     public int? AcBonus { get; set; }
+    public string? ArmorType { get; set; }
     public string? DamageOverride { get; set; }
     public string? Notes { get; set; }
     public string? GrantedByUsername { get; set; }
@@ -27,6 +29,7 @@ public class AddInventoryItemRequest
     public required string Name { get; set; }
     public int Quantity { get; set; } = 1;
     public int? AcBonus { get; set; }
+    public ArmorType? ArmorType { get; set; }
     public string? DamageOverride { get; set; }
     public string? Notes { get; set; }
 }
@@ -35,4 +38,5 @@ public class EquipItemRequest
 {
     public bool IsEquipped { get; set; }
     public InventorySlot? Slot { get; set; }
+    public ArmorType? ArmorType { get; set; }
 }

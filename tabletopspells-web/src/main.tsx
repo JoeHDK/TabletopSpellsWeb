@@ -20,6 +20,10 @@ import InventoryPage from './pages/InventoryPage'
 import ConversationListPage from './pages/ConversationListPage'
 import ConversationPage from './pages/ConversationPage'
 import FriendsPage from './pages/FriendsPage'
+import CreatureLibraryPage from './pages/CreatureLibraryPage'
+import CombatTrackerPage from './pages/CombatTrackerPage'
+import SessionPlannerPage from './pages/SessionPlannerPage'
+import FeatsPage from './pages/FeatsPage'
 
 const queryClient = new QueryClient()
 
@@ -39,12 +43,16 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/characters/:id/spell-log" element={<ProtectedRoute><SpellLogPage /></ProtectedRoute>} />
           <Route path="/characters/:id/stats" element={<ProtectedRoute><StatsPage /></ProtectedRoute>} />
           <Route path="/characters/:id/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
+          <Route path="/characters/:id/feats" element={<ProtectedRoute><FeatsPage /></ProtectedRoute>} />
           <Route path="/items" element={<ProtectedRoute><SearchItemsPage /></ProtectedRoute>} />
           <Route path="/games/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
           <Route path="/games/:id/party" element={<ProtectedRoute><PartyOverviewPage /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ConversationListPage /></ProtectedRoute>} />
           <Route path="/chat/:id" element={<ProtectedRoute><ConversationPage /></ProtectedRoute>} />
           <Route path="/friends" element={<ProtectedRoute><FriendsPage /></ProtectedRoute>} />
+          <Route path="/creatures" element={<ProtectedRoute><CreatureLibraryPage /></ProtectedRoute>} />
+          <Route path="/games/:id/combat" element={<ProtectedRoute><CombatTrackerPage /></ProtectedRoute>} />
+          <Route path="/games/:id/planner" element={<ProtectedRoute><SessionPlannerPage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

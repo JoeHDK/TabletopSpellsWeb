@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
 import { gamesApi } from '../api/games'
+import { racesApi } from '../api/races'
 import { useCharacterStore } from '../store/characterStore'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import BurgerMenu from '../components/BurgerMenu'
@@ -15,11 +16,43 @@ const CLASSES: CharacterClass[] = [
   'Warlock','Witch','Wizard',
 ]
 
+function SectionHeader({ title, count, open, onToggle, children }: {
+  title: string
+  count: number
+  open: boolean
+  onToggle: () => void
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <button
+        onClick={onToggle}
+        className="flex items-center gap-2 text-left flex-1 min-w-0"
+        aria-expanded={open}
+      >
+        <span className="text-2xl font-bold truncate">{title}</span>
+        {count > 0 && (
+          <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full shrink-0">{count}</span>
+        )}
+        <span className={`text-gray-500 text-sm transition-transform duration-200 shrink-0 ${open ? 'rotate-90' : ''}`}>▶</span>
+      </button>
+      <div className="flex gap-2 shrink-0">{children}</div>
+    </div>
+  )
+}
+
 export default function CharacterSelectPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const setActive = useCharacterStore((s) => s.setActiveCharacter)
+
+  // Section collapse state — all open by default
+  const [charsOpen, setCharsOpen] = useState(true)
+  const [npcsOpen, setNpcsOpen] = useState(true)
+  const [gamesOpen, setGamesOpen] = useState(true)
+
   const [showCreate, setShowCreate] = useState(false)
+  const [createIsNpc, setCreateIsNpc] = useState(false)
   const [showCreateGame, setShowCreateGame] = useState(false)
   const [showJoinGame, setShowJoinGame] = useState(false)
   const [gameName, setGameName] = useState('')
@@ -31,7 +64,7 @@ export default function CharacterSelectPage() {
   const modalRef = useRef<HTMLDivElement>(null)
   useFocusTrap(modalRef, () => setShowCreate(false), showCreate)
 
-  const { data: characters = [], isLoading } = useQuery({
+  const { data: allCharacters = [], isLoading } = useQuery({
     queryKey: ['characters'],
     queryFn: charactersApi.getAll,
   })
@@ -40,6 +73,14 @@ export default function CharacterSelectPage() {
     queryKey: ['games'],
     queryFn: gamesApi.getAll,
   })
+
+  const { data: allRaces = [] } = useQuery({
+    queryKey: ['races'],
+    queryFn: () => racesApi.getAll(),
+  })
+
+  const characters = allCharacters.filter((c) => !c.isNpc)
+  const npcs = allCharacters.filter((c) => c.isNpc)
 
   const createMutation = useMutation({
     mutationFn: (req: CreateCharacterRequest) => charactersApi.create(req),
@@ -76,6 +117,37 @@ export default function CharacterSelectPage() {
     navigate(`/characters/${c.id}`)
   }
 
+  const openCreate = (isNpc: boolean) => {
+    setCreateIsNpc(isNpc)
+    setForm({ name: '', characterClass: 'Wizard', gameType: 'dnd5e', level: 1 })
+    setShowCreate(true)
+  }
+
+  const renderCharacterCard = (c: Character) => (
+    <div key={c.id} className="bg-gray-900 rounded-xl p-4 flex items-center gap-4 hover:bg-gray-800 transition-colors">
+      <button onClick={() => selectCharacter(c)} className="flex-1 text-left flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center shrink-0">
+          {c.avatarBase64 ? (
+            <img src={c.avatarBase64} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-lg">{c.isNpc ? '🎭' : '🧙'}</span>
+          )}
+        </div>
+        <div>
+          <p className="font-semibold text-lg">{c.name}</p>
+          <p className="text-sm text-gray-400">
+            {c.characterClass} • Level {c.level} • {c.gameType === 'dnd5e' ? 'D&D 5e' : 'Pathfinder 1e'}
+          </p>
+        </div>
+      </button>
+      <button
+        onClick={() => setConfirmDelete(c)}
+        aria-label={`Delete ${c.name}`}
+        className="text-red-500 hover:text-red-400 text-sm px-2"
+      >✕</button>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <header className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
@@ -83,109 +155,111 @@ export default function CharacterSelectPage() {
         <BurgerMenu />
       </header>
 
-      <main className="max-w-2xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Your Characters</h2>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-medium"
-          >
-            + New Character
-          </button>
-        </div>
+      <main className="max-w-2xl mx-auto p-6 space-y-10">
 
-        {isLoading ? (
-          <div className="text-center text-gray-400 py-12">Loading…</div>
-        ) : characters.length === 0 ? (
-          <div className="text-center text-gray-400 py-12">
-            <p className="text-lg mb-2">No characters yet</p>
-            <p className="text-sm">Create your first character to get started</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {characters.map((c) => (
-              <div key={c.id} className="bg-gray-900 rounded-xl p-4 flex items-center gap-4 hover:bg-gray-800 transition-colors">
-                <button onClick={() => selectCharacter(c)} className="flex-1 text-left flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center shrink-0">
-                    {c.avatarBase64 ? (
-                      <img src={c.avatarBase64} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-lg">🧙</span>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-lg">{c.name}</p>
-                    <p className="text-sm text-gray-400">
-                      {c.characterClass} • Level {c.level} • {c.gameType === 'dnd5e' ? 'D&D 5e' : 'Pathfinder 1e'}
-                    </p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(c)}
-                  aria-label={`Delete ${c.name}`}
-                  className="text-red-500 hover:text-red-400 text-sm px-2"
-                >✕</button>
+        {/* Characters Section */}
+        <section>
+          <SectionHeader title="Characters" count={characters.length} open={charsOpen} onToggle={() => setCharsOpen((v) => !v)}>
+            <button
+              onClick={() => openCreate(false)}
+              className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-medium"
+            >
+              + New
+            </button>
+          </SectionHeader>
+          {charsOpen && (
+            isLoading ? (
+              <div className="text-center text-gray-400 py-10">Loading…</div>
+            ) : characters.length === 0 ? (
+              <div className="text-center text-gray-400 py-10">
+                <p className="text-lg mb-2">No characters yet</p>
+                <p className="text-sm">Create your first character to get started</p>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Games Section */}
-        <div className="mt-10">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Your Games</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowJoinGame(true)}
-                className="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg text-sm font-medium"
-              >
-                Join
-              </button>
-              <button
-                onClick={() => setShowCreateGame(true)}
-                className="bg-indigo-600 hover:bg-indigo-500 px-3 py-2 rounded-lg text-sm font-medium"
-              >
-                + New Game
-              </button>
-            </div>
-          </div>
-
-          {gamesLoading ? (
-            <div className="text-center text-gray-400 py-8">Loading…</div>
-          ) : games.length === 0 ? (
-            <div className="text-center text-gray-400 py-8">
-              <p className="text-lg mb-2">No games yet</p>
-              <p className="text-sm">Create a game or join one with an invite code</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {games.map((g) => (
-                <button
-                  key={g.id}
-                  onClick={() => navigate(`/games/${g.id}`)}
-                  className="w-full bg-gray-900 hover:bg-gray-800 rounded-xl p-4 text-left transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-lg">{g.name}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${g.myRole === 'DM' ? 'bg-amber-900/50 text-amber-300' : 'bg-indigo-900/50 text-indigo-300'}`}>
-                      {g.myRole}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-400 mt-0.5">
-                    DM: {g.dmUsername} · {g.memberCount} {g.memberCount === 1 ? 'member' : 'members'}
-                  </p>
-                </button>
-              ))}
-            </div>
+            ) : (
+              <div className="space-y-3">{characters.map(renderCharacterCard)}</div>
+            )
           )}
-        </div>
+        </section>
+
+        {/* NPCs Section */}
+        <section>
+          <SectionHeader title="NPCs" count={npcs.length} open={npcsOpen} onToggle={() => setNpcsOpen((v) => !v)}>
+            <button
+              onClick={() => openCreate(true)}
+              className="bg-purple-700 hover:bg-purple-600 px-4 py-2 rounded-lg text-sm font-medium"
+            >
+              + New NPC
+            </button>
+          </SectionHeader>
+          {npcsOpen && (
+            isLoading ? (
+              <div className="text-center text-gray-400 py-10">Loading…</div>
+            ) : npcs.length === 0 ? (
+              <div className="text-center text-gray-400 py-10">
+                <p className="text-lg mb-2">No NPCs yet</p>
+                <p className="text-sm">Create NPCs to track their stats, spells and gear</p>
+              </div>
+            ) : (
+              <div className="space-y-3">{npcs.map(renderCharacterCard)}</div>
+            )
+          )}
+        </section>
+
+        {/* Adventures Section */}
+        <section>
+          <SectionHeader title="Adventures" count={games.length} open={gamesOpen} onToggle={() => setGamesOpen((v) => !v)}>
+            <button
+              onClick={() => setShowJoinGame(true)}
+              className="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg text-sm font-medium"
+            >
+              Join
+            </button>
+            <button
+              onClick={() => setShowCreateGame(true)}
+              className="bg-indigo-600 hover:bg-indigo-500 px-3 py-2 rounded-lg text-sm font-medium"
+            >
+              + New
+            </button>
+          </SectionHeader>
+          {gamesOpen && (
+            gamesLoading ? (
+              <div className="text-center text-gray-400 py-8">Loading…</div>
+            ) : games.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">
+                <p className="text-lg mb-2">No adventures yet</p>
+                <p className="text-sm">Create a game or join one with an invite code</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {games.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => navigate(`/games/${g.id}`)}
+                    className="w-full bg-gray-900 hover:bg-gray-800 rounded-xl p-4 text-left transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-lg">{g.name}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${g.myRole === 'DM' ? 'bg-amber-900/50 text-amber-300' : 'bg-indigo-900/50 text-indigo-300'}`}>
+                        {g.myRole}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-400 mt-0.5">
+                      DM: {g.dmUsername} · {g.memberCount} {g.memberCount === 1 ? 'member' : 'members'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )
+          )}
+        </section>
+
       </main>
 
       {/* Create Game Modal */}
       {showCreateGame && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setShowCreateGame(false)}>
           <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-4">New Game</h3>
+            <h3 className="text-xl font-bold mb-4">New Adventure</h3>
             <form onSubmit={(e) => { e.preventDefault(); createGameMutation.mutate() }} className="space-y-4">
               <div>
                 <label className="text-sm text-gray-300 block mb-1">Game Name</label>
@@ -211,7 +285,7 @@ export default function CharacterSelectPage() {
       {showJoinGame && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setShowJoinGame(false)}>
           <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-4">Join Game</h3>
+            <h3 className="text-xl font-bold mb-4">Join Adventure</h3>
             <form onSubmit={(e) => { e.preventDefault(); joinGameMutation.mutate() }} className="space-y-4">
               <div>
                 <label className="text-sm text-gray-300 block mb-1">Invite Code</label>
@@ -236,11 +310,15 @@ export default function CharacterSelectPage() {
           </div>
         </div>
       )}
+
+      {/* Create Character / NPC Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setShowCreate(false)}>
           <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="create-char-title" className="bg-gray-900 rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 id="create-char-title" className="text-xl font-bold mb-4">New Character</h3>
-            <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(form) }} className="space-y-4">
+            <h3 id="create-char-title" className="text-xl font-bold mb-4">
+              {createIsNpc ? '🎭 New NPC' : '🧙 New Character'}
+            </h3>
+            <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate({ ...form, isNpc: createIsNpc }) }} className="space-y-4">
               <div>
                 <label className="text-sm text-gray-300 block mb-1">Name</label>
                 <input
@@ -264,7 +342,7 @@ export default function CharacterSelectPage() {
                   <label className="text-sm text-gray-300 block mb-1">Game</label>
                   <select
                     value={form.gameType}
-                    onChange={(e) => setForm({ ...form, gameType: e.target.value as Game })}
+                    onChange={(e) => setForm({ ...form, gameType: e.target.value as Game, race: undefined })}
                     className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700"
                   >
                     <option value="dnd5e">D&D 5e</option>
@@ -280,9 +358,28 @@ export default function CharacterSelectPage() {
                   className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700"
                 />
               </div>
+              {form.gameType === 'dnd5e' && (
+                <div>
+                  <label className="text-sm text-gray-300 block mb-1">Race <span className="text-gray-500">(optional)</span></label>
+                  <select
+                    value={form.race ?? ''}
+                    onChange={(e) => setForm({ ...form, race: e.target.value || undefined })}
+                    className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700"
+                  >
+                    <option value="">— None —</option>
+                    {allRaces.map(r => (
+                      <option key={r.index} value={r.index}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowCreate(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded-lg">Cancel</button>
-                <button type="submit" disabled={createMutation.isPending} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-2 rounded-lg">
+                <button
+                  type="submit"
+                  disabled={createMutation.isPending}
+                  className={`flex-1 py-2 rounded-lg ${createIsNpc ? 'bg-purple-700 hover:bg-purple-600' : 'bg-indigo-600 hover:bg-indigo-500'}`}
+                >
                   {createMutation.isPending ? 'Creating…' : 'Create'}
                 </button>
               </div>
@@ -290,11 +387,12 @@ export default function CharacterSelectPage() {
           </div>
         </div>
       )}
+
       {/* Delete confirmation modal */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setConfirmDelete(null)}>
           <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-2">Delete character?</h3>
+            <h3 className="text-xl font-bold mb-2">Delete {confirmDelete.isNpc ? 'NPC' : 'character'}?</h3>
             <p className="text-gray-400 text-sm mb-6">
               <span className="text-white font-semibold">{confirmDelete.name}</span> will be permanently deleted. This cannot be undone.
             </p>

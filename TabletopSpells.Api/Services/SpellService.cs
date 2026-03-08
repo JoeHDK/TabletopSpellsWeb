@@ -24,7 +24,11 @@ public class SpellService
 
             var filePath = Path.Combine(AppContext.BaseDirectory, "Spells", fileName);
             var json = File.ReadAllText(filePath);
-            var spells = JsonConvert.DeserializeObject<List<Spell>>(json) ?? new List<Spell>();
+            var settings = new JsonSerializerSettings
+            {
+                Error = (_, args) => args.ErrorContext.Handled = true,
+            };
+            var spells = JsonConvert.DeserializeObject<List<Spell>>(json, settings) ?? new List<Spell>();
             _cache[game] = spells;
             return spells;
         }

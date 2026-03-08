@@ -8,12 +8,20 @@ import { customItemsApi } from '../api/customItems'
 import { useAuthStore } from '../store/authStore'
 import CustomItemFormModal from '../components/CustomItemFormModal'
 import type {
-  InventoryItem, InventorySlot, ItemSource, AddInventoryItemRequest, EquipItemRequest,
+  InventoryItem, InventorySlot, ItemSource, ArmorType, AddInventoryItemRequest, EquipItemRequest,
   Item, CustomItem, SaveCustomItemRequest,
 } from '../types'
 
 const SLOTS: InventorySlot[] = ['Armor', 'Weapon', 'Offhand', 'Accessory']
 const RARITIES = ['Common', 'Uncommon', 'Rare', 'Very Rare', 'Legendary', 'Artifact', 'Varies']
+const ARMOR_TYPES: ArmorType[] = ['None', 'Light', 'Medium', 'Heavy']
+
+const ARMOR_TYPE_LABEL: Record<ArmorType, string> = {
+  None: 'Unarmored / Clothing',
+  Light: 'Light Armor',
+  Medium: 'Medium Armor',
+  Heavy: 'Heavy Armor',
+}
 
 const SLOT_ICON: Record<InventorySlot, string> = {
   Armor: '🛡',
@@ -37,6 +45,14 @@ function guessSlot(item: InventoryItem): InventorySlot {
   if (/armor|mail|plate|breastplate|hide|leather|studded|splint|scale|shield/.test(name)) return 'Armor'
   if (/sword|axe|bow|dagger|hammer|mace|spear|staff|wand|flail|scimitar|rapier|lance|pike|halberd|glaive|crossbow|sling|trident|whip|quarterstaff|shortsword|longsword|greatsword|handaxe|battleaxe|greataxe/.test(name)) return 'Weapon'
   return 'Accessory'
+}
+
+function guessArmorType(name: string): ArmorType {
+  const n = name.toLowerCase()
+  if (/padded|leather|studded leather/.test(n)) return 'Light'
+  if (/hide|chain shirt|scale mail|breastplate|half plate/.test(n)) return 'Medium'
+  if (/ring mail|chain mail|splint|plate/.test(n)) return 'Heavy'
+  return 'None'
 }
 
 function InventoryItemModal({ item, onClose }: { item: InventoryItem; onClose: () => void }) {
@@ -63,6 +79,12 @@ function InventoryItemModal({ item, onClose }: { item: InventoryItem; onClose: (
             <div className="flex justify-between">
               <span className="text-gray-400">AC Bonus</span>
               <span className="text-green-400 font-medium">+{item.acBonus}</span>
+            </div>
+          )}
+          {item.armorType && item.armorType !== 'None' && (
+            <div className="flex justify-between">
+              <span className="text-gray-400">Armor Type</span>
+              <span className="text-yellow-400 font-medium">{ARMOR_TYPE_LABEL[item.armorType]}</span>
             </div>
           )}
           {item.damageOverride && (
@@ -152,6 +174,7 @@ const defaultForm = (): AddInventoryItemRequest & { acBonusStr: string; slot: In
   quantity: 1,
   acBonusStr: '',
   slot: 'Accessory',
+  armorType: undefined,
 })
 
 export default function InventoryPage() {
@@ -209,9 +232,13 @@ export default function InventoryPage() {
   })
 
   // Derived
-  const equipmentAcBonus = items
-    .filter(i => i.isEquipped && i.acBonus != null)
-    .reduce((sum, i) => sum + (i.acBonus ?? 0), 0)
+  const equippedItems = items.filter(i => i.isEquipped)
+  const armorItem = equippedItems.find(i => i.equippedSlot === 'Armor' && i.armorType && i.armorType !== 'None')
+  const shieldBonus = equippedItems.filter(i => i.equippedSlot !== 'Armor' && i.acBonus != null).reduce((s, i) => s + (i.acBonus ?? 0), 0)
+  const dexMod = character?.abilityScores ? Math.floor(((character.abilityScores['Dexterity'] ?? 10) - 10) / 2) : 0
+  const displayAC = armorItem?.armorType && armorItem.armorType !== 'None'
+    ? (armorItem.acBonus ?? 0) + (armorItem.armorType === 'Light' ? dexMod : armorItem.armorType === 'Medium' ? Math.min(dexMod, 2) : 0) + shieldBonus + (character?.baseArmorClass ?? 0)
+    : (character?.baseArmorClass ?? 0) + equippedItems.filter(i => i.acBonus != null).reduce((s, i) => s + (i.acBonus ?? 0), 0)
 
   const filteredItems = useMemo(() => {
     if (!invSearch.trim()) return items
@@ -291,6 +318,7 @@ export default function InventoryPage() {
       name: form.name,
       quantity: form.quantity,
       acBonus: form.acBonusStr ? Number(form.acBonusStr) : undefined,
+      armorType: form.acBonusStr ? (form.armorType ?? guessArmorType(form.name)) : undefined,
       damageOverride: form.damageOverride,
       notes: form.notes,
     })
@@ -316,9 +344,7 @@ export default function InventoryPage() {
         <div className="flex-1">
           <h1 className="text-lg font-bold">{character?.name ?? '…'} — Inventory</h1>
           <p className="text-xs text-gray-400">
-            AC: {equipmentAcBonus > 0
-              ? <>{character?.baseArmorClass} <span className="text-indigo-400">+ {equipmentAcBonus}</span></>
-              : character?.baseArmorClass ?? '—'}
+            AC: {character ? displayAC : '—'}
           </p>
         </div>
         {mainTab === 'inventory' && isDm && (
@@ -413,9 +439,28 @@ export default function InventoryPage() {
                         className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
                         placeholder="Leave blank if none"
                         value={form.acBonusStr}
-                        onChange={e => setForm(f => ({ ...f, acBonusStr: e.target.value }))}
+                        onChange={e => setForm(f => ({
+                          ...f,
+                          acBonusStr: e.target.value,
+                          armorType: f.armorType ?? (e.target.value ? guessArmorType(f.name) : undefined),
+                        }))}
                       />
                     </div>
+                    {(form.acBonusStr || form.armorType) && (
+                      <div>
+                        <label className="text-xs text-gray-400 block mb-1">Armor Type</label>
+                        <select
+                          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:outline-none text-sm"
+                          value={form.armorType ?? 'None'}
+                          onChange={e => setForm(f => ({ ...f, armorType: e.target.value as ArmorType }))}
+                        >
+                          {ARMOR_TYPES.map(t => (
+                            <option key={t} value={t}>{ARMOR_TYPE_LABEL[t]}</option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">Used for automatic AC calculation (DEX cap).</p>
+                      </div>
+                    )}
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Damage</label>
                       <input
@@ -483,6 +528,11 @@ export default function InventoryPage() {
                                 AC +{item.acBonus}
                               </span>
                             )}
+                            {item.armorType && item.armorType !== 'None' && (
+                              <span className="text-xs bg-yellow-900/40 text-yellow-400 px-1.5 py-0.5 rounded-full">
+                                {item.armorType}
+                              </span>
+                            )}
                             {item.damageOverride && (
                               <span className="text-xs bg-red-900/40 text-red-400 px-1.5 py-0.5 rounded-full">
                                 {item.damageOverride}
@@ -530,7 +580,7 @@ export default function InventoryPage() {
                           {SLOTS.map(s => (
                             <button
                               key={s}
-                              onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: s } })}
+                              onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: s, armorType: item.armorType } })}
                               className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
                                 item.equippedSlot === s
                                   ? 'bg-indigo-700 text-white'
@@ -540,6 +590,24 @@ export default function InventoryPage() {
                               {SLOT_LABEL[s]}
                             </button>
                           ))}
+                          {item.equippedSlot === 'Armor' && (
+                            <>
+                              <span className="text-xs text-gray-500 self-center">|</span>
+                              {ARMOR_TYPES.map(t => (
+                                <button
+                                  key={t}
+                                  onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: 'Armor', armorType: t } })}
+                                  className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
+                                    item.armorType === t
+                                      ? 'bg-yellow-700 text-white'
+                                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                  }`}
+                                >
+                                  {t}
+                                </button>
+                              ))}
+                            </>
+                          )}
                         </div>
                       )}
 

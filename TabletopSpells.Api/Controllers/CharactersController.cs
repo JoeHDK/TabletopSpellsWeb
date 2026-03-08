@@ -53,6 +53,8 @@ public class CharactersController : ControllerBase
             GameType = req.GameType,
             Level = req.Level,
             IsDivineCaster = ClassHelper.IsDivineCaster(req.CharacterClass),
+            IsNpc = req.IsNpc,
+            Race = req.Race,
             AbilityScoresJson = JsonConvert.SerializeObject(scores),
         };
 
@@ -76,6 +78,7 @@ public class CharactersController : ControllerBase
         if (req.BaseArmorClass.HasValue) entity.BaseArmorClass = req.BaseArmorClass.Value;
         if (req.SavingThrowProficiencies != null) entity.SavingThrowProficienciesJson = JsonConvert.SerializeObject(req.SavingThrowProficiencies);
         if (req.SkillProficiencies != null) entity.SkillProficienciesJson = JsonConvert.SerializeObject(req.SkillProficiencies);
+        if (req.Race != null) entity.Race = req.Race;
 
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -249,9 +252,11 @@ public class CharactersController : ControllerBase
         BaseArmorClass = e.BaseArmorClass,
         GameRoomId = e.GameRoomId,
         AvatarBase64 = e.AvatarBase64,
+        IsNpc = e.IsNpc,
         WildShapeUsesRemaining = e.WildShapeUsesRemaining,
         WildShapeBeastName = e.WildShapeBeastName,
         WildShapeBeastCurrentHp = e.WildShapeBeastCurrentHp,
         WildShapeBeastMaxHp = e.WildShapeBeastMaxHp,
+        Race = e.Race,
     };
 }

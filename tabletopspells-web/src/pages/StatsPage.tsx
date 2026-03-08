@@ -5,11 +5,14 @@ import { charactersApi } from '../api/characters'
 import { inventoryApi } from '../api/inventory'
 import { attacksApi } from '../api/attacks'
 import { beastsApi } from '../api/beasts'
+import { characterFeatsApi } from '../api/characterFeats'
+import { classFeaturesApi } from '../api/classFeatures'
+import { racesApi } from '../api/races'
 import EditableNumber from '../components/EditableNumber'
 import BeastPickerModal from '../components/BeastPickerModal'
 import { resizeImage } from '../utils/resizeImage'
 import { resolveClassName } from '../utils/spellUtils'
-import type { UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey, Beast } from '../types'
+import type { UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey, Beast, InventoryItem, CharacterFeat, ClassFeature, Race } from '../types'
 
 const ABILITY_KEYS = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']
 const ABILITY_SHORT: Record<string, string> = {
@@ -159,6 +162,129 @@ function getWildShapeLimits(level: number, subclass: string): { maxCr: number; a
   return { maxCr, allowFly, allowSwim }
 }
 
+function getFeatModifier(feats: (CharacterFeat | ClassFeature)[], type: string): number {
+  return feats.flatMap(f => f.modifiers).filter(m => m.type === type).reduce((s, m) => s + m.value, 0)
+}
+
+// Returns the highest sneak attack dice count applicable given class features
+function getSneakAttackDice(classFeatures: ClassFeature[]): number {
+  const vals = classFeatures.flatMap(f => f.modifiers).filter(m => m.type === 'sneak_attack_dice').map(m => m.value)
+  return vals.length ? Math.max(...vals) : 0
+}
+
+// Returns the martial arts die (e.g. 6 = d6) applicable given class features
+function getMartialArtsDie(classFeatures: ClassFeature[]): number {
+  const vals = classFeatures.flatMap(f => f.modifiers).filter(m => m.type === 'martial_arts_die').map(m => m.value)
+  return vals.length ? Math.max(...vals) : 0
+}
+
+// Returns the best movement bonus from class features (e.g. Monk Unarmored Movement)
+function getMovementBonus(classFeatures: ClassFeature[]): number {
+  const vals = classFeatures.flatMap(f => f.modifiers).filter(m => m.type === 'movement').map(m => m.value)
+  return vals.length ? Math.max(...vals) : 0
+}
+
+function calculateAC(
+  characterClass: string,
+  abilityScores: Record<string, number>,
+  inventory: InventoryItem[],
+  baseArmorClass: number,
+  feats: CharacterFeat[],
+  classFeatures: ClassFeature[] = [],
+): { total: number; breakdown: string; isAutoCalc: boolean } {
+  const dexMod = Math.floor(((abilityScores['Dexterity'] ?? 10) - 10) / 2)
+  const conMod = Math.floor(((abilityScores['Constitution'] ?? 10) - 10) / 2)
+  const wisMod = Math.floor(((abilityScores['Wisdom'] ?? 10) - 10) / 2)
+
+  const equipped = inventory.filter(i => i.isEquipped)
+  const armorItem = equipped.find(i => i.equippedSlot === 'Armor' && i.armorType && i.armorType !== 'None')
+  const shieldBonus = equipped
+    .filter(i => i.equippedSlot !== 'Armor' && i.acBonus != null)
+    .reduce((s, i) => s + (i.acBonus ?? 0), 0)
+
+  // Medium Armor Master feat raises the DEX cap on medium armor from +2 to +3
+  const medArmorMaxDex = feats.flatMap(f => f.modifiers)
+    .find(m => m.type === 'medium_armor_max_dex')?.value ?? 2
+
+  // Flat AC bonuses from feats
+  const featAcBonus = getFeatModifier(feats, 'ac')
+
+  if (armorItem?.armorType && armorItem.armorType !== 'None') {
+    const base = armorItem.acBonus ?? 0
+    let dexContrib = 0
+    let armorLabel = ''
+    if (armorItem.armorType === 'Light') {
+      dexContrib = dexMod
+      armorLabel = 'Light'
+    } else if (armorItem.armorType === 'Medium') {
+      dexContrib = Math.min(dexMod, medArmorMaxDex)
+      armorLabel = medArmorMaxDex > 2 ? 'Medium (+3 DEX)' : 'Medium'
+    } else {
+      dexContrib = 0
+      armorLabel = 'Heavy'
+    }
+    const total = base + dexContrib + shieldBonus + baseArmorClass + featAcBonus
+    const parts: string[] = [`${base} (${armorLabel})`]
+    if (dexContrib !== 0) parts.push(`${dexContrib >= 0 ? '+' : ''}${dexContrib} DEX`)
+    if (shieldBonus > 0) parts.push(`+${shieldBonus} shield`)
+    if (baseArmorClass !== 0) parts.push(`${baseArmorClass >= 0 ? '+' : ''}${baseArmorClass} bonus`)
+    if (featAcBonus !== 0) parts.push(`${featAcBonus >= 0 ? '+' : ''}${featAcBonus} feats`)
+    return { total, breakdown: parts.join(' '), isAutoCalc: true }
+  }
+
+  // Fallback: no armorType set — use legacy formula (baseArmorClass + equipment AC + DEX for unarmored)
+  const legacyEquipBonus = equipped.filter(i => i.acBonus != null).reduce((s, i) => s + (i.acBonus ?? 0), 0)
+  if (legacyEquipBonus === 0) {
+    // Pure unarmored — check for class feature AC override (e.g. Draconic Resilience = 13+DEX)
+    const classFeatureAcBase = classFeatures.flatMap(f => f.modifiers)
+      .find(m => m.type === 'unarmored_ac_base')?.value ?? null
+
+    let unarmoredBase = classFeatureAcBase ?? 10
+    let classNote = ''
+    if (!classFeatureAcBase) {
+      if (characterClass === 'Barbarian') { unarmoredBase += conMod; classNote = ` +${conMod} CON` }
+      else if (characterClass === 'Monk') { unarmoredBase += wisMod; classNote = ` +${wisMod} WIS` }
+    }
+    const unarmoredLabel = classFeatureAcBase ? `Draconic (${unarmoredBase})` : `unarmored${classNote}`
+    const total = unarmoredBase + dexMod + baseArmorClass + featAcBonus
+    const parts: string[] = [`${unarmoredBase} (${unarmoredLabel})`, `${dexMod >= 0 ? '+' : ''}${dexMod} DEX`]
+    if (baseArmorClass !== 0) parts.push(`${baseArmorClass >= 0 ? '+' : ''}${baseArmorClass} bonus`)
+    if (featAcBonus !== 0) parts.push(`${featAcBonus >= 0 ? '+' : ''}${featAcBonus} feats`)
+    return { total, breakdown: parts.join(' '), isAutoCalc: true }
+  }
+  // Has old-style equipment bonus — show as-is, suggest upgrade
+  return {
+    total: baseArmorClass + legacyEquipBonus + featAcBonus,
+    breakdown: `${baseArmorClass} base + ${legacyEquipBonus} gear${featAcBonus ? ` +${featAcBonus} feats` : ''}`,
+    isAutoCalc: false,
+  }
+}
+
+function RaceSelector({ characterId, currentRace }: { characterId: string; currentRace?: string }) {
+  const qc = useQueryClient()
+  const { data: allRaces = [] } = useQuery({ queryKey: ['races'], queryFn: () => racesApi.getAll() })
+  const mutation = useMutation({
+    mutationFn: (race: string | undefined) => charactersApi.update(characterId, { race }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['character', characterId] })
+      qc.invalidateQueries({ queryKey: ['race'] })
+    },
+  })
+  return (
+    <select
+      className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
+      value={currentRace ?? ''}
+      onChange={e => mutation.mutate(e.target.value || undefined)}
+      disabled={mutation.isPending}
+    >
+      <option value="">— None —</option>
+      {allRaces.map(r => (
+        <option key={r.index} value={r.index}>{r.name}</option>
+      ))}
+    </select>
+  )
+}
+
 export default function StatsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -188,9 +314,27 @@ export default function StatsPage() {
     queryFn: () => beastsApi.getBeasts(),
   })
 
-  const equipmentAcBonus = inventory
-    .filter(i => i.isEquipped && i.acBonus != null)
-    .reduce((sum, i) => sum + (i.acBonus ?? 0), 0)
+  const { data: charFeats = [] } = useQuery({
+    queryKey: ['character-feats', id],
+    queryFn: () => characterFeatsApi.getAll(id!),
+    enabled: !!id,
+  })
+
+  const { data: classFeatures = [] } = useQuery({
+    queryKey: ['class-features', character?.characterClass, character?.level, character?.subclass],
+    queryFn: () => classFeaturesApi.getForCharacter(
+      character!.characterClass,
+      character!.level,
+      character!.subclass !== 'None' ? character!.subclass?.toLowerCase() : undefined,
+    ),
+    enabled: !!character,
+  })
+
+  const { data: race } = useQuery<Race>({
+    queryKey: ['race', character?.race],
+    queryFn: () => racesApi.getOne(character!.race!),
+    enabled: !!character?.race,
+  })
 
   // Local draft state — only set when something is dirty
   const [draft, setDraft] = useState<UpdateCharacterRequest & { currentHp?: number; maxHp?: number } | null>(null)
@@ -275,6 +419,8 @@ export default function StatsPage() {
     skillProficiencies: draft?.skillProficiencies ?? character.skillProficiencies ?? [],
   }
 
+  const acInfo = calculateAC(character.characterClass, d.abilityScores, inventory, d.baseArmorClass, charFeats, classFeatures)
+
   const patch = (fields: Partial<typeof d>) => setDraft(prev => ({ ...prev, ...fields }))
 
   const handleSave = async () => {
@@ -298,9 +444,18 @@ export default function StatsPage() {
   }
 
   const abilityMod = (key: string) => Math.floor(((d.abilityScores[key] ?? 10) - 10) / 2)
-  const passivePerception = 10 + abilityMod('Wisdom')
-  const initiative = abilityMod('Dexterity')
+  const featInitBonus = getFeatModifier(charFeats, 'initiative')
+  const featPassivePercBonus = getFeatModifier(charFeats, 'passive_perception')
+  const featHpPerLevel = getFeatModifier([...charFeats, ...classFeatures], 'hp_per_level')
+  const movementBonus = getMovementBonus(classFeatures)
+  const sneakAttackDice = getSneakAttackDice(classFeatures)
+  const martialArtsDie = getMartialArtsDie(classFeatures)
+  const charismaModifier = abilityMod('Charisma')
+  const savingThrowChaBonus = getFeatModifier(classFeatures, 'saving_throw_cha_mod') * charismaModifier
+  const passivePerception = 10 + abilityMod('Wisdom') + featPassivePercBonus
+  const initiative = abilityMod('Dexterity') + featInitBonus
   const profBonusNum = Math.floor((d.level - 1) / 4) + 2
+  const maxHpWithFeats = d.maxHp + featHpPerLevel * d.level
 
   const toggleSaveProficiency = (key: string) => {
     const updated = d.savingThrowProficiencies.includes(key)
@@ -333,7 +488,7 @@ export default function StatsPage() {
 
   const subclassList = SUBCLASSES[character.characterClass] ?? []
 
-  const hpPct = d.maxHp > 0 ? Math.max(0, Math.min(100, (d.currentHp / d.maxHp) * 100)) : 0
+  const hpPct = maxHpWithFeats > 0 ? Math.max(0, Math.min(100, (d.currentHp / maxHpWithFeats) * 100)) : 0
   const hpColour = hpPct > 50 ? 'bg-green-500' : hpPct > 25 ? 'bg-amber-500' : 'bg-red-500'
 
   return (
@@ -412,6 +567,14 @@ export default function StatsPage() {
                 </div>
               </div>
 
+              {/* Race (D&D 5e only) */}
+              {character.gameType === 'dnd5e' && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Race</p>
+                  <RaceSelector characterId={character.id} currentRace={character.race} />
+                </div>
+              )}
+
               {/* Subclass */}
               <div>
                 <p className="text-xs text-gray-500 mb-1">Subclass</p>
@@ -469,8 +632,8 @@ export default function StatsPage() {
               <div className="flex items-center gap-1 text-sm">
                 <EditableNumber
                   value={d.currentHp}
-                  onChange={v => patch({ currentHp: Math.min(v, d.maxHp) })}
-                  min={0} max={d.maxHp}
+                  onChange={v => patch({ currentHp: Math.min(v, maxHpWithFeats) })}
+                  min={0} max={maxHpWithFeats}
                   label="Current HP"
                   className="w-12 text-center font-bold text-lg"
                 />
@@ -482,6 +645,9 @@ export default function StatsPage() {
                   label="Max HP"
                   className="w-12 text-center text-gray-400"
                 />
+                {featHpPerLevel > 0 && (
+                  <span className="text-xs text-indigo-400 ml-1">(+{featHpPerLevel * d.level} feats)</span>
+                )}
               </div>
             </div>
             <div className="bg-gray-700 rounded-full h-2 overflow-hidden">
@@ -493,21 +659,28 @@ export default function StatsPage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-800 rounded-xl p-3 text-center">
               <p className="text-xs text-gray-400 mb-1">Armor Class</p>
-              <EditableNumber
-                value={d.baseArmorClass}
-                onChange={v => patch({ baseArmorClass: v })}
-                min={0}
-                label="Base AC"
-                className="text-xl font-bold"
-              />
-              {equipmentAcBonus > 0 && (
-                <p className="text-xs text-indigo-400 mt-0.5">+ {equipmentAcBonus} gear</p>
+              <p className="text-xl font-bold">{acInfo.total}</p>
+              <p className="text-xs text-indigo-400 mt-0.5">{acInfo.breakdown}</p>
+              {!acInfo.isAutoCalc && (
+                <p className="text-xs text-yellow-600 mt-0.5">Set armor type for DEX calc</p>
               )}
+              <div className="mt-1.5">
+                <label className="text-xs text-gray-500">Bonus</label>
+                <EditableNumber
+                  value={d.baseArmorClass}
+                  onChange={v => patch({ baseArmorClass: v })}
+                  min={-10}
+                  label="AC Bonus"
+                  className="text-xs font-medium text-gray-300 ml-1"
+                />
+              </div>
             </div>
             <div className="bg-gray-800 rounded-xl p-3 text-center">
               <p className="text-xs text-gray-400 mb-1">Initiative</p>
               <p className="text-xl font-bold">{initiative >= 0 ? `+${initiative}` : initiative}</p>
-              <p className="text-xs text-gray-500 mt-0.5">DEX mod</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                DEX{featInitBonus !== 0 ? ` ${featInitBonus >= 0 ? '+' : ''}${featInitBonus} feat` : ''}
+              </p>
             </div>
             <div className="bg-gray-800 rounded-xl p-3 text-center">
               <p className="text-xs text-gray-400 mb-1">Prof. Bonus</p>
@@ -517,7 +690,16 @@ export default function StatsPage() {
             <div className="bg-gray-800 rounded-xl p-3 text-center">
               <p className="text-xs text-gray-400 mb-1">Passive Perception</p>
               <p className="text-xl font-bold">{passivePerception}</p>
-              <p className="text-xs text-gray-500 mt-0.5">10 + WIS</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                10 + WIS{featPassivePercBonus !== 0 ? ` +${featPassivePercBonus} feat` : ''}
+              </p>
+            </div>
+            <div className="bg-gray-800 rounded-xl p-3 text-center">
+              <p className="text-xs text-gray-400 mb-1">Speed</p>
+              <p className="text-xl font-bold">{(race?.speed ?? 30) + movementBonus} ft</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {race?.speed ?? 30}{movementBonus > 0 ? ` +${movementBonus} class` : ''}
+              </p>
             </div>
             {spellSaveDC !== null && (
               <>
@@ -535,6 +717,107 @@ export default function StatsPage() {
             )}
           </div>
         </section>
+
+        {/* ── Active Feats summary ─────────────────────────────────── */}
+        {charFeats.length > 0 && (
+          <section className="bg-gray-900 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Active Feats</h2>
+              <button
+                onClick={() => navigate(`/characters/${id}/feats`)}
+                className="text-xs text-indigo-400 hover:text-indigo-300"
+              >
+                Manage →
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {charFeats.map(cf => (
+                <span key={cf.id} className="text-xs bg-gray-800 text-gray-300 px-2 py-0.5 rounded-full">
+                  🎯 {cf.name}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Class Features ───────────────────────────────────────── */}
+        {classFeatures.length > 0 && (
+          <section className="bg-gray-900 rounded-2xl p-4">
+            <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-3">Class Features</h2>
+
+            {/* Mechanical callouts */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {sneakAttackDice > 0 && (
+                <div className="bg-red-900/40 border border-red-700/50 rounded-lg px-3 py-1.5 text-center">
+                  <p className="text-xs text-red-400">Sneak Attack</p>
+                  <p className="text-sm font-bold text-red-300">{sneakAttackDice}d6</p>
+                </div>
+              )}
+              {martialArtsDie > 0 && (
+                <div className="bg-amber-900/40 border border-amber-700/50 rounded-lg px-3 py-1.5 text-center">
+                  <p className="text-xs text-amber-400">Martial Arts</p>
+                  <p className="text-sm font-bold text-amber-300">d{martialArtsDie}</p>
+                </div>
+              )}
+              {movementBonus > 0 && (
+                <div className="bg-green-900/40 border border-green-700/50 rounded-lg px-3 py-1.5 text-center">
+                  <p className="text-xs text-green-400">Speed Bonus</p>
+                  <p className="text-sm font-bold text-green-300">+{movementBonus} ft</p>
+                </div>
+              )}
+              {savingThrowChaBonus !== 0 && (
+                <div className="bg-indigo-900/40 border border-indigo-700/50 rounded-lg px-3 py-1.5 text-center">
+                  <p className="text-xs text-indigo-400">Aura of Protection</p>
+                  <p className="text-sm font-bold text-indigo-300">+{savingThrowChaBonus} saves</p>
+                </div>
+              )}
+            </div>
+
+            {/* Feature list */}
+            <div className="space-y-1.5">
+              {classFeatures.map(f => (
+                <details key={f.index} className="group">
+                  <summary className="flex items-center gap-2 cursor-pointer list-none px-2 py-1.5 rounded-lg hover:bg-gray-800 transition-colors">
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${f.is_passive ? 'bg-blue-900/50 text-blue-300' : 'bg-gray-700 text-gray-400'}`}>
+                      {f.is_passive ? 'Passive' : 'Active'}
+                    </span>
+                    <span className="flex-1 text-sm text-gray-200">{f.name}</span>
+                    <span className="text-xs text-gray-500">Lv {f.min_level}</span>
+                    <span className="text-gray-500 group-open:rotate-90 transition-transform text-xs">▶</span>
+                  </summary>
+                  <div className="mt-1 px-2 pb-2 space-y-1">
+                    {f.desc.map((p, i) => (
+                      <p key={i} className="text-xs text-gray-400 leading-relaxed">{p}</p>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Race Traits ───────────────────────────────────────────── */}
+        {race && race.traits.length > 0 && (
+          <section className="bg-gray-900 rounded-2xl p-4">
+            <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-3">
+              {race.name} Traits
+            </h2>
+            <div className="space-y-1.5">
+              {race.traits.map(trait => (
+                <details key={trait.name} className="group">
+                  <summary className="flex items-center gap-2 cursor-pointer list-none px-2 py-1.5 rounded-lg hover:bg-gray-800 transition-colors">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-900/50 text-emerald-300">Racial</span>
+                    <span className="flex-1 text-sm text-gray-200">{trait.name}</span>
+                    <span className="text-gray-500 group-open:rotate-90 transition-transform text-xs">▶</span>
+                  </summary>
+                  <div className="mt-1 px-2 pb-2">
+                    <p className="text-xs text-gray-400 leading-relaxed">{trait.desc}</p>
+                  </div>
+                </details>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── Wild Shape (Druid level 2+) ───────────────────────── */}
         {resolveClassName(character.characterClass) === 'druid' && character.level < 2 && (
@@ -873,29 +1156,42 @@ export default function StatsPage() {
             <section className="bg-gray-900 rounded-2xl p-3">
               <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Ability Scores</h2>
               <div className="grid grid-cols-2 gap-1.5">
-                {ABILITY_KEYS.map(key => (
-                  <div key={key} className="bg-gray-800 rounded-xl p-2 text-center">
-                    <p className="text-[10px] text-gray-400 mb-0.5">{ABILITY_SHORT[key]}</p>
-                    <EditableNumber
-                      value={d.abilityScores[key] ?? 10}
-                      onChange={v => patch({ abilityScores: { ...d.abilityScores, [key]: v } })}
-                      min={1} max={30}
-                      label={key}
-                      className="text-sm font-bold"
-                    />
-                    <p className="text-[10px] text-indigo-400">{mod(d.abilityScores[key] ?? 10)}</p>
-                  </div>
-                ))}
+                {ABILITY_KEYS.map(key => {
+                  const racialBonus = race?.modifiers
+                    .filter(m => m.type === 'ability_score' && m.ability?.toLowerCase() === key.toLowerCase())
+                    .reduce((sum, m) => sum + m.value, 0) ?? 0
+                  return (
+                    <div key={key} className="bg-gray-800 rounded-xl p-2 text-center relative">
+                      <p className="text-[10px] text-gray-400 mb-0.5">{ABILITY_SHORT[key]}</p>
+                      <EditableNumber
+                        value={d.abilityScores[key] ?? 10}
+                        onChange={v => patch({ abilityScores: { ...d.abilityScores, [key]: v } })}
+                        min={1} max={30}
+                        label={key}
+                        className="text-sm font-bold"
+                      />
+                      <p className="text-[10px] text-indigo-400">{mod(d.abilityScores[key] ?? 10)}</p>
+                      {racialBonus > 0 && (
+                        <span className="absolute top-1 right-1 text-[9px] text-emerald-400 font-bold leading-none">+{racialBonus}</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </section>
 
             {/* Saving Throws */}
             <section className="bg-gray-900 rounded-2xl p-3">
-              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Saves</h2>
+              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">
+                Saves
+                {savingThrowChaBonus !== 0 && (
+                  <span className="ml-1 text-indigo-400 normal-case">+{savingThrowChaBonus} CHA (aura)</span>
+                )}
+              </h2>
               <div className="space-y-0.5">
                 {saveList.map(({ name, ability }) => {
                   const isProficient = d.savingThrowProficiencies.includes(name)
-                  const total = abilityMod(ability) + (isProficient ? profBonusNum : 0)
+                  const total = abilityMod(ability) + (isProficient ? profBonusNum : 0) + savingThrowChaBonus
                   return (
                     <button
                       key={name}

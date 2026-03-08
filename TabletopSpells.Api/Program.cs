@@ -75,6 +75,10 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddSingleton<SpellService>();
 builder.Services.AddSingleton<BeastService>();
 builder.Services.AddSingleton<ItemService>();
+builder.Services.AddSingleton<MonsterService>();
+builder.Services.AddSingleton<FeatService>();
+builder.Services.AddSingleton<ClassFeatureService>();
+builder.Services.AddSingleton<RaceService>();
 builder.Services.AddSingleton<EncryptionService>();
 
 // SignalR
@@ -95,6 +99,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
+app.MapHub<EncounterHub>("/hubs/encounter");
 
 // Run migrations on every startup (safe — EF skips already-applied migrations)
 using (var scope = app.Services.CreateScope())

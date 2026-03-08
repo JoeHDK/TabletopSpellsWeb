@@ -310,6 +310,9 @@ namespace TabletopSpells.Api.Migrations
                     b.Property<bool>("IsDivineCaster")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsNpc")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Level")
                         .HasColumnType("integer");
 
@@ -322,6 +325,9 @@ namespace TabletopSpells.Api.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Race")
                         .HasColumnType("text");
 
                     b.Property<string>("SavingThrowProficienciesJson")
@@ -367,6 +373,35 @@ namespace TabletopSpells.Api.Migrations
                     b.ToTable("Characters");
                 });
 
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.CharacterFeatEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CharacterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FeatIndex")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("TakenAtLevel")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CharacterId");
+
+                    b.ToTable("CharacterFeats");
+                });
+
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.CharacterInventoryItemEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -378,6 +413,9 @@ namespace TabletopSpells.Api.Migrations
 
                     b.Property<DateTime>("AcquiredAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ArmorType")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("CharacterId")
                         .HasColumnType("uuid");
@@ -606,6 +644,161 @@ namespace TabletopSpells.Api.Migrations
                     b.ToTable("CustomItems");
                 });
 
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.EncounterCreatureEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ArmorClass")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("CharacterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CurrentHp")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("EncounterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Initiative")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsPlayerCharacter")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MaxHp")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MonsterName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EncounterId");
+
+                    b.ToTable("EncounterCreatures");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.EncounterEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveCreatureIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GameRoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("RoundNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameRoomId");
+
+                    b.ToTable("Encounters");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.EncounterTemplateCreatureEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ArmorClass")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("MaxHp")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MonsterName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("EncounterTemplateCreatures");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.EncounterTemplateEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GameRoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("SessionNoteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameRoomId");
+
+                    b.HasIndex("SessionNoteId");
+
+                    b.ToTable("EncounterTemplates");
+                });
+
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.FriendshipEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -768,6 +961,40 @@ namespace TabletopSpells.Api.Migrations
                     b.ToTable("PreparedSpells");
                 });
 
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.SessionNoteEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GameRoomId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameRoomId");
+
+                    b.ToTable("SessionNotes");
+                });
+
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.SpellCastLogEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -916,6 +1143,17 @@ namespace TabletopSpells.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.CharacterFeatEntity", b =>
+                {
+                    b.HasOne("TabletopSpells.Api.Data.Entities.CharacterEntity", "Character")
+                        .WithMany()
+                        .HasForeignKey("CharacterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Character");
+                });
+
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.CharacterInventoryItemEntity", b =>
                 {
                     b.HasOne("TabletopSpells.Api.Data.Entities.CharacterEntity", "Character")
@@ -1019,6 +1257,57 @@ namespace TabletopSpells.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.EncounterCreatureEntity", b =>
+                {
+                    b.HasOne("TabletopSpells.Api.Data.Entities.EncounterEntity", "Encounter")
+                        .WithMany("Creatures")
+                        .HasForeignKey("EncounterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Encounter");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.EncounterEntity", b =>
+                {
+                    b.HasOne("TabletopSpells.Api.Data.Entities.GameRoomEntity", "GameRoom")
+                        .WithMany()
+                        .HasForeignKey("GameRoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GameRoom");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.EncounterTemplateCreatureEntity", b =>
+                {
+                    b.HasOne("TabletopSpells.Api.Data.Entities.EncounterTemplateEntity", "Template")
+                        .WithMany("Creatures")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.EncounterTemplateEntity", b =>
+                {
+                    b.HasOne("TabletopSpells.Api.Data.Entities.GameRoomEntity", "GameRoom")
+                        .WithMany()
+                        .HasForeignKey("GameRoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TabletopSpells.Api.Data.Entities.SessionNoteEntity", "Session")
+                        .WithMany()
+                        .HasForeignKey("SessionNoteId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("GameRoom");
+
+                    b.Navigation("Session");
+                });
+
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.FriendshipEntity", b =>
                 {
                     b.HasOne("TabletopSpells.Api.Data.Entities.AppUser", "Addressee")
@@ -1090,6 +1379,17 @@ namespace TabletopSpells.Api.Migrations
                     b.Navigation("Character");
                 });
 
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.SessionNoteEntity", b =>
+                {
+                    b.HasOne("TabletopSpells.Api.Data.Entities.GameRoomEntity", "GameRoom")
+                        .WithMany()
+                        .HasForeignKey("GameRoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GameRoom");
+                });
+
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.SpellCastLogEntity", b =>
                 {
                     b.HasOne("TabletopSpells.Api.Data.Entities.CharacterEntity", "Character")
@@ -1141,6 +1441,16 @@ namespace TabletopSpells.Api.Migrations
                     b.Navigation("Messages");
 
                     b.Navigation("Participants");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.EncounterEntity", b =>
+                {
+                    b.Navigation("Creatures");
+                });
+
+            modelBuilder.Entity("TabletopSpells.Api.Data.Entities.EncounterTemplateEntity", b =>
+                {
+                    b.Navigation("Creatures");
                 });
 
             modelBuilder.Entity("TabletopSpells.Api.Data.Entities.GameRoomEntity", b =>

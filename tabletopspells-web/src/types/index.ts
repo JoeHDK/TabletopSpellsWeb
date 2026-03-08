@@ -27,10 +27,12 @@ export interface Character {
   baseArmorClass: number
   gameRoomId?: string
   avatarBase64?: string
+  isNpc: boolean
   wildShapeUsesRemaining: number
   wildShapeBeastName: string | null
   wildShapeBeastCurrentHp: number | null
   wildShapeBeastMaxHp: number | null
+  race?: string
 }
 
 export interface CreateCharacterRequest {
@@ -40,12 +42,15 @@ export interface CreateCharacterRequest {
   gameType: Game
   level?: number
   abilityScores?: Record<string, number>
+  isNpc?: boolean
+  race?: string
 }
 
 export interface UpdateCharacterRequest {
   name?: string
   level?: number
   subclass?: string
+  race?: string
   abilityScores?: Record<string, number>
   maxSpellsPerDay?: Record<number, number>
   spellsUsedToday?: Record<number, number>
@@ -219,6 +224,7 @@ export interface LinkCharacterRequest {
 
 export type InventorySlot = 'Armor' | 'Weapon' | 'Offhand' | 'Accessory'
 export type ItemSource = 'SRD' | 'Custom'
+export type ArmorType = 'None' | 'Light' | 'Medium' | 'Heavy'
 
 export interface InventoryItem {
   id: string
@@ -230,6 +236,7 @@ export interface InventoryItem {
   isEquipped: boolean
   equippedSlot?: InventorySlot
   acBonus?: number
+  armorType?: ArmorType
   damageOverride?: string
   notes?: string
   grantedByUsername?: string
@@ -243,6 +250,7 @@ export interface AddInventoryItemRequest {
   name: string
   quantity: number
   acBonus?: number
+  armorType?: ArmorType
   damageOverride?: string
   notes?: string
 }
@@ -250,6 +258,7 @@ export interface AddInventoryItemRequest {
 export interface EquipItemRequest {
   isEquipped: boolean
   slot?: InventorySlot
+  armorType?: ArmorType
 }
 
 export interface PartyMember {
@@ -416,4 +425,197 @@ export interface Beast {
   climbSpeed: number
   source: string
   attacks: { name: string; dice: string; type: string; stat: 'str' | 'dex' }[]
+}
+
+// ── Monsters ──────────────────────────────────────────────────────────────────
+
+export interface MonsterTrait {
+  name: string
+  description: string
+}
+
+export interface MonsterSummary {
+  name: string
+  type: string
+  subtype: string | null
+  cr: number
+  size: string
+  ac: number
+  hp: number
+  source: string
+}
+
+export interface Monster extends MonsterSummary {
+  acNote: string | null
+  hitDice: string
+  str: number
+  dex: number
+  con: number
+  int: number
+  wis: number
+  cha: number
+  walkSpeed: number
+  flySpeed: number
+  swimSpeed: number
+  climbSpeed: number
+  burrowSpeed: number
+  savingThrows: string[]
+  skills: string[]
+  damageImmunities: string[]
+  damageResistances: string[]
+  damageVulnerabilities: string[]
+  conditionImmunities: string[]
+  senses: string
+  languages: string
+  traits: MonsterTrait[]
+  actions: MonsterTrait[]
+  legendaryActions: MonsterTrait[]
+}
+
+// ── Encounters ────────────────────────────────────────────────────────────────
+
+export interface EncounterCreature {
+  id: string
+  displayName: string
+  monsterName: string | null
+  maxHp: number
+  currentHp: number
+  armorClass: number
+  initiative: number | null
+  sortOrder: number
+  isPlayerCharacter: boolean
+  characterId: string | null
+  notes: string | null
+}
+
+export interface Encounter {
+  id: string
+  gameRoomId: string
+  name: string | null
+  isActive: boolean
+  roundNumber: number
+  activeCreatureIndex: number
+  createdAt: string
+  updatedAt: string
+  creatures: EncounterCreature[]
+}
+
+// ── Session Planner ───────────────────────────────────────────────────────────
+
+export interface SessionNote {
+  id: string
+  gameRoomId: string
+  title: string
+  content: string
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EncounterTemplateCreature {
+  id: string
+  displayName: string
+  monsterName: string | null
+  maxHp: number
+  armorClass: number
+  sortOrder: number
+  notes: string | null
+}
+
+export interface EncounterTemplate {
+  id: string
+  gameRoomId: string
+  name: string
+  sessionId: string | null
+  createdAt: string
+  updatedAt: string
+  creatures: EncounterTemplateCreature[]
+}
+
+// ── Feats ─────────────────────────────────────────────────────────────────────
+
+export type FeatModifierType =
+  | 'initiative' | 'ac' | 'hp_per_level' | 'passive_perception'
+  | 'passive_investigation' | 'movement' | 'medium_armor_max_dex' | 'damage_reduction'
+  | 'unarmored_ac_base' | 'saving_throw_cha_mod' | 'sneak_attack_dice' | 'martial_arts_die'
+
+export interface FeatModifier {
+  type: FeatModifierType
+  value: number
+  condition?: string
+  damageTypes?: string[]
+}
+
+export interface FeatPrerequisite {
+  type: string
+  ability?: string
+  minimum_score?: number
+  proficiency?: string
+}
+
+export interface Feat {
+  index: string
+  name: string
+  desc: string[]
+  prerequisites: FeatPrerequisite[]
+  modifiers: FeatModifier[]
+}
+
+export interface CharacterFeat {
+  id: string
+  featIndex: string
+  name: string
+  desc: string[]
+  prerequisites: FeatPrerequisite[]
+  modifiers: FeatModifier[]
+  notes?: string
+  takenAtLevel?: number
+  createdAt: string
+}
+
+export interface AddCharacterFeatRequest {
+  featIndex: string
+  notes?: string
+  takenAtLevel?: number
+}
+
+export interface ClassFeatureModifier {
+  type: FeatModifierType
+  value: number
+  condition?: string
+}
+
+export interface ClassFeature {
+  index: string
+  name: string
+  class: string
+  subclass: string | null
+  min_level: number
+  desc: string[]
+  is_passive: boolean
+  modifiers: ClassFeatureModifier[]
+}
+
+
+export interface RaceModifier {
+  type: 'ability_score' | 'hp_per_level' | 'passive_perception' | 'movement' | 'damage_resistance' | 'darkvision' | 'ability_score_choice'
+  ability?: string
+  value: number
+  condition?: string
+}
+
+export interface RaceTrait {
+  name: string
+  desc: string
+}
+
+export interface Race {
+  index: string
+  name: string
+  parent_race: string | null
+  speed: number
+  size: string
+  desc: string[]
+  traits: RaceTrait[]
+  modifiers: RaceModifier[]
 }

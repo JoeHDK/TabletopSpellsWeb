@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using TabletopSpells.Api.Models.Enums;
 
 namespace TabletopSpells.Api.Data.Entities;
 
@@ -20,6 +21,7 @@ public class CharacterInventoryItemEntity
     public bool IsEquipped { get; set; }
     public InventorySlot? EquippedSlot { get; set; }
     public int? AcBonus { get; set; }
+    public ArmorType? ArmorType { get; set; }
     public string? DamageOverride { get; set; }
     public string? Notes { get; set; }
     public string? GrantedByUserId { get; set; }

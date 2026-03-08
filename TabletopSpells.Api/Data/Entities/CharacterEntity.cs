@@ -28,12 +28,14 @@ public class CharacterEntity
 
     public int MaxHp { get; set; }
     public int CurrentHp { get; set; }
-    public int BaseArmorClass { get; set; } = 10;
+    public int BaseArmorClass { get; set; } = 0;
 
     public Guid? GameRoomId { get; set; }
     [ForeignKey(nameof(GameRoomId))] public GameRoomEntity? GameRoom { get; set; }
 
     public string? AvatarBase64 { get; set; }
+    public bool IsNpc { get; set; } = false;
+    public string? Race { get; set; }
 
     // Wild Shape state (Druid only)
     public int WildShapeUsesRemaining { get; set; } = 2;

@@ -23,6 +23,12 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<ChatParticipantEntity> ChatParticipants => Set<ChatParticipantEntity>();
     public DbSet<ChatMessageEntity> ChatMessages => Set<ChatMessageEntity>();
     public DbSet<FriendshipEntity> Friendships => Set<FriendshipEntity>();
+    public DbSet<EncounterEntity> Encounters => Set<EncounterEntity>();
+    public DbSet<EncounterCreatureEntity> EncounterCreatures => Set<EncounterCreatureEntity>();
+    public DbSet<SessionNoteEntity> SessionNotes => Set<SessionNoteEntity>();
+    public DbSet<EncounterTemplateEntity> EncounterTemplates => Set<EncounterTemplateEntity>();
+    public DbSet<EncounterTemplateCreatureEntity> EncounterTemplateCreatures => Set<EncounterTemplateCreatureEntity>();
+    public DbSet<CharacterFeatEntity> CharacterFeats => Set<CharacterFeatEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -189,5 +195,42 @@ public class AppDbContext : IdentityDbContext<AppUser>
         builder.Entity<FriendshipEntity>()
             .HasIndex(f => new { f.RequesterId, f.AddresseeId })
             .IsUnique();
+
+        builder.Entity<EncounterEntity>()
+            .HasOne(e => e.GameRoom)
+            .WithMany()
+            .HasForeignKey(e => e.GameRoomId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<EncounterCreatureEntity>()
+            .HasOne(c => c.Encounter)
+            .WithMany(e => e.Creatures)
+            .HasForeignKey(c => c.EncounterId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<SessionNoteEntity>()
+            .HasOne(n => n.GameRoom)
+            .WithMany()
+            .HasForeignKey(n => n.GameRoomId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<EncounterTemplateEntity>()
+            .HasOne(t => t.GameRoom)
+            .WithMany()
+            .HasForeignKey(t => t.GameRoomId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<EncounterTemplateEntity>()
+            .HasOne(t => t.Session)
+            .WithMany()
+            .HasForeignKey(t => t.SessionNoteId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
+
+        builder.Entity<EncounterTemplateCreatureEntity>()
+            .HasOne(c => c.Template)
+            .WithMany(t => t.Creatures)
+            .HasForeignKey(c => c.TemplateId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

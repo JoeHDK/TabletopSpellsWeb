@@ -1,0 +1,283 @@
+[
+  {
+    "index": "hill-dwarf",
+    "name": "Hill Dwarf",
+    "parent_race": "dwarf",
+    "speed": 25,
+    "size": "Medium",
+    "desc": ["Bold and hardy, dwarves are known as skilled warriors, miners, and workers of stone and metal.", "Hill Dwarves have keen senses, deep intuition, and remarkable resilience."],
+    "traits": [
+      { "name": "Darkvision", "desc": "Accustomed to life underground, you have superior vision in dark and dim conditions. You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light." },
+      { "name": "Dwarven Resilience", "desc": "You have advantage on saving throws against poison, and you have resistance against poison damage." },
+      { "name": "Dwarven Combat Training", "desc": "You have proficiency with the battleaxe, handaxe, light hammer, and warhammer." },
+      { "name": "Tool Proficiency", "desc": "You gain proficiency with the artisan's tools of your choice: smith's tools, brewer's supplies, or mason's tools." },
+      { "name": "Stonecunning", "desc": "Whenever you make an Intelligence (History) check related to the origin of stonework, you are considered proficient in the History skill and add double your proficiency bonus to the check." },
+      { "name": "Dwarven Toughness", "desc": "Your hit point maximum increases by 1, and it increases by 1 every time you gain a level." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Constitution", "value": 2 },
+      { "type": "ability_score", "ability": "Wisdom", "value": 1 },
+      { "type": "hp_per_level", "value": 1 },
+      { "type": "damage_resistance", "value": 1, "condition": "poison" },
+      { "type": "darkvision", "value": 60 }
+    ]
+  },
+  {
+    "index": "mountain-dwarf",
+    "name": "Mountain Dwarf",
+    "parent_race": "dwarf",
+    "speed": 25,
+    "size": "Medium",
+    "desc": ["Bold and hardy, dwarves are known as skilled warriors, miners, and workers of stone and metal.", "Mountain Dwarves are strong and hardy, accustomed to a difficult life in rugged terrain."],
+    "traits": [
+      { "name": "Darkvision", "desc": "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+      { "name": "Dwarven Resilience", "desc": "You have advantage on saving throws against poison, and resistance against poison damage." },
+      { "name": "Dwarven Combat Training", "desc": "You have proficiency with the battleaxe, handaxe, light hammer, and warhammer." },
+      { "name": "Tool Proficiency", "desc": "You gain proficiency with the artisan's tools of your choice." },
+      { "name": "Stonecunning", "desc": "Double proficiency bonus on Intelligence (History) checks related to stonework." },
+      { "name": "Dwarven Armor Training", "desc": "You have proficiency with light and medium armor." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Constitution", "value": 2 },
+      { "type": "ability_score", "ability": "Strength", "value": 2 },
+      { "type": "damage_resistance", "value": 1, "condition": "poison" },
+      { "type": "darkvision", "value": 60 }
+    ]
+  },
+  {
+    "index": "high-elf",
+    "name": "High Elf",
+    "parent_race": "elf",
+    "speed": 30,
+    "size": "Medium",
+    "desc": ["Elves are a magical people of otherworldly grace, living in the world but not entirely part of it.", "High Elves have a keen mind and a mastery over at least the basics of magic."],
+    "traits": [
+      { "name": "Darkvision", "desc": "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+      { "name": "Keen Senses", "desc": "You have proficiency in the Perception skill." },
+      { "name": "Fey Ancestry", "desc": "You have advantage on saving throws against being charmed, and magic can't put you to sleep." },
+      { "name": "Trance", "desc": "Elves don't need to sleep. Instead, they meditate deeply, remaining semiconscious, for 4 hours a day." },
+      { "name": "Elf Weapon Training", "desc": "You have proficiency with the longsword, shortsword, shortbow, and longbow." },
+      { "name": "Cantrip", "desc": "You know one cantrip of your choice from the wizard spell list. Intelligence is your spellcasting ability for it." },
+      { "name": "Extra Language", "desc": "You can speak, read, and write one extra language of your choice." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Dexterity", "value": 2 },
+      { "type": "ability_score", "ability": "Intelligence", "value": 1 },
+      { "type": "passive_perception", "value": 0 },
+      { "type": "darkvision", "value": 60 }
+    ]
+  },
+  {
+    "index": "wood-elf",
+    "name": "Wood Elf",
+    "parent_race": "elf",
+    "speed": 35,
+    "size": "Medium",
+    "desc": ["Elves are a magical people of otherworldly grace.", "Wood Elves have an instinctive connection with nature and an innate speed and stealth."],
+    "traits": [
+      { "name": "Darkvision", "desc": "You can see in dim light within 60 feet as if bright light, and darkness as if dim light." },
+      { "name": "Keen Senses", "desc": "You have proficiency in the Perception skill." },
+      { "name": "Fey Ancestry", "desc": "Advantage on saves against charmed; magic can't put you to sleep." },
+      { "name": "Trance", "desc": "You meditate 4 hours instead of sleeping." },
+      { "name": "Elf Weapon Training", "desc": "Proficiency with longsword, shortsword, shortbow, and longbow." },
+      { "name": "Fleet of Foot", "desc": "Your base walking speed increases to 35 feet." },
+      { "name": "Mask of the Wild", "desc": "You can attempt to hide even when you are only lightly obscured by foliage, heavy rain, falling snow, mist, and other natural phenomena." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Dexterity", "value": 2 },
+      { "type": "ability_score", "ability": "Wisdom", "value": 1 },
+      { "type": "passive_perception", "value": 0 },
+      { "type": "darkvision", "value": 60 }
+    ]
+  },
+  {
+    "index": "dark-elf",
+    "name": "Dark Elf (Drow)",
+    "parent_race": "elf",
+    "speed": 30,
+    "size": "Medium",
+    "desc": ["Drow are descended from an ancient schism among the elves. Driven underground by their kin, they have adapted to a sunless realm.", "Drow are graceful but fragile, and they wield potent innate magic."],
+    "traits": [
+      { "name": "Superior Darkvision", "desc": "Your darkvision has a range of 120 feet." },
+      { "name": "Keen Senses", "desc": "Proficiency in the Perception skill." },
+      { "name": "Fey Ancestry", "desc": "Advantage on saves against charmed; magic can't put you to sleep." },
+      { "name": "Trance", "desc": "You meditate 4 hours instead of sleeping." },
+      { "name": "Drow Weapon Training", "desc": "Proficiency with rapiers, shortswords, and hand crossbows." },
+      { "name": "Drow Magic", "desc": "You know the Dancing Lights cantrip. At 3rd level, you can cast Faerie Fire once per long rest. At 5th level, you can cast Darkness once per long rest. Charisma is your spellcasting ability." },
+      { "name": "Sunlight Sensitivity", "desc": "You have disadvantage on attack rolls and Wisdom (Perception) checks that rely on sight when you, the target, or what you're looking for is in direct sunlight." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Dexterity", "value": 2 },
+      { "type": "ability_score", "ability": "Charisma", "value": 1 },
+      { "type": "passive_perception", "value": 0 },
+      { "type": "darkvision", "value": 120 }
+    ]
+  },
+  {
+    "index": "lightfoot-halfling",
+    "name": "Lightfoot Halfling",
+    "parent_race": "halfling",
+    "speed": 25,
+    "size": "Small",
+    "desc": ["Halflings are clever, capable, and resourceful survivors.", "Lightfoot Halflings are adept at concealing themselves, and they are naturally capable of moving silently."],
+    "traits": [
+      { "name": "Lucky", "desc": "When you roll a 1 on an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll." },
+      { "name": "Brave", "desc": "You have advantage on saving throws against being frightened." },
+      { "name": "Halfling Nimbleness", "desc": "You can move through the space of any creature that is of a size larger than yours." },
+      { "name": "Naturally Stealthy", "desc": "You can attempt to hide even when you are obscured only by a creature that is at least one size larger than you." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Dexterity", "value": 2 },
+      { "type": "ability_score", "ability": "Charisma", "value": 1 }
+    ]
+  },
+  {
+    "index": "stout-halfling",
+    "name": "Stout Halfling",
+    "parent_race": "halfling",
+    "speed": 25,
+    "size": "Small",
+    "desc": ["Halflings are clever, capable, and resourceful survivors.", "Stout Halflings are hardier than other halflings and share some dwarven resilience."],
+    "traits": [
+      { "name": "Lucky", "desc": "Reroll a 1 on attack rolls, ability checks, or saving throws." },
+      { "name": "Brave", "desc": "Advantage on saving throws against being frightened." },
+      { "name": "Halfling Nimbleness", "desc": "You can move through the space of any creature larger than you." },
+      { "name": "Stout Resilience", "desc": "You have advantage on saving throws against poison, and you have resistance against poison damage." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Dexterity", "value": 2 },
+      { "type": "ability_score", "ability": "Constitution", "value": 1 },
+      { "type": "damage_resistance", "value": 1, "condition": "poison" }
+    ]
+  },
+  {
+    "index": "human",
+    "name": "Human",
+    "parent_race": null,
+    "speed": 30,
+    "size": "Medium",
+    "desc": ["Humans are the most adaptable and ambitious people among the common races. Whatever drives them, humans are the innovators, the achievers, and the pioneers of the worlds."],
+    "traits": [
+      { "name": "Extra Language", "desc": "You can speak, read, and write one extra language of your choice." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Strength", "value": 1 },
+      { "type": "ability_score", "ability": "Dexterity", "value": 1 },
+      { "type": "ability_score", "ability": "Constitution", "value": 1 },
+      { "type": "ability_score", "ability": "Intelligence", "value": 1 },
+      { "type": "ability_score", "ability": "Wisdom", "value": 1 },
+      { "type": "ability_score", "ability": "Charisma", "value": 1 }
+    ]
+  },
+  {
+    "index": "dragonborn",
+    "name": "Dragonborn",
+    "parent_race": null,
+    "speed": 30,
+    "size": "Medium",
+    "desc": ["Born of dragons, as their name proclaims, the dragonborn walk proudly through a world that greets them with fearful incomprehension.", "Dragonborn breathe the element of their draconic ancestor and are resistant to its damage type."],
+    "traits": [
+      { "name": "Draconic Ancestry", "desc": "You have draconic ancestry. Choose a type of dragon. Your breath weapon and damage resistance are determined by the dragon type." },
+      { "name": "Breath Weapon", "desc": "You can use your action to exhale destructive energy. Your draconic ancestry determines the size, shape, and damage type of the exhalation. When you use your breath weapon, each creature in the area must make a saving throw. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level. After you use your breath weapon, you can't use it again until you complete a short or long rest." },
+      { "name": "Damage Resistance", "desc": "You have resistance to the damage type associated with your draconic ancestry." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Strength", "value": 2 },
+      { "type": "ability_score", "ability": "Charisma", "value": 1 }
+    ]
+  },
+  {
+    "index": "forest-gnome",
+    "name": "Forest Gnome",
+    "parent_race": "gnome",
+    "speed": 25,
+    "size": "Small",
+    "desc": ["A gnome's energy and enthusiasm for living shines through every inch of his or her tiny body.", "Forest Gnomes are naturally talented at illusions and have a close bond with small animals."],
+    "traits": [
+      { "name": "Darkvision", "desc": "You can see in dim light within 60 feet as if bright light, darkness as if dim light." },
+      { "name": "Gnome Cunning", "desc": "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." },
+      { "name": "Natural Illusionist", "desc": "You know the Minor Illusion cantrip. Intelligence is your spellcasting ability for it." },
+      { "name": "Speak with Small Beasts", "desc": "Through sounds and gestures, you can communicate simple ideas with Small or smaller beasts." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Intelligence", "value": 2 },
+      { "type": "ability_score", "ability": "Dexterity", "value": 1 },
+      { "type": "darkvision", "value": 60 }
+    ]
+  },
+  {
+    "index": "rock-gnome",
+    "name": "Rock Gnome",
+    "parent_race": "gnome",
+    "speed": 25,
+    "size": "Small",
+    "desc": ["A gnome's energy and enthusiasm for living shines through every inch of his or her tiny body.", "Rock Gnomes have a natural inventiveness and hardiness beyond that of other gnomes."],
+    "traits": [
+      { "name": "Darkvision", "desc": "You can see in dim light within 60 feet as if bright light, darkness as if dim light." },
+      { "name": "Gnome Cunning", "desc": "Advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." },
+      { "name": "Artificer's Lore", "desc": "Add twice your proficiency bonus on Intelligence (History) checks related to magic items, alchemical objects, or technological devices." },
+      { "name": "Tinker", "desc": "You have proficiency with artisan's tools (tinker's tools). Using those tools, you can spend 1 hour and 10 gp worth of materials to construct a Tiny clockwork device (AC 5, 1 hp)." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Intelligence", "value": 2 },
+      { "type": "ability_score", "ability": "Constitution", "value": 1 },
+      { "type": "darkvision", "value": 60 }
+    ]
+  },
+  {
+    "index": "half-elf",
+    "name": "Half-Elf",
+    "parent_race": null,
+    "speed": 30,
+    "size": "Medium",
+    "desc": ["Walking in two worlds but truly belonging to neither, half-elves combine what some say are the best qualities of their elf and human parents.", "Half-Elves have versatile ability bonuses, darkvision, and two skill proficiencies."],
+    "traits": [
+      { "name": "Darkvision", "desc": "You can see in dim light within 60 feet as if bright light, and in darkness as if dim light." },
+      { "name": "Fey Ancestry", "desc": "Advantage on saving throws against being charmed, and magic can't put you to sleep." },
+      { "name": "Skill Versatility", "desc": "You gain proficiency in two skills of your choice." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Charisma", "value": 2 },
+      { "type": "ability_score_choice", "ability": "any", "value": 1, "condition": "choose_2" },
+      { "type": "darkvision", "value": 60 }
+    ]
+  },
+  {
+    "index": "half-orc",
+    "name": "Half-Orc",
+    "parent_race": null,
+    "speed": 30,
+    "size": "Medium",
+    "desc": ["Whether united under the leadership of a mighty warlock or having fought to a standstill after years of conflict, orc and human communities that have opted for peace often forge lasting alliance.", "Half-Orcs' orcish blood lends them outsized strength and endurance."],
+    "traits": [
+      { "name": "Darkvision", "desc": "You can see in dim light within 60 feet as if bright light, and in darkness as if dim light." },
+      { "name": "Menacing", "desc": "You gain proficiency in the Intimidation skill." },
+      { "name": "Relentless Endurance", "desc": "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. You can't use this feature again until you finish a long rest." },
+      { "name": "Savage Attacks", "desc": "When you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage of the critical hit." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Strength", "value": 2 },
+      { "type": "ability_score", "ability": "Constitution", "value": 1 },
+      { "type": "darkvision", "value": 60 }
+    ]
+  },
+  {
+    "index": "tiefling",
+    "name": "Tiefling",
+    "parent_race": null,
+    "speed": 30,
+    "size": "Medium",
+    "desc": ["To be greeted with stares and whispers, to suffer violence and insult on the street, to see mistrust and fear in every eye — this is the lot of the tiefling.", "Tieflings are derived from human bloodlines, and in the broadest possible sense, they still look human. However, their infernal heritage has left a clear imprint on their appearance."],
+    "traits": [
+      { "name": "Darkvision", "desc": "You can see in dim light within 60 feet as if bright light, and in darkness as if dim light." },
+      { "name": "Hellish Resistance", "desc": "You have resistance to fire damage." },
+      { "name": "Infernal Legacy", "desc": "You know the Thaumaturgy cantrip. When you reach 3rd level, you can cast the Hellish Rebuke spell as a 2nd-level spell once with this trait and regain the ability to do so when you finish a long rest. When you reach 5th level, you can cast the Darkness spell once with this trait. Charisma is your spellcasting ability for these spells." }
+    ],
+    "modifiers": [
+      { "type": "ability_score", "ability": "Intelligence", "value": 1 },
+      { "type": "ability_score", "ability": "Charisma", "value": 2 },
+      { "type": "damage_resistance", "value": 1, "condition": "fire" },
+      { "type": "darkvision", "value": 60 }
+    ]
+  }
+]

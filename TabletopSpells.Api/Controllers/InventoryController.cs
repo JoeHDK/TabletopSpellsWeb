@@ -46,6 +46,7 @@ public class InventoryController : ControllerBase
             Name = req.Name,
             Quantity = req.Quantity,
             AcBonus = req.AcBonus,
+            ArmorType = req.ArmorType,
             DamageOverride = req.DamageOverride,
             Notes = req.Notes,
         };
@@ -66,6 +67,7 @@ public class InventoryController : ControllerBase
 
         item.IsEquipped = req.IsEquipped;
         item.EquippedSlot = req.IsEquipped ? req.Slot : null;
+        if (req.ArmorType.HasValue) item.ArmorType = req.ArmorType.Value;
         await _db.SaveChangesAsync();
         return Ok(ToDto(item));
     }
@@ -134,6 +136,7 @@ public class InventoryController : ControllerBase
         IsEquipped = e.IsEquipped,
         EquippedSlot = e.EquippedSlot?.ToString(),
         AcBonus = e.AcBonus,
+        ArmorType = e.ArmorType?.ToString(),
         DamageOverride = e.DamageOverride,
         Notes = e.Notes,
         GrantedByUsername = e.GrantedBy?.UserName,

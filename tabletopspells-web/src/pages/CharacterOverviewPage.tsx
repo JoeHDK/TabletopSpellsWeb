@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
+import { racesApi } from '../api/races'
 import { isPreparingCaster } from '../utils/spellUtils'
 
 export default function CharacterOverviewPage() {
@@ -13,6 +14,12 @@ export default function CharacterOverviewPage() {
     enabled: !!id,
   })
 
+  const { data: race } = useQuery({
+    queryKey: ['race', character?.race],
+    queryFn: () => racesApi.getOne(character!.race!),
+    enabled: !!character?.race,
+  })
+
   if (isLoading) return <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">Loading…</div>
   if (!character) return <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">Not found</div>
 
@@ -23,6 +30,7 @@ export default function CharacterOverviewPage() {
         { label: '📜 Log', path: 'spell-log' },
         { label: '📊 Stats', path: 'stats' },
         { label: '🎒 Inventory', path: 'inventory' },
+        { label: '🎯 Feats', path: 'feats' },
       ]
     : [
         { label: '📖 Spell List', path: 'spells' },
@@ -32,6 +40,7 @@ export default function CharacterOverviewPage() {
         { label: '📜 Log', path: 'spell-log' },
         { label: '📊 Stats', path: 'stats' },
         { label: '🎒 Inventory', path: 'inventory' },
+        { label: '🎯 Feats', path: 'feats' },
       ]
 
   return (
@@ -40,7 +49,9 @@ export default function CharacterOverviewPage() {
         <button onClick={() => navigate('/characters')} aria-label="Go back" className="text-gray-400 hover:text-white">← Back</button>
         <div>
           <h1 className="text-xl font-bold">{character.name}</h1>
-          <p className="text-sm text-gray-400">{character.characterClass} • Level {character.level}</p>
+          <p className="text-sm text-gray-400">
+            {race ? `${race.name} ` : ''}{character.characterClass} • Level {character.level}
+          </p>
         </div>
       </header>
 

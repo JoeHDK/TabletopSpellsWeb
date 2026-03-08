@@ -25,10 +25,12 @@ public class CharacterDto
     public int BaseArmorClass { get; set; }
     public Guid? GameRoomId { get; set; }
     public string? AvatarBase64 { get; set; }
+    public bool IsNpc { get; set; }
     public int WildShapeUsesRemaining { get; set; }
     public string? WildShapeBeastName { get; set; }
     public int? WildShapeBeastCurrentHp { get; set; }
     public int? WildShapeBeastMaxHp { get; set; }
+    public string? Race { get; set; }
 }
 
 public class CreateCharacterRequest
@@ -41,6 +43,8 @@ public class CreateCharacterRequest
     [Range(1, 20)]
     public int Level { get; set; } = 1;
     public Dictionary<string, int>? AbilityScores { get; set; }
+    public bool IsNpc { get; set; } = false;
+    public string? Race { get; set; }
 }
 
 public class UpdateCharacterRequest
@@ -57,6 +61,7 @@ public class UpdateCharacterRequest
     public int? BaseArmorClass { get; set; }
     public List<string>? SavingThrowProficiencies { get; set; }
     public List<string>? SkillProficiencies { get; set; }
+    public string? Race { get; set; }
 }
 
 public class UpdateHpRequest

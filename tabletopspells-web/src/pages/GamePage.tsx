@@ -282,6 +282,36 @@ export default function GamePage() {
               </Link>
             </section>
 
+            {/* Combat Tracker link */}
+            <section>
+              <Link
+                to={`/games/${id}/combat`}
+                className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
+              >
+                <span className="text-2xl">⚔️</span>
+                <div>
+                  <p className="font-medium">Combat Tracker</p>
+                  <p className="text-xs text-gray-400">Initiative, HP, real-time encounter management</p>
+                </div>
+                <span className="ml-auto text-gray-500">→</span>
+              </Link>
+            </section>
+
+            {/* Session Planner link */}
+            <section>
+              <Link
+                to={`/games/${id}/planner`}
+                className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
+              >
+                <span className="text-2xl">📋</span>
+                <div>
+                  <p className="font-medium">Session Planner</p>
+                  <p className="text-xs text-gray-400">Story hooks, pre-built encounter drafts</p>
+                </div>
+                <span className="ml-auto text-gray-500">→</span>
+              </Link>
+            </section>
+
             {/* Give Item */}
             <section className="space-y-2">
               <div className="flex items-center justify-between">
