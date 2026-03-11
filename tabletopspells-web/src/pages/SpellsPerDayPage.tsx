@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { spellsPerDayApi } from '../api/spells'
 import { charactersApi } from '../api/characters'
+import { classResourcesApi } from '../api/classResources'
 import EditableNumber from '../components/EditableNumber'
 
 export default function SpellsPerDayPage() {
@@ -29,17 +30,21 @@ export default function SpellsPerDayPage() {
   const resetMutation = useMutation({
     mutationFn: async () => {
       const maxSlotMap = character?.maxSpellsPerDay ?? {}
-      await Promise.all(
-        Object.keys(maxSlotMap).map((lvl) =>
+      await Promise.all([
+        ...Object.keys(maxSlotMap).map((lvl) =>
           spellsPerDayApi.upsert(id!, Number(lvl), {
             spellLevel: Number(lvl),
             maxSlots: maxSlotMap[Number(lvl)],
             usedSlots: 0,
           })
-        )
-      )
+        ),
+        classResourcesApi.longRest(id!),
+      ])
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['spellsPerDay', id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['spellsPerDay', id] })
+      qc.invalidateQueries({ queryKey: ['classResources', id] })
+    },
   })
 
   const maxSlotMap = character?.maxSpellsPerDay ?? {}

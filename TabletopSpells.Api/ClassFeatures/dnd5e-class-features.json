@@ -11,7 +11,8 @@
       "Your rage lasts for 1 minute. It ends early if you are knocked unconscious or if your turn ends and you haven't attacked a hostile creature since your last turn or taken damage since then."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "rage"
   },
   {
     "index": "barbarian-unarmored-defense",
@@ -74,7 +75,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "movement", "value": 10, "condition": "no heavy armor" }
+      {
+        "type": "movement",
+        "value": 10,
+        "condition": "no heavy armor"
+      }
     ]
   },
   {
@@ -89,7 +94,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "initiative", "value": 0, "condition": "advantage on initiative rolls" }
+      {
+        "type": "initiative",
+        "value": 0,
+        "condition": "advantage on initiative rolls"
+      }
     ]
   },
   {
@@ -216,7 +225,8 @@
       "You can use this feature a number of times equal to your Charisma modifier (minimum of once). You regain any expended uses when you finish a long rest. The die becomes a d8 at 5th level, a d10 at 10th level, and a d12 at 15th level."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "bardic_inspiration"
   },
   {
     "index": "bard-jack-of-all-trades",
@@ -266,7 +276,8 @@
       "Beginning when you reach 5th level, you regain all of your expended uses of Bardic Inspiration when you finish a short or long rest."
     ],
     "is_passive": true,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "bardic_inspiration"
   },
   {
     "index": "bard-countercharm",
@@ -383,7 +394,8 @@
       "When you use your Channel Divinity, you choose which effect to create. You must then finish a short or long rest to use your Channel Divinity again."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "channel_divinity"
   },
   {
     "index": "cleric-destroy-undead",
@@ -396,7 +408,8 @@
       "The threshold starts at CR 1/2 and increases at higher cleric levels."
     ],
     "is_passive": true,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "channel_divinity"
   },
   {
     "index": "cleric-channel-divinity-2",
@@ -408,7 +421,8 @@
       "Beginning at 6th level, you can use your Channel Divinity twice between rests."
     ],
     "is_passive": true,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "channel_divinity"
   },
   {
     "index": "cleric-divine-intervention",
@@ -422,7 +436,8 @@
       "If your deity intervenes, you can't use this feature again for 7 days. Otherwise, you can use it again after you finish a long rest."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "divine_intervention"
   },
   {
     "index": "cleric-channel-divinity-3",
@@ -434,7 +449,8 @@
       "At 18th level, you can use your Channel Divinity three times between rests."
     ],
     "is_passive": true,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "channel_divinity"
   },
   {
     "index": "druid-druidic",
@@ -560,7 +576,8 @@
       "Once you use this feature, you must finish a short or long rest before you can use it again."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "second_wind"
   },
   {
     "index": "fighter-action-surge",
@@ -573,7 +590,8 @@
       "Once you use this feature, you must finish a short or long rest before you can use it again. Starting at 17th level, you can use it twice before a rest, but only once on the same turn."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "action_surge"
   },
   {
     "index": "fighter-extra-attack",
@@ -598,7 +616,8 @@
       "You can use this feature twice between long rests starting at 13th level and three times between long rests starting at 17th level."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "indomitable"
   },
   {
     "index": "fighter-extra-attack-2",
@@ -622,7 +641,8 @@
       "At 17th level, you can use Action Surge twice before a rest, but only once on the same turn."
     ],
     "is_passive": true,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "action_surge"
   },
   {
     "index": "fighter-extra-attack-3",
@@ -722,7 +742,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "martial_arts_die", "value": 4, "condition": null }
+      {
+        "type": "martial_arts_die",
+        "value": 4,
+        "condition": null
+      }
     ]
   },
   {
@@ -736,7 +760,8 @@
       "You can spend these points to fuel various ki features. You start knowing three such features: Flurry of Blows, Patient Defense, and Step of the Wind. You regain all expended ki points when you finish a short or long rest."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "ki_points"
   },
   {
     "index": "monk-unarmored-movement-1",
@@ -749,7 +774,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "movement", "value": 10, "condition": "no armor or shield" }
+      {
+        "type": "movement",
+        "value": 10,
+        "condition": "no armor or shield"
+      }
     ]
   },
   {
@@ -800,7 +829,8 @@
       "The target must succeed on a Constitution saving throw or be stunned until the end of your next turn."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "ki_points"
   },
   {
     "index": "monk-martial-arts-2",
@@ -813,7 +843,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "martial_arts_die", "value": 6, "condition": null }
+      {
+        "type": "martial_arts_die",
+        "value": 6,
+        "condition": null
+      }
     ]
   },
   {
@@ -826,7 +860,8 @@
       "Starting at 6th level, your unarmed strikes count as magical for the purpose of overcoming resistance and immunity to nonmagical attacks and damage."
     ],
     "is_passive": true,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "ki_points"
   },
   {
     "index": "monk-evasion",
@@ -864,7 +899,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "movement", "value": 15, "condition": "no armor or shield" }
+      {
+        "type": "movement",
+        "value": 15,
+        "condition": "no armor or shield"
+      }
     ]
   },
   {
@@ -890,7 +929,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "martial_arts_die", "value": 8, "condition": null }
+      {
+        "type": "martial_arts_die",
+        "value": 8,
+        "condition": null
+      }
     ]
   },
   {
@@ -942,7 +985,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "martial_arts_die", "value": 10, "condition": null }
+      {
+        "type": "martial_arts_die",
+        "value": 10,
+        "condition": null
+      }
     ]
   },
   {
@@ -956,7 +1003,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "movement", "value": 20, "condition": "no armor or shield" }
+      {
+        "type": "movement",
+        "value": 20,
+        "condition": "no armor or shield"
+      }
     ]
   },
   {
@@ -970,7 +1021,8 @@
       "Additionally, you can spend 8 ki points to cast the astral projection spell, without needing material components."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "ki_points"
   },
   {
     "index": "monk-perfect-self",
@@ -996,7 +1048,8 @@
       "You can use this feature a number of times equal to 1 + your Charisma modifier. When you finish a long rest, you regain all expended uses."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "divine_sense"
   },
   {
     "index": "paladin-lay-on-hands",
@@ -1009,7 +1062,8 @@
       "As an action, you can touch a creature and draw power from the pool to restore a number of hit points to that creature, up to the maximum amount remaining in your pool."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "lay_on_hands"
   },
   {
     "index": "paladin-fighting-style",
@@ -1035,7 +1089,8 @@
       "The extra damage is 2d8 for a 1st-level spell slot, plus 1d8 for each spell level higher than 1st, to a maximum of 5d8. The damage increases by 1d8 if the target is an undead or a fiend, to a maximum of 6d8."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "lay_on_hands"
   },
   {
     "index": "paladin-divine-health",
@@ -1086,7 +1141,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "saving_throw_cha_mod", "value": 1, "condition": "within 10 feet" }
+      {
+        "type": "saving_throw_cha_mod",
+        "value": 1,
+        "condition": "within 10 feet"
+      }
     ]
   },
   {
@@ -1125,7 +1184,8 @@
       "You can use this feature a number of times equal to your Charisma modifier (a minimum of once). You regain expended uses when you finish a long rest."
     ],
     "is_passive": false,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "cleansing_touch"
   },
   {
     "index": "paladin-aura-improvements",
@@ -1352,7 +1412,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "sneak_attack_dice", "value": 1, "condition": null }
+      {
+        "type": "sneak_attack_dice",
+        "value": 1,
+        "condition": null
+      }
     ]
   },
   {
@@ -1391,7 +1455,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "sneak_attack_dice", "value": 2, "condition": null }
+      {
+        "type": "sneak_attack_dice",
+        "value": 2,
+        "condition": null
+      }
     ]
   },
   {
@@ -1405,7 +1473,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "sneak_attack_dice", "value": 3, "condition": null }
+      {
+        "type": "sneak_attack_dice",
+        "value": 3,
+        "condition": null
+      }
     ]
   },
   {
@@ -1443,7 +1515,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "sneak_attack_dice", "value": 4, "condition": null }
+      {
+        "type": "sneak_attack_dice",
+        "value": 4,
+        "condition": null
+      }
     ]
   },
   {
@@ -1469,7 +1545,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "sneak_attack_dice", "value": 5, "condition": null }
+      {
+        "type": "sneak_attack_dice",
+        "value": 5,
+        "condition": null
+      }
     ]
   },
   {
@@ -1483,7 +1563,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "sneak_attack_dice", "value": 6, "condition": null }
+      {
+        "type": "sneak_attack_dice",
+        "value": 6,
+        "condition": null
+      }
     ]
   },
   {
@@ -1509,7 +1593,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "sneak_attack_dice", "value": 7, "condition": null }
+      {
+        "type": "sneak_attack_dice",
+        "value": 7,
+        "condition": null
+      }
     ]
   },
   {
@@ -1535,7 +1623,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "sneak_attack_dice", "value": 8, "condition": null }
+      {
+        "type": "sneak_attack_dice",
+        "value": 8,
+        "condition": null
+      }
     ]
   },
   {
@@ -1561,7 +1653,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "sneak_attack_dice", "value": 9, "condition": null }
+      {
+        "type": "sneak_attack_dice",
+        "value": 9,
+        "condition": null
+      }
     ]
   },
   {
@@ -1587,7 +1683,11 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "sneak_attack_dice", "value": 10, "condition": null }
+      {
+        "type": "sneak_attack_dice",
+        "value": 10,
+        "condition": null
+      }
     ]
   },
   {
@@ -1640,7 +1740,8 @@
       "You have a number of sorcery points equal to your sorcerer level. You regain all spent sorcery points when you finish a long rest."
     ],
     "is_passive": true,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "sorcery_points"
   },
   {
     "index": "sorcerer-metamagic",
@@ -1653,7 +1754,8 @@
       "Options include Careful Spell, Distant Spell, Empowered Spell, Extended Spell, Heightened Spell, Quickened Spell, Subtle Spell, and Twinned Spell."
     ],
     "is_passive": true,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "sorcery_points"
   },
   {
     "index": "sorcerer-sorcerous-restoration",
@@ -1692,8 +1794,16 @@
     ],
     "is_passive": true,
     "modifiers": [
-      { "type": "hp_per_level", "value": 1, "condition": null },
-      { "type": "unarmored_ac_base", "value": 13, "condition": "no armor" }
+      {
+        "type": "hp_per_level",
+        "value": 1,
+        "condition": null
+      },
+      {
+        "type": "unarmored_ac_base",
+        "value": 13,
+        "condition": "no armor"
+      }
     ]
   },
   {
@@ -1759,7 +1869,8 @@
       "Your spellcasting ability is Charisma."
     ],
     "is_passive": true,
-    "modifiers": []
+    "modifiers": [],
+    "resource_key": "pact_magic_slots"
   },
   {
     "index": "warlock-eldritch-invocations",

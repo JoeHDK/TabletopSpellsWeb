@@ -24,8 +24,20 @@ export default defineConfig({
         ],
       },
       workbox: {
+        navigateFallback: 'index.html',
         runtimeCaching: [
           {
+            // Cache all API GET responses with NetworkFirst (tries network, falls back to cache)
+            urlPattern: /\/api\/.*/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 10,
+              expiration: { maxAgeSeconds: 60 * 60 * 24 },
+            },
+          },
+          {
+            // Keep long-lived CacheFirst for the static spell/item compendium data
             urlPattern: /\/api\/spells\/.*/,
             handler: 'CacheFirst',
             options: {
@@ -38,6 +50,7 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: true, // bind to 0.0.0.0 so other devices on the network can connect
     proxy: {
       '/api': { target: 'http://localhost:3000', changeOrigin: true },
       '/hubs': {

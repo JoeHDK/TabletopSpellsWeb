@@ -7,12 +7,13 @@ import { attacksApi } from '../api/attacks'
 import { beastsApi } from '../api/beasts'
 import { characterFeatsApi } from '../api/characterFeats'
 import { classFeaturesApi } from '../api/classFeatures'
+import { classResourcesApi } from '../api/classResources'
 import { racesApi } from '../api/races'
 import EditableNumber from '../components/EditableNumber'
 import BeastPickerModal from '../components/BeastPickerModal'
 import { resizeImage } from '../utils/resizeImage'
 import { resolveClassName } from '../utils/spellUtils'
-import type { UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey, Beast, InventoryItem, CharacterFeat, ClassFeature, Race } from '../types'
+import type { UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey, Beast, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race } from '../types'
 
 const ABILITY_KEYS = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']
 const ABILITY_SHORT: Record<string, string> = {
@@ -164,18 +165,6 @@ function getWildShapeLimits(level: number, subclass: string): { maxCr: number; a
 
 function getFeatModifier(feats: (CharacterFeat | ClassFeature)[], type: string): number {
   return feats.flatMap(f => f.modifiers).filter(m => m.type === type).reduce((s, m) => s + m.value, 0)
-}
-
-// Returns the highest sneak attack dice count applicable given class features
-function getSneakAttackDice(classFeatures: ClassFeature[]): number {
-  const vals = classFeatures.flatMap(f => f.modifiers).filter(m => m.type === 'sneak_attack_dice').map(m => m.value)
-  return vals.length ? Math.max(...vals) : 0
-}
-
-// Returns the martial arts die (e.g. 6 = d6) applicable given class features
-function getMartialArtsDie(classFeatures: ClassFeature[]): number {
-  const vals = classFeatures.flatMap(f => f.modifiers).filter(m => m.type === 'martial_arts_die').map(m => m.value)
-  return vals.length ? Math.max(...vals) : 0
 }
 
 // Returns the best movement bonus from class features (e.g. Monk Unarmored Movement)
@@ -336,6 +325,27 @@ export default function StatsPage() {
     enabled: !!character?.race,
   })
 
+  const { data: classResources = [] } = useQuery({
+    queryKey: ['classResources', id],
+    queryFn: () => classResourcesApi.getAll(id!),
+    enabled: !!id,
+  })
+
+  const resourceMutation = useMutation({
+    mutationFn: ({ action, key, amount }: { action: 'use' | 'restore' | 'long-rest' | 'short-rest' | 'sync', key?: string, amount?: number }): Promise<ClassResource[]> => {
+      if (action === 'use') return classResourcesApi.use(id!, key!, amount).then(r => [r])
+      if (action === 'restore') return classResourcesApi.restore(id!, key!, amount).then(r => [r])
+      if (action === 'long-rest') return classResourcesApi.longRest(id!)
+      if (action === 'short-rest') return classResourcesApi.shortRest(id!)
+      return classResourcesApi.sync(id!)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['classResources', id] }),
+  })
+
+  useEffect(() => {
+    if (id) classResourcesApi.sync(id).then(() => qc.invalidateQueries({ queryKey: ['classResources', id] }))
+  }, [id, character?.characterClass, character?.level])
+
   // Local draft state — only set when something is dirty
   const [draft, setDraft] = useState<UpdateCharacterRequest & { currentHp?: number; maxHp?: number } | null>(null)
   const [editingName, setEditingName] = useState(false)
@@ -448,8 +458,6 @@ export default function StatsPage() {
   const featPassivePercBonus = getFeatModifier(charFeats, 'passive_perception')
   const featHpPerLevel = getFeatModifier([...charFeats, ...classFeatures], 'hp_per_level')
   const movementBonus = getMovementBonus(classFeatures)
-  const sneakAttackDice = getSneakAttackDice(classFeatures)
-  const martialArtsDie = getMartialArtsDie(classFeatures)
   const charismaModifier = abilityMod('Charisma')
   const savingThrowChaBonus = getFeatModifier(classFeatures, 'saving_throw_cha_mod') * charismaModifier
   const passivePerception = 10 + abilityMod('Wisdom') + featPassivePercBonus
@@ -740,81 +748,113 @@ export default function StatsPage() {
           </section>
         )}
 
-        {/* ── Class Features ───────────────────────────────────────── */}
-        {classFeatures.length > 0 && (
-          <section className="bg-gray-900 rounded-2xl p-4">
-            <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-3">Class Features</h2>
-
-            {/* Mechanical callouts */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {sneakAttackDice > 0 && (
-                <div className="bg-red-900/40 border border-red-700/50 rounded-lg px-3 py-1.5 text-center">
-                  <p className="text-xs text-red-400">Sneak Attack</p>
-                  <p className="text-sm font-bold text-red-300">{sneakAttackDice}d6</p>
-                </div>
-              )}
-              {martialArtsDie > 0 && (
-                <div className="bg-amber-900/40 border border-amber-700/50 rounded-lg px-3 py-1.5 text-center">
-                  <p className="text-xs text-amber-400">Martial Arts</p>
-                  <p className="text-sm font-bold text-amber-300">d{martialArtsDie}</p>
-                </div>
-              )}
-              {movementBonus > 0 && (
-                <div className="bg-green-900/40 border border-green-700/50 rounded-lg px-3 py-1.5 text-center">
-                  <p className="text-xs text-green-400">Speed Bonus</p>
-                  <p className="text-sm font-bold text-green-300">+{movementBonus} ft</p>
-                </div>
-              )}
-              {savingThrowChaBonus !== 0 && (
-                <div className="bg-indigo-900/40 border border-indigo-700/50 rounded-lg px-3 py-1.5 text-center">
-                  <p className="text-xs text-indigo-400">Aura of Protection</p>
-                  <p className="text-sm font-bold text-indigo-300">+{savingThrowChaBonus} saves</p>
-                </div>
-              )}
+        {/* ── Class Resources ───────────────────────────────────── */}
+        {classResources.length > 0 && (
+          <section className="bg-gray-900 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Class Resources</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => resourceMutation.mutate({ action: 'short-rest' })}
+                  disabled={resourceMutation.isPending}
+                  className="text-xs px-2 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 disabled:opacity-40 transition-colors"
+                  title="Short Rest — restores short-rest resources"
+                >
+                  ⏱ Short Rest
+                </button>
+                <button
+                  onClick={() => resourceMutation.mutate({ action: 'long-rest' })}
+                  disabled={resourceMutation.isPending}
+                  className="text-xs px-2 py-1 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white disabled:opacity-40 transition-colors"
+                  title="Long Rest — restores all resources"
+                >
+                  🌙 Long Rest
+                </button>
+              </div>
             </div>
-
-            {/* Feature list */}
-            <div className="space-y-1.5">
-              {classFeatures.map(f => (
-                <details key={f.index} className="group">
-                  <summary className="flex items-center gap-2 cursor-pointer list-none px-2 py-1.5 rounded-lg hover:bg-gray-800 transition-colors">
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${f.is_passive ? 'bg-blue-900/50 text-blue-300' : 'bg-gray-700 text-gray-400'}`}>
-                      {f.is_passive ? 'Passive' : 'Active'}
-                    </span>
-                    <span className="flex-1 text-sm text-gray-200">{f.name}</span>
-                    <span className="text-xs text-gray-500">Lv {f.min_level}</span>
-                    <span className="text-gray-500 group-open:rotate-90 transition-transform text-xs">▶</span>
-                  </summary>
-                  <div className="mt-1 px-2 pb-2 space-y-1">
-                    {f.desc.map((p, i) => (
-                      <p key={i} className="text-xs text-gray-400 leading-relaxed">{p}</p>
-                    ))}
+            <div className="space-y-3">
+              {classResources.map((res: ClassResource) => {
+                const subFeatures = classFeatures.filter(f => f.resource_key === res.resourceKey)
+                return (
+                  <div key={res.resourceKey} className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <span className="flex-1 text-sm text-gray-200">{res.name}</span>
+                      <div className="flex items-center gap-1">
+                        {res.isHpPool ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => resourceMutation.mutate({ action: 'use', key: res.resourceKey, amount: 5 })}
+                              disabled={res.usesRemaining <= 0 || resourceMutation.isPending}
+                              className="text-xs w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white transition-colors"
+                            >−5</button>
+                            <span className="text-sm font-bold text-white w-16 text-center">
+                              {res.usesRemaining}<span className="text-gray-500">/{res.maxUses}</span>
+                            </span>
+                            <button
+                              onClick={() => resourceMutation.mutate({ action: 'restore', key: res.resourceKey, amount: 5 })}
+                              disabled={res.usesRemaining >= res.maxUses || resourceMutation.isPending}
+                              className="text-xs w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white transition-colors"
+                            >+5</button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => resourceMutation.mutate({ action: 'use', key: res.resourceKey })}
+                              disabled={res.usesRemaining <= 0 || resourceMutation.isPending}
+                              className="text-xs w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white transition-colors"
+                            >−</button>
+                            <div className="flex gap-1">
+                              {res.maxUses <= 10 ? (
+                                Array.from({ length: res.maxUses }).map((_, i) => (
+                                  <span
+                                    key={i}
+                                    className={`w-3 h-3 rounded-full border-2 transition-colors ${i < res.usesRemaining ? 'bg-indigo-500 border-indigo-400' : 'border-gray-500'}`}
+                                  />
+                                ))
+                              ) : (
+                                <span className="text-sm font-bold text-white">
+                                  {res.usesRemaining}<span className="text-gray-500">/{res.maxUses}</span>
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => resourceMutation.mutate({ action: 'restore', key: res.resourceKey })}
+                              disabled={res.usesRemaining >= res.maxUses || resourceMutation.isPending}
+                              className="text-xs w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white transition-colors"
+                            >+</button>
+                          </div>
+                        )}
+                      </div>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${res.resetOn === 'short_rest' ? 'bg-amber-900/50 text-amber-400' : 'bg-indigo-900/50 text-indigo-400'}`}>
+                        {res.resetOn === 'short_rest' ? 'Short' : 'Long'}
+                      </span>
+                    </div>
+                    {subFeatures.length > 0 && (
+                      <details className="group pl-2">
+                        <summary className="cursor-pointer list-none text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                          <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+                          {subFeatures.length} {subFeatures.length === 1 ? 'option' : 'options'}
+                        </summary>
+                        <div className="mt-1.5 space-y-1.5">
+                          {subFeatures.map(f => (
+                            <details key={f.index} className="group/inner">
+                              <summary className="flex items-center gap-2 cursor-pointer list-none px-2 py-1.5 rounded-lg hover:bg-gray-800 transition-colors">
+                                <span className="flex-1 text-xs text-gray-300">{f.name}</span>
+                                <span className="text-gray-600 group-open/inner:rotate-90 transition-transform text-xs">▶</span>
+                              </summary>
+                              <div className="mt-1 px-2 pb-1 space-y-1">
+                                {f.desc.map((p, i) => (
+                                  <p key={i} className="text-xs text-gray-400 leading-relaxed">{p}</p>
+                                ))}
+                              </div>
+                            </details>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </div>
-                </details>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── Race Traits ───────────────────────────────────────────── */}
-        {race && race.traits.length > 0 && (
-          <section className="bg-gray-900 rounded-2xl p-4">
-            <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-3">
-              {race.name} Traits
-            </h2>
-            <div className="space-y-1.5">
-              {race.traits.map(trait => (
-                <details key={trait.name} className="group">
-                  <summary className="flex items-center gap-2 cursor-pointer list-none px-2 py-1.5 rounded-lg hover:bg-gray-800 transition-colors">
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-900/50 text-emerald-300">Racial</span>
-                    <span className="flex-1 text-sm text-gray-200">{trait.name}</span>
-                    <span className="text-gray-500 group-open:rotate-90 transition-transform text-xs">▶</span>
-                  </summary>
-                  <div className="mt-1 px-2 pb-2">
-                    <p className="text-xs text-gray-400 leading-relaxed">{trait.desc}</p>
-                  </div>
-                </details>
-              ))}
+                )
+              })}
             </div>
           </section>
         )}

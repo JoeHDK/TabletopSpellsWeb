@@ -29,6 +29,7 @@ export default function CharacterOverviewPage() {
         { label: '🔮 Spells per day', path: 'spells-per-day' },
         { label: '📜 Log', path: 'spell-log' },
         { label: '📊 Stats', path: 'stats' },
+        { label: '✨ Features', path: 'features' },
         { label: '🎒 Inventory', path: 'inventory' },
         { label: '🎯 Feats', path: 'feats' },
       ]
@@ -39,6 +40,7 @@ export default function CharacterOverviewPage() {
         { label: '🔮 Spells per day', path: 'spells-per-day' },
         { label: '📜 Log', path: 'spell-log' },
         { label: '📊 Stats', path: 'stats' },
+        { label: '✨ Features', path: 'features' },
         { label: '🎒 Inventory', path: 'inventory' },
         { label: '🎯 Feats', path: 'feats' },
       ]

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { Character } from '../types'
 
 interface CharacterState {
@@ -6,7 +7,12 @@ interface CharacterState {
   setActiveCharacter: (c: Character | null) => void
 }
 
-export const useCharacterStore = create<CharacterState>((set) => ({
-  activeCharacter: null,
-  setActiveCharacter: (c) => set({ activeCharacter: c }),
-}))
+export const useCharacterStore = create<CharacterState>()(
+  persist(
+    (set) => ({
+      activeCharacter: null,
+      setActiveCharacter: (c) => set({ activeCharacter: c }),
+    }),
+    { name: 'active-character' }
+  )
+)

@@ -80,6 +80,7 @@ builder.Services.AddSingleton<FeatService>();
 builder.Services.AddSingleton<ClassFeatureService>();
 builder.Services.AddSingleton<RaceService>();
 builder.Services.AddSingleton<EncryptionService>();
+builder.Services.AddSingleton<ClassResourceSeedService>();
 
 // SignalR
 builder.Services.AddSignalR();

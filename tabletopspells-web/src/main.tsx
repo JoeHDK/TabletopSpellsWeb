@@ -1,7 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { createIDBPersister } from './lib/queryPersister'
+import OfflineBanner from './components/OfflineBanner'
+import InstallPromptBanner from './components/InstallPromptBanner'
 import './index.css'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
@@ -24,13 +28,29 @@ import CreatureLibraryPage from './pages/CreatureLibraryPage'
 import CombatTrackerPage from './pages/CombatTrackerPage'
 import SessionPlannerPage from './pages/SessionPlannerPage'
 import FeatsPage from './pages/FeatsPage'
+import FeaturesPage from './pages/FeaturesPage'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      networkMode: 'offlineFirst',
+      staleTime: 1000 * 60 * 5,       // 5 minutes
+      gcTime: 1000 * 60 * 60 * 24 * 7, // 7 days (keep cache for offline use)
+    },
+    mutations: {
+      networkMode: 'offlineFirst',
+    },
+  },
+})
+
+const persister = createIDBPersister()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
       <BrowserRouter>
+        <OfflineBanner />
+        <InstallPromptBanner />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<Navigate to="/characters" replace />} />
@@ -44,6 +64,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/characters/:id/stats" element={<ProtectedRoute><StatsPage /></ProtectedRoute>} />
           <Route path="/characters/:id/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
           <Route path="/characters/:id/feats" element={<ProtectedRoute><FeatsPage /></ProtectedRoute>} />
+          <Route path="/characters/:id/features" element={<ProtectedRoute><FeaturesPage /></ProtectedRoute>} />
           <Route path="/items" element={<ProtectedRoute><SearchItemsPage /></ProtectedRoute>} />
           <Route path="/games/:id" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
           <Route path="/games/:id/party" element={<ProtectedRoute><PartyOverviewPage /></ProtectedRoute>} />
@@ -55,6 +76,6 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/games/:id/planner" element={<ProtectedRoute><SessionPlannerPage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   </StrictMode>,
 )

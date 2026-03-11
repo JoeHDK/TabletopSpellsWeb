@@ -29,6 +29,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<EncounterTemplateEntity> EncounterTemplates => Set<EncounterTemplateEntity>();
     public DbSet<EncounterTemplateCreatureEntity> EncounterTemplateCreatures => Set<EncounterTemplateCreatureEntity>();
     public DbSet<CharacterFeatEntity> CharacterFeats => Set<CharacterFeatEntity>();
+    public DbSet<ClassResourceEntity> ClassResources => Set<ClassResourceEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -232,5 +233,15 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .WithMany(t => t.Creatures)
             .HasForeignKey(c => c.TemplateId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ClassResourceEntity>()
+            .HasOne(r => r.Character)
+            .WithMany()
+            .HasForeignKey(r => r.CharacterId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<ClassResourceEntity>()
+            .HasIndex(r => new { r.CharacterId, r.ResourceKey })
+            .IsUnique();
     }
 }

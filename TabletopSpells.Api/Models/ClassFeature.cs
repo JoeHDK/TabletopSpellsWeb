@@ -12,6 +12,8 @@ public class ClassFeature
     [JsonPropertyName("desc")] public List<string> Desc { get; set; } = new();
     [JsonPropertyName("is_passive")] public bool IsPassive { get; set; }
     [JsonPropertyName("modifiers")] public List<ClassFeatureModifier> Modifiers { get; set; } = new();
+    /// <summary>Links this feature to a class resource pool (e.g. "channel_divinity", "ki_points").</summary>
+    [JsonPropertyName("resource_key")] public string? ResourceKey { get; set; }
 }
 
 public class ClassFeatureModifier

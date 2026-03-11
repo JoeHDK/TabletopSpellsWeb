@@ -594,6 +594,17 @@ export interface ClassFeature {
   desc: string[]
   is_passive: boolean
   modifiers: ClassFeatureModifier[]
+  resource_key?: string
+}
+
+export interface ClassResource {
+  id: string
+  resourceKey: string
+  name: string
+  maxUses: number
+  usesRemaining: number
+  resetOn: 'short_rest' | 'long_rest' | 'daily' | 'weekly'
+  isHpPool: boolean
 }
 
 
