@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: tabletopspells
+      POSTGRES_DB: chronicle
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
@@ -12,7 +12,7 @@ services:
     # For local DB client access (pgAdmin/DBeaver), docker-compose.override.yml
     # re-adds the port mapping automatically.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tabletopspells"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chronicle"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -28,7 +28,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=tabletopspells;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=chronicle;Username=postgres;Password=${POSTGRES_PASSWORD}"
       Jwt__Key: ${JWT_KEY}
       Jwt__Issuer: ChronicleApi
       Jwt__Audience: ChronicleWeb
