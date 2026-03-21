@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { friendsApi } from '../api/friends'
 import { chatApi } from '../api/chat'
-import type { UserSearchResult } from '../types'
+import type { Friend, FriendRequest, UserSearchResult } from '../types'
 
 type Tab = 'friends' | 'requests' | 'find'
 
@@ -40,16 +40,25 @@ export default function FriendsPage() {
   })
 
   const acceptMutation = useMutation({
-    mutationFn: (id: string) => friendsApi.acceptRequest(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['friends'] })
-      qc.invalidateQueries({ queryKey: ['friend-requests'] })
+    mutationFn: (req: FriendRequest) => friendsApi.acceptRequest(req.id),
+    onSuccess: (_, req) => {
+      // Instantly update both caches to avoid IDB stale-data race
+      qc.setQueryData<FriendRequest[]>(['friend-requests'], old =>
+        (old ?? []).filter(r => r.id !== req.id)
+      )
+      qc.setQueryData<Friend[]>(['friends'], old =>
+        [...(old ?? []), { userId: req.requesterId, username: req.requesterUsername }]
+      )
     },
   })
 
   const declineMutation = useMutation({
     mutationFn: (id: string) => friendsApi.declineRequest(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['friend-requests'] }),
+    onSuccess: (_, id) => {
+      qc.setQueryData<FriendRequest[]>(['friend-requests'], old =>
+        (old ?? []).filter(r => r.id !== id)
+      )
+    },
   })
 
   const removeMutation = useMutation({
@@ -182,7 +191,7 @@ export default function FriendsPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => acceptMutation.mutate(r.id)}
+                  onClick={() => acceptMutation.mutate(r)}
                   disabled={acceptMutation.isPending}
                   className="text-xs bg-green-700 hover:bg-green-600 px-3 py-1.5 rounded-lg transition-colors"
                 >
