@@ -15,6 +15,9 @@ export default function InstallPromptBanner() {
 
   useEffect(() => {
     function handlePrompt(e: Event) {
+      // Only intercept the event if we'll show our banner.
+      // If dismissed, let the browser show its own native install UI instead.
+      if (localStorage.getItem(DISMISSED_KEY) === 'true') return;
       e.preventDefault();
       setPromptEvent(e as BeforeInstallPromptEvent);
     }
@@ -53,7 +56,7 @@ export default function InstallPromptBanner() {
           clipRule="evenodd"
         />
       </svg>
-      <span>Install TabletopSpells for offline use</span>
+      <span>Install Chronicle for offline use</span>
       <button
         onClick={handleInstall}
         className="rounded-lg bg-indigo-600 px-3 py-1 font-medium text-white hover:bg-indigo-500 active:bg-indigo-700"
