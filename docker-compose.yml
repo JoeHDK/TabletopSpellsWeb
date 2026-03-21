@@ -40,6 +40,8 @@ services:
     restart: unless-stopped
     depends_on:
       - api
+    environment:
+      SERVER_HOSTNAME: ${SERVER_HOSTNAME}
     ports:
       - "80:80"
       - "443:443"
