@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
@@ -274,7 +274,8 @@ function RaceSelector({ characterId, currentRace }: { characterId: string; curre
   )
 }
 
-export default function StatsPage() {
+
+export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -329,6 +330,7 @@ export default function StatsPage() {
     queryKey: ['classResources', id],
     queryFn: () => classResourcesApi.getAll(id!),
     enabled: !!id,
+    retry: false,
   })
 
   const resourceMutation = useMutation({
@@ -343,7 +345,9 @@ export default function StatsPage() {
   })
 
   useEffect(() => {
-    if (id) classResourcesApi.sync(id).then(() => qc.invalidateQueries({ queryKey: ['classResources', id] }))
+    if (id) classResourcesApi.sync(id)
+      .then(() => qc.invalidateQueries({ queryKey: ['classResources', id] }))
+      .catch(() => {/* endpoint not yet available */})
   }, [id, character?.characterClass, character?.level])
 
   // Local draft state — only set when something is dirty
@@ -500,48 +504,68 @@ export default function StatsPage() {
   const hpColour = hpPct > 50 ? 'bg-green-500' : hpPct > 25 ? 'bg-amber-500' : 'bg-red-500'
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
       {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/characters/${id}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
-        {editingName ? (
-          <input
-            ref={nameRef}
-            className="flex-1 bg-gray-800 text-white text-lg font-bold rounded-lg px-3 py-1.5 border border-indigo-500 focus:outline-none"
-            value={d.name}
-            onChange={e => patch({ name: e.target.value })}
-            onBlur={() => setEditingName(false)}
-            onKeyDown={e => e.key === 'Enter' && setEditingName(false)}
-          />
-        ) : (
+      {!embedded && (
+        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate(`/characters/${id}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
+          {editingName ? (
+            <input
+              ref={nameRef}
+              className="flex-1 bg-gray-800 text-white text-lg font-bold rounded-lg px-3 py-1.5 border border-indigo-500 focus:outline-none"
+              value={d.name}
+              onChange={e => patch({ name: e.target.value })}
+              onBlur={() => setEditingName(false)}
+              onKeyDown={e => e.key === 'Enter' && setEditingName(false)}
+            />
+          ) : (
+            <button
+              className="flex-1 text-left text-lg font-bold hover:text-indigo-300 transition-colors truncate"
+              onClick={() => setEditingName(true)}
+              title="Click to edit name"
+            >
+              {d.name} <span className="text-gray-600 text-sm font-normal">✏</span>
+            </button>
+          )}
+          {isDirty && (
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => { setDraft(null); setEditingName(false) }}
+                className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Revert
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={updateMutation.isPending || hpMutation.isPending}
+                className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {updateMutation.isPending ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          )}
+        </header>
+      )}
+      {embedded && isDirty && (
+        <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center justify-end gap-2">
           <button
-            className="flex-1 text-left text-lg font-bold hover:text-indigo-300 transition-colors truncate"
-            onClick={() => setEditingName(true)}
-            title="Click to edit name"
+            onClick={() => { setDraft(null); setEditingName(false) }}
+            className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg transition-colors"
           >
-            {d.name} <span className="text-gray-600 text-sm font-normal">✏</span>
+            Revert
           </button>
-        )}
-        {isDirty && (
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={() => { setDraft(null); setEditingName(false) }}
-              className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg transition-colors"
-            >
-              Revert
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={updateMutation.isPending || hpMutation.isPending}
-              className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
-            >
-              {updateMutation.isPending ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        )}
-      </header>
+          <button
+            onClick={handleSave}
+            disabled={updateMutation.isPending || hpMutation.isPending}
+            className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            {updateMutation.isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      )}
 
-      <div className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-4 py-5 space-y-4">
+      <div className="flex-1 overflow-y-auto">
+      <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
 
         {/* Identity */}
         <section className="bg-gray-900 rounded-2xl p-4">
@@ -629,7 +653,7 @@ export default function StatsPage() {
           </div>
         </section>
 
-        {/* Combat Stats */}
+        {/* Combat */}
         <section className="bg-gray-900 rounded-2xl p-4 space-y-4">
           <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Combat</h2>
 
@@ -726,7 +750,7 @@ export default function StatsPage() {
           </div>
         </section>
 
-        {/* ── Active Feats summary ─────────────────────────────────── */}
+        {/* Active Feats */}
         {charFeats.length > 0 && (
           <section className="bg-gray-900 rounded-2xl p-4">
             <div className="flex items-center justify-between mb-2">
@@ -748,7 +772,7 @@ export default function StatsPage() {
           </section>
         )}
 
-        {/* ── Class Resources ───────────────────────────────────── */}
+        {/* Class Resources */}
         {classResources.length > 0 && (
           <section className="bg-gray-900 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -859,120 +883,121 @@ export default function StatsPage() {
           </section>
         )}
 
-        {/* ── Wild Shape (Druid level 2+) ───────────────────────── */}
-        {resolveClassName(character.characterClass) === 'druid' && character.level < 2 && (
-          <section className="bg-gray-900 rounded-2xl p-4">
-            <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Wild Shape</h2>
-            <p className="text-sm text-gray-500">Available at level 2.</p>
-          </section>
-        )}
-        {resolveClassName(character.characterClass) === 'druid' && character.level >= 2 && (() => {
-          const limits = getWildShapeLimits(character.level, character.subclass)
-          const inForm = !!character.wildShapeBeastName
-          const uses = character.wildShapeUsesRemaining
-          const maxUses = character.level >= 20 ? Infinity : 2
-          const beastHpPct = (character.wildShapeBeastCurrentHp ?? 0) / (character.wildShapeBeastMaxHp ?? 1) * 100
-          const beastHpColor = beastHpPct > 50 ? 'bg-green-500' : beastHpPct > 25 ? 'bg-amber-500' : 'bg-red-500'
+        {/* Wild Shape */}
+        {resolveClassName(character.characterClass) === 'druid' && (
+          character.level < 2 ? (
+            <section className="bg-gray-900 rounded-2xl p-4">
+              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Wild Shape</h2>
+              <p className="text-sm text-gray-500">Available at level 2.</p>
+            </section>
+          ) : (() => {
+            const limits = getWildShapeLimits(character.level, character.subclass)
+            const inForm = !!character.wildShapeBeastName
+            const uses = character.wildShapeUsesRemaining
+            const maxUses = character.level >= 20 ? Infinity : 2
+            const beastHpPct = (character.wildShapeBeastCurrentHp ?? 0) / (character.wildShapeBeastMaxHp ?? 1) * 100
+            const beastHpColor = beastHpPct > 50 ? 'bg-green-500' : beastHpPct > 25 ? 'bg-amber-500' : 'bg-red-500'
 
-          return (
-            <section className="bg-gray-900 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Wild Shape</h2>
-                <div className="flex gap-1">
-                  {Array.from({ length: Math.min(maxUses, 4) }).map((_, i) => (
-                    <span key={i} className={`w-3 h-3 rounded-full border-2 ${i < uses ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
-                  ))}
-                  {maxUses === Infinity && <span className="text-xs text-indigo-400">∞</span>}
-                </div>
-              </div>
-
-              {!inForm ? (
-                <div className="flex gap-2">
-                  <button
-                    disabled={uses <= 0 || wildShapeMutation.isPending}
-                    onClick={() => setShowBeastPicker(true)}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium py-2 rounded-xl transition-colors"
-                  >
-                    🐾 Enter Wild Shape
-                  </button>
-                  <button
-                    disabled={uses >= maxUses || wildShapeMutation.isPending}
-                    onClick={() => wildShapeMutation.mutate({ action: 'restoreUses' })}
-                    title="Short / long rest"
-                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium px-3 py-2 rounded-xl transition-colors"
-                  >
-                    ⏳
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🐺</span>
-                    <div>
-                      <p className="text-sm font-semibold text-white">{character.wildShapeBeastName}</p>
-                      <p className="text-xs text-gray-400">Beast form active</p>
-                    </div>
+            return (
+              <section className="bg-gray-900 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Wild Shape</h2>
+                  <div className="flex gap-1">
+                    {Array.from({ length: Math.min(maxUses, 4) }).map((_, i) => (
+                      <span key={i} className={`w-3 h-3 rounded-full border-2 ${i < uses ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
+                    ))}
+                    {maxUses === Infinity && <span className="text-xs text-indigo-400">∞</span>}
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-500">Beast HP</span>
-                      <div className="flex items-center gap-1 text-sm">
-                        <EditableNumber
-                          value={character.wildShapeBeastCurrentHp ?? 0}
-                          onChange={v => {
-                            const cur = character.wildShapeBeastCurrentHp ?? 0
-                            const diff = v - cur
-                            if (diff > 0) wildShapeMutation.mutate({ action: 'heal', amount: diff })
-                            else if (diff < 0) wildShapeMutation.mutate({ action: 'damage', amount: -diff })
-                          }}
-                          min={0} max={character.wildShapeBeastMaxHp ?? 999}
-                          label="Beast HP"
-                          className="w-12 text-center font-bold text-lg"
-                        />
-                        <span className="text-gray-500">/</span>
-                        <span className="text-gray-400 w-8 text-center">{character.wildShapeBeastMaxHp}</span>
+                </div>
+
+                {!inForm ? (
+                  <div className="flex gap-2">
+                    <button
+                      disabled={uses <= 0 || wildShapeMutation.isPending}
+                      onClick={() => setShowBeastPicker(true)}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium py-2 rounded-xl transition-colors"
+                    >
+                      🐾 Enter Wild Shape
+                    </button>
+                    <button
+                      disabled={uses >= maxUses || wildShapeMutation.isPending}
+                      onClick={() => wildShapeMutation.mutate({ action: 'restoreUses' })}
+                      title="Short / long rest"
+                      className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium px-3 py-2 rounded-xl transition-colors"
+                    >
+                      ⏳
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🐺</span>
+                      <div>
+                        <p className="text-sm font-semibold text-white">{character.wildShapeBeastName}</p>
+                        <p className="text-xs text-gray-400">Beast form active</p>
                       </div>
                     </div>
-                    <div className="bg-gray-700 rounded-full h-2 overflow-hidden">
-                      <div className={`h-full ${beastHpColor} rounded-full transition-all`} style={{ width: `${Math.max(0, Math.min(100, beastHpPct))}%` }} />
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-500">Beast HP</span>
+                        <div className="flex items-center gap-1 text-sm">
+                          <EditableNumber
+                            value={character.wildShapeBeastCurrentHp ?? 0}
+                            onChange={v => {
+                              const cur = character.wildShapeBeastCurrentHp ?? 0
+                              const diff = v - cur
+                              if (diff > 0) wildShapeMutation.mutate({ action: 'heal', amount: diff })
+                              else if (diff < 0) wildShapeMutation.mutate({ action: 'damage', amount: -diff })
+                            }}
+                            min={0} max={character.wildShapeBeastMaxHp ?? 999}
+                            label="Beast HP"
+                            className="w-12 text-center font-bold text-lg"
+                          />
+                          <span className="text-gray-500">/</span>
+                          <span className="text-gray-400 w-8 text-center">{character.wildShapeBeastMaxHp}</span>
+                        </div>
+                      </div>
+                      <div className="bg-gray-700 rounded-full h-2 overflow-hidden">
+                        <div className={`h-full ${beastHpColor} rounded-full transition-all`} style={{ width: `${Math.max(0, Math.min(100, beastHpPct))}%` }} />
+                      </div>
                     </div>
+                    <button
+                      disabled={wildShapeMutation.isPending}
+                      onClick={() => wildShapeMutation.mutate({ action: 'revert' })}
+                      className="w-full bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white text-sm font-medium py-2 rounded-xl transition-colors"
+                    >
+                      ↩ Revert to Druid
+                    </button>
                   </div>
-                  <button
-                    disabled={wildShapeMutation.isPending}
-                    onClick={() => wildShapeMutation.mutate({ action: 'revert' })}
-                    className="w-full bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white text-sm font-medium py-2 rounded-xl transition-colors"
-                  >
-                    ↩ Revert to Druid
-                  </button>
-                </div>
-              )}
+                )}
 
-              {showBeastPicker && (
-                <BeastPickerModal
-                  maxCr={limits.maxCr}
-                  allowFly={limits.allowFly}
-                  allowSwim={limits.allowSwim}
-                  onClose={() => setShowBeastPicker(false)}
-                  onSelect={(beast: Beast) => {
-                    setShowBeastPicker(false)
-                    wildShapeMutation.mutate({
-                      action: 'enter',
-                      beastName: beast.name,
-                      beastMaxHp: beast.hp,
-                      beastCurrentHp: beast.hp,
-                    })
-                  }}
-                />
-              )}
+                {showBeastPicker && (
+                  <BeastPickerModal
+                    maxCr={limits.maxCr}
+                    allowFly={limits.allowFly}
+                    allowSwim={limits.allowSwim}
+                    onClose={() => setShowBeastPicker(false)}
+                    onSelect={(beast: Beast) => {
+                      setShowBeastPicker(false)
+                      wildShapeMutation.mutate({
+                        action: 'enter',
+                        beastName: beast.name,
+                        beastMaxHp: beast.hp,
+                        beastCurrentHp: beast.hp,
+                      })
+                    }}
+                  />
+                )}
 
-              <p className="text-xs text-gray-600 text-center">
-                Max CR {crLabel(limits.maxCr)}{!limits.allowFly ? ' · No fly' : ''}{!limits.allowSwim ? ' · No swim' : ''}
-              </p>
-            </section>
-          )
-        })()}
+                <p className="text-xs text-gray-600 text-center">
+                  Max CR {crLabel(limits.maxCr)}{!limits.allowFly ? ' · No fly' : ''}{!limits.allowSwim ? ' · No swim' : ''}
+                </p>
+              </section>
+            )
+          })()
+        )}
 
-        {/* ── Attacks ─────────────────────────────────────── */}
+        {/* Attacks */}
         {(() => {
           // Check if in Wild Shape — show beast attacks instead
           const inWildShape = !!character.wildShapeBeastName
@@ -1186,7 +1211,7 @@ export default function StatsPage() {
           )
         })()}
 
-        {/* Ability Scores + Saves (left) | Skills (right) */}
+        {/* Ability Scores + Saves + Skills */}
         <div className="flex gap-3 items-start">
 
           {/* Left column: Ability Scores stacked above Saves */}
@@ -1280,8 +1305,8 @@ export default function StatsPage() {
           </section>
 
         </div>
-
-      </div>
+      </div>{/* grid */}
+      </div>{/* overflow-y-auto */}
     </div>
   )
 }

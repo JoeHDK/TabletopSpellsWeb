@@ -95,12 +95,15 @@ var app = builder.Build();
 // Only redirect to HTTPS when not running in a container behind a proxy
 if (!app.Environment.IsProduction())
     app.UseHttpsRedirection();
+app.UseDefaultFiles();   // serves index.html for "/"
+app.UseStaticFiles();    // serves React build from wwwroot/
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<EncounterHub>("/hubs/encounter");
+app.MapFallbackToFile("index.html"); // SPA fallback — client-side routing
 
 // Run migrations on every startup (safe — EF skips already-applied migrations)
 using (var scope = app.Services.CreateScope())

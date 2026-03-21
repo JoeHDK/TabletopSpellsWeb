@@ -7,7 +7,7 @@ import type { Spell } from '../types'
 import SpellDetailModal from '../components/SpellDetailModal'
 import { getLevelForClass, parseFirstLevel, resolveClassName } from '../utils/spellUtils'
 
-export default function SearchSpellsPage() {
+export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -66,11 +66,13 @@ export default function SearchSpellsPage() {
   }, [allSpells, search, levelFilter, character])
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/characters/${id}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
-        <h1 className="text-lg font-bold flex-1">Search Spells</h1>
-      </header>
+    <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
+      {!embedded && (
+        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate(`/characters/${id}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
+          <h1 className="text-lg font-bold flex-1">Search Spells</h1>
+        </header>
+      )}
 
       <div className="p-4 space-y-3">
         <input

@@ -177,7 +177,7 @@ const defaultForm = (): AddInventoryItemRequest & { acBonusStr: string; slot: In
   armorType: undefined,
 })
 
-export default function InventoryPage() {
+export default function InventoryPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -338,32 +338,34 @@ export default function InventoryPage() {
   if (isLoading) return <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">Loading…</div>
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/characters/${id}`)} className="text-gray-400 hover:text-white">←</button>
-        <div className="flex-1">
-          <h1 className="text-lg font-bold">{character?.name ?? '…'} — Inventory</h1>
-          <p className="text-xs text-gray-400">
-            AC: {character ? displayAC : '—'}
-          </p>
-        </div>
-        {mainTab === 'inventory' && isDm && (
-          <button
-            onClick={() => setShowAdd(v => !v)}
-            className="text-sm bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            {showAdd ? 'Cancel' : '+ Add'}
-          </button>
-        )}
-        {mainTab === 'browse' && isCustomTab && isDm && (
-          <button
-            onClick={() => { setEditingItem(undefined); setFormOpen(true) }}
-            className="text-sm bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            + New
-          </button>
-        )}
-      </header>
+    <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
+      {!embedded && (
+        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate(`/characters/${id}`)} className="text-gray-400 hover:text-white">←</button>
+          <div className="flex-1">
+            <h1 className="text-lg font-bold">{character?.name ?? '…'} — Inventory</h1>
+            <p className="text-xs text-gray-400">
+              AC: {character ? displayAC : '—'}
+            </p>
+          </div>
+          {mainTab === 'inventory' && isDm && (
+            <button
+              onClick={() => setShowAdd(v => !v)}
+              className="text-sm bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {showAdd ? 'Cancel' : '+ Add'}
+            </button>
+          )}
+          {mainTab === 'browse' && isCustomTab && isDm && (
+            <button
+              onClick={() => { setEditingItem(undefined); setFormOpen(true) }}
+              className="text-sm bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              + New
+            </button>
+          )}
+        </header>
+      )}
 
       {/* Main tab bar */}
       <div className="flex gap-1 px-4 pt-3 pb-0">

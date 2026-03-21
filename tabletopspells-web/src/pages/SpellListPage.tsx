@@ -7,7 +7,7 @@ import type { Spell, Character, SpellsPerDay } from '../types'
 import SpellDetailModal from '../components/SpellDetailModal'
 import { getLevelForClass, parseFirstLevel, resolveClassName, isPreparingCaster } from '../utils/spellUtils'
 
-export default function SpellListPage() {
+export default function SpellListPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const { data: character, isLoading } = useQuery({
     queryKey: ['character', id],
@@ -19,15 +19,15 @@ export default function SpellListPage() {
   if (!character) return null
 
   return character.isDivineCaster
-    ? <DivineSpellList characterId={id!} character={character} />
-    : <ArcaneSpellList characterId={id!} character={character} />
+    ? <DivineSpellList characterId={id!} character={character} embedded={embedded} />
+    : <ArcaneSpellList characterId={id!} character={character} embedded={embedded} />
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Arcane Spell List — known spells the character has added
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ArcaneSpellList({ characterId, character }: { characterId: string; character: Character }) {
+function ArcaneSpellList({ characterId, character, embedded }: { characterId: string; character: Character; embedded?: boolean }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
@@ -119,12 +119,14 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
   })
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/characters/${characterId}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
-        <h1 className="text-lg font-bold flex-1">My Spells</h1>
-        {canPrepare && <span className="text-sm text-amber-400">{preparedCount}/{maxPrepared} prepared</span>}
-      </header>
+    <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
+      {!embedded && (
+        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate(`/characters/${characterId}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
+          <h1 className="text-lg font-bold flex-1">My Spells</h1>
+          {canPrepare && <span className="text-sm text-amber-400">{preparedCount}/{maxPrepared} prepared</span>}
+        </header>
+      )}
 
       <div className="p-4">
         <input
@@ -268,7 +270,7 @@ function ArcaneSpellList({ characterId, character }: { characterId: string; char
 // Divine Spell List — all class spells with prepare & favorite toggles
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DivineSpellList({ characterId, character }: { characterId: string; character: Character }) {
+function DivineSpellList({ characterId, character, embedded }: { characterId: string; character: Character; embedded?: boolean }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
@@ -419,12 +421,14 @@ function DivineSpellList({ characterId, character }: { characterId: string; char
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/characters/${characterId}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
-        <h1 className="text-lg font-bold flex-1">Spell List</h1>
-        <span className="text-sm text-amber-400">{preparedCount}/{maxPrepared} prepared</span>
-      </header>
+    <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
+      {!embedded && (
+        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate(`/characters/${characterId}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
+          <h1 className="text-lg font-bold flex-1">Spell List</h1>
+          <span className="text-sm text-amber-400">{preparedCount}/{maxPrepared} prepared</span>
+        </header>
+      )}
 
       <div className="p-4 space-y-3">
         <input

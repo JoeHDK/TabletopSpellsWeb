@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { spellLogsApi } from '../api/spells'
 
-export default function SpellLogPage() {
+export default function SpellLogPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -19,11 +19,13 @@ export default function SpellLogPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/characters/${id}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
-        <h1 className="text-lg font-bold">Spell Log</h1>
-      </header>
+    <div className={embedded ? 'bg-gray-950 text-white' : 'min-h-screen bg-gray-950 text-white'}>
+      {!embedded && (
+        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate(`/characters/${id}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
+          <h1 className="text-lg font-bold">Spell Log</h1>
+        </header>
+      )}
 
       <main className="max-w-lg mx-auto p-4 space-y-3">
         {isLoading ? (

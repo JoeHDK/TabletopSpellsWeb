@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { getExpectedSpellSlots } from '../utils/spellSlotsTable'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { spellsPerDayApi } from '../api/spells'
@@ -5,7 +7,7 @@ import { charactersApi } from '../api/characters'
 import { classResourcesApi } from '../api/classResources'
 import EditableNumber from '../components/EditableNumber'
 
-export default function SpellsPerDayPage() {
+export default function SpellsPerDayPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -49,16 +51,34 @@ export default function SpellsPerDayPage() {
 
   const maxSlotMap = character?.maxSpellsPerDay ?? {}
 
-  const handleMaxChange = (level: number, value: number) => {
+  const expectedSlots = character
+    ? getExpectedSpellSlots(character.characterClass as string, character.level, character.gameType)
+    : {}
+
+  const expectedHasSlots = Object.values(expectedSlots).some(v => v > 0)
+  const slotsNeedSync = expectedHasSlots && Object.keys(expectedSlots).some(
+    lvl => maxSlotMap[Number(lvl)] !== expectedSlots[Number(lvl)]
+  )
+
+  useEffect(() => {
+    if (slotsNeedSync && !updateMaxMutation.isPending) {
+      updateMaxMutation.mutate(expectedSlots)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [character?.id, character?.level, character?.characterClass])
+
+  const handleMaxChange= (level: number, value: number) => {
     updateMaxMutation.mutate({ ...maxSlotMap, [level]: value })
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/characters/${id}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
-        <h1 className="text-lg font-bold">Spells Per Day</h1>
-      </header>
+    <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
+      {!embedded && (
+        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate(`/characters/${id}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
+          <h1 className="text-lg font-bold">Spells Per Day</h1>
+        </header>
+      )}
 
       <main className="flex-1 max-w-lg mx-auto w-full p-6 space-y-4">
         {Array.from({ length: 9 }, (_, i) => i + 1).map((level) => {

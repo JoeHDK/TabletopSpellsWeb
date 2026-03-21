@@ -18,8 +18,8 @@ services:
 
   api:
     build:
-      context: ./TabletopSpells.Api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: TabletopSpells.Api/Dockerfile
     restart: unless-stopped
     depends_on:
       postgres:
@@ -32,16 +32,24 @@ services:
       Jwt__Issuer: TabletopSpellsApi
       Jwt__Audience: TabletopSpellsWeb
       Chat__MasterKey: ${CHAT_MASTER_KEY}
+    # No ports exposed directly — Caddy is the only entry point
 
-  web:
-    build:
-      context: ./tabletopspells-web
-      dockerfile: Dockerfile
+  caddy:
+    image: caddy:alpine
     restart: unless-stopped
     depends_on:
       - api
     ports:
-      - "3000:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # persists TLS certs across restarts
+      - caddy_config:/config
+    networks:
+      - default
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

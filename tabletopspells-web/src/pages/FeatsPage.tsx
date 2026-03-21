@@ -97,7 +97,7 @@ function FeatCard({
   )
 }
 
-export default function FeatsPage() {
+export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -138,12 +138,14 @@ export default function FeatsPage() {
   }, [charFeats, search])
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/characters/${id}`)} className="text-gray-400 hover:text-white">←</button>
-        <h1 className="text-lg font-bold flex-1">Feats</h1>
-        <span className="text-xs text-gray-500">{charFeats.length} known</span>
-      </header>
+    <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
+      {!embedded && (
+        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate(`/characters/${id}`)} className="text-gray-400 hover:text-white">←</button>
+          <h1 className="text-lg font-bold flex-1">Feats</h1>
+          <span className="text-xs text-gray-500">{charFeats.length} known</span>
+        </header>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 px-4 pt-3">

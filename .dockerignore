@@ -1,0 +1,14 @@
+# Ignore everything by default, then whitelist what the Dockerfile needs
+**
+
+# .NET API source
+!TabletopSpells.Api/**
+TabletopSpells.Api/bin/
+TabletopSpells.Api/obj/
+TabletopSpells.Api/.idea/
+
+# React frontend source
+!tabletopspells-web/**
+tabletopspells-web/node_modules/
+tabletopspells-web/dist/
+tabletopspells-web/.idea/

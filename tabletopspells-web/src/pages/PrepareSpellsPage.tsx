@@ -6,7 +6,7 @@ import { charactersApi } from '../api/characters'
 import { isPreparingCaster } from '../utils/spellUtils'
 import type { Spell, Character } from '../types'
 
-export default function PrepareSpellsPage() {
+export default function PrepareSpellsPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: character, isLoading } = useQuery({
@@ -31,14 +31,14 @@ export default function PrepareSpellsPage() {
   }
 
   return character.isDivineCaster
-    ? <DivinePrepare characterId={id!} character={character} />
-    : <ArcanePrepare characterId={id!} character={character} />
+    ? <DivinePrepare characterId={id!} character={character} embedded={embedded} />
+    : <ArcanePrepare characterId={id!} character={character} embedded={embedded} />
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cleric / Druid / Paladin — prepare from the full spell list each long rest
 // ─────────────────────────────────────────────────────────────────────────────
-function DivinePrepare({ characterId, character }: { characterId: string; character: Character }) {
+function DivinePrepare({ characterId, character, embedded }: { characterId: string; character: Character; embedded?: boolean }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
@@ -88,14 +88,16 @@ function DivinePrepare({ characterId, character }: { characterId: string; charac
   )
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/characters/${characterId}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
-        <div className="flex-1">
-          <h1 className="text-lg font-bold">Prepare Spells</h1>
-          <p className="text-xs text-gray-400">{preparedCount} / {maxPrepared} prepared</p>
-        </div>
-      </header>
+    <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
+      {!embedded && (
+        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate(`/characters/${characterId}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
+          <div className="flex-1">
+            <h1 className="text-lg font-bold">Prepare Spells</h1>
+            <p className="text-xs text-gray-400">{preparedCount} / {maxPrepared} prepared</p>
+          </div>
+        </header>
+      )}
 
       <div className="flex-1 overflow-y-auto pb-4">
         {/* Known Cantrips section */}
@@ -201,7 +203,7 @@ function DivinePrepare({ characterId, character }: { characterId: string; charac
 // ─────────────────────────────────────────────────────────────────────────────
 // Wizard / Artificer — prepare only from spells in the spellbook
 // ─────────────────────────────────────────────────────────────────────────────
-function ArcanePrepare({ characterId, character }: { characterId: string; character: Character }) {
+function ArcanePrepare({ characterId, character, embedded }: { characterId: string; character: Character; embedded?: boolean }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
@@ -266,14 +268,16 @@ function ArcanePrepare({ characterId, character }: { characterId: string; charac
   )
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(`/characters/${characterId}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
-        <div className="flex-1">
-          <h1 className="text-lg font-bold">Prepare Spells</h1>
-          <p className="text-xs text-gray-400">{preparedCount} / {maxPrepared} prepared</p>
-        </div>
-      </header>
+    <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
+      {!embedded && (
+        <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate(`/characters/${characterId}`)} aria-label="Go back" className="text-gray-400 hover:text-white">←</button>
+          <div className="flex-1">
+            <h1 className="text-lg font-bold">Prepare Spells</h1>
+            <p className="text-xs text-gray-400">{preparedCount} / {maxPrepared} prepared</p>
+          </div>
+        </header>
+      )}
 
       <div className="flex-1 overflow-y-auto pb-4">
         {/* Known Cantrips section */}

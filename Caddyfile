@@ -1,0 +1,19 @@
+# ---------------------------------------------------------------
+# LAN mode (default): uses Caddy's internal CA.
+# Install caddy-root.crt on each device once (see DEVELOPER_SETUP.md).
+#
+# VPS / real domain mode: delete the two lines below that say
+# "local_certs" and "tls internal" — Caddy will get a free
+# Let's Encrypt cert automatically. No cert installation needed.
+# ---------------------------------------------------------------
+{
+	local_certs
+}
+
+# Set SERVER_HOSTNAME in your .env file.
+# LAN example:  SERVER_HOSTNAME=192.168.1.83,localhost
+# VPS example:  SERVER_HOSTNAME=yourdomain.com
+{$SERVER_HOSTNAME} {
+	tls internal   # <-- remove this line for VPS / real domain
+	reverse_proxy api:8080
+}

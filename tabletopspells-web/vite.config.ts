@@ -27,13 +27,13 @@ export default defineConfig({
         navigateFallback: 'index.html',
         runtimeCaching: [
           {
-            // Cache all API GET responses with NetworkFirst (tries network, falls back to cache)
+            // StaleWhileRevalidate: return cached data instantly, update cache in background.
+            // No wait when offline — cached data is served immediately without a timeout.
             urlPattern: /\/api\/.*/,
-            handler: 'NetworkFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'api-cache',
-              networkTimeoutSeconds: 10,
-              expiration: { maxAgeSeconds: 60 * 60 * 24 },
+              expiration: { maxAgeSeconds: 60 * 60 * 24 * 7 },
             },
           },
           {
@@ -52,10 +52,11 @@ export default defineConfig({
   server: {
     host: true, // bind to 0.0.0.0 so other devices on the network can connect
     proxy: {
-      '/api': { target: 'http://localhost:3000', changeOrigin: true },
+      '/api': { target: 'https://localhost', changeOrigin: true, secure: false },
       '/hubs': {
-        target: 'http://localhost:3000',
+        target: 'https://localhost',
         changeOrigin: true,
+        secure: false,
         ws: true, // proxy WebSocket upgrades for SignalR
       },
     },

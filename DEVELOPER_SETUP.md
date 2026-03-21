@@ -9,13 +9,14 @@ A Progressive Web App for managing D&D 5e and Pathfinder 1e spells, characters, 
 1. [Architecture Overview](#architecture-overview)
 2. [Prerequisites](#prerequisites)
 3. [Environment Configuration](#environment-configuration)
-4. [Running with Docker (Recommended)](#running-with-docker-recommended)
-5. [Local Development (Without Docker)](#local-development-without-docker)
-6. [Database Access (PostgreSQL)](#database-access-postgresql)
-7. [EF Core Migrations](#ef-core-migrations)
-8. [Admin Account](#admin-account)
-9. [API Reference](#api-reference)
-10. [Troubleshooting](#troubleshooting)
+4. [Running with Docker (LAN / Home Network)](#running-with-docker-lan--home-network)
+5. [Deploying to a VPS (Public Hosting)](#deploying-to-a-vps-public-hosting)
+6. [Local Development (Without Docker)](#local-development-without-docker)
+7. [Database Access (PostgreSQL)](#database-access-postgresql)
+8. [EF Core Migrations](#ef-core-migrations)
+9. [Admin Account](#admin-account)
+10. [API Reference](#api-reference)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -23,12 +24,12 @@ A Progressive Web App for managing D&D 5e and Pathfinder 1e spells, characters, 
 
 | Component | Technology | Port |
 |-----------|-----------|------|
-| Frontend PWA | React 19 + Vite 7 + TypeScript + Tailwind CSS 4 | `5173` (dev) / `3000` (Docker) |
-| Backend API | ASP.NET Core 8 + EF Core 8 + JWT Auth | `8080` (Docker) |
+| Frontend PWA | React 19 + Vite 7 + TypeScript + Tailwind CSS 4 | `5173` (dev) / `443` (Docker via Caddy) |
+| Backend API | ASP.NET Core 8 + EF Core 8 + JWT Auth | `8080` (internal Docker only) |
 | Database | PostgreSQL 16 | `5432` |
-| Reverse proxy | nginx (Docker only) | `3000` |
+| Reverse proxy | Caddy (auto-HTTPS) | `80` → redirect, `443` → HTTPS |
 
-In Docker, nginx sits in front of the frontend and proxies `/api/*` to the backend container — so everything is on one port (`3000`). In local dev, Vite proxies `/api/*` to `localhost:3000`.
+In Docker, Caddy handles HTTPS and proxies all traffic to the API container, which serves both the API and the built React frontend. In local dev, Vite proxies `/api/*` to `localhost:3000`.
 
 ---
 
@@ -45,67 +46,198 @@ In Docker, nginx sits in front of the frontend and proxies `/api/*` to the backe
 
 ## Environment Configuration
 
-The project uses a `.env` file in the **repository root** for secrets. This file is never committed.
+The project uses a `.env` file in the **repository root** for all secrets. This file is never committed.
 
-Create `.env` by copying the example below:
+**Copy `.env.example` to create your `.env`:**
 
-```env
-# .env — repository root (C:\code\TabletopSpellsWeb\.env)
-
-# PostgreSQL password used by both the database container and the API
-POSTGRES_PASSWORD=tabletopspells_local
-
-# JWT signing key — must be at least 32 characters. Use a long random string in production.
-JWT_KEY=local_dev_jwt_secret_key_must_be_at_least_32_chars_long!
-
-# Chat master key — used to wrap per-conversation AES-256 encryption keys.
-# Must be set or the API will refuse to start. See "Chat Encryption" section below.
-CHAT_MASTER_KEY=local_dev_chat_master_key_change_in_production!
+```bash
+cp .env.example .env   # Linux/Mac
+copy .env.example .env  # Windows
 ```
 
-> **Production:** Generate a strong `JWT_KEY` with `openssl rand -base64 48` or equivalent. Never reuse the dev key.
+Then edit `.env` with real values. All four variables are required:
+
+| Variable | Description |
+|----------|-------------|
+| `POSTGRES_PASSWORD` | PostgreSQL password |
+| `JWT_KEY` | JWT signing key — minimum 32 characters |
+| `CHAT_MASTER_KEY` | Chat encryption master key — minimum 32 characters |
+| `SERVER_HOSTNAME` | Caddy hostname(s) — comma-separated, no spaces |
+
+**Generate strong secrets** (for production, never reuse dev values):
+
+```bash
+# Linux/Mac/WSL
+openssl rand -base64 32
+
+# Windows PowerShell
+[Convert]::ToBase64String((1..32 | ForEach-Object { [byte](Get-Random -Max 256) }))
+```
+
+**`SERVER_HOSTNAME` examples:**
+- LAN: `192.168.1.50,localhost`
+- VPS: `yourdomain.com`
 
 The API reads these at runtime via `docker-compose.yml` environment injection — no hardcoded secrets in source code.
 
 ---
 
-## Running with Docker (Recommended)
+## Running with Docker (LAN / Home Network)
 
-This is the fastest way to get a fully working environment with zero local dependencies beyond Docker.
+This runs the full stack on your machine, accessible from any device on your local network over HTTPS.
+
+### Step 1 — Configure `.env`
+
+Set `SERVER_HOSTNAME` to your machine's LAN IP(s):
+
+```env
+POSTGRES_PASSWORD=tabletopspells_local
+JWT_KEY=local_dev_jwt_secret_key_must_be_at_least_32_chars!
+CHAT_MASTER_KEY=local_dev_chat_master_key_change_in_production!
+SERVER_HOSTNAME=192.168.1.50,localhost
+```
+
+Find your IP:
+```powershell
+(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" }).IPAddress
+```
+
+### Step 2 — Start the stack
 
 ```bash
-# 1. Clone the repository
+docker compose up --build
+```
+
+### Step 3 — Trust the Caddy root CA
+
+Caddy generates a private CA and issues TLS certificates automatically. Install the root CA once per device for a green padlock and full PWA install support.
+
+**Export the cert:**
+```bash
+docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
+```
+
+**Install on Windows (PC):**
+```powershell
+certutil -addstore -f "ROOT" caddy-root.crt
+```
+
+**Install on Android:**
+1. Copy `caddy-root.crt` to your phone (email it to yourself)
+2. Settings → Security → Install from storage → Select the file
+3. Name it "TabletopSpells CA" → Install as CA certificate
+
+**Install on iOS / iPadOS:**
+1. Email `caddy-root.crt` to yourself and open it → Settings offers to install a profile
+2. After installing: **Settings → General → About → Certificate Trust Settings → Toggle on**
+
+**Install on macOS:**
+```bash
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain caddy-root.crt
+```
+
+### Step 4 — Access the app
+
+```
+https://<your-server-ip>
+```
+
+The app is fully installable as a PWA. Use "Add to Home Screen" in your browser.
+
+**Windows Firewall** — if other devices can't connect, allow ports 80 and 443 inbound (Private profile only):
+```powershell
+New-NetFirewallRule -DisplayName "TabletopSpells HTTP (80)"  -Direction Inbound -Protocol TCP -LocalPort 80  -Profile Private,Domain -Action Allow
+New-NetFirewallRule -DisplayName "TabletopSpells HTTPS (443)" -Direction Inbound -Protocol TCP -LocalPort 443 -Profile Private,Domain -Action Allow
+```
+
+| Service | URL |
+|---------|-----|
+| App | `https://<your-ip>` |
+| API | `https://<your-ip>/api/` |
+| PostgreSQL | `localhost:5432` (local DB clients only) |
+
+---
+
+## Deploying to a VPS (Public Hosting)
+
+Hosting on a VPS gives you a public URL with a real HTTPS certificate — no CA installation on any device needed.
+
+### Prerequisites
+
+- A VPS running Linux (Ubuntu 22.04+ recommended) with Docker and Docker Compose installed
+- A domain name pointed at the VPS IP (A record: `yourdomain.com` → `<VPS-IP>`)
+- Ports 80 and 443 open in the VPS firewall
+
+### Step 1 — SSH to the VPS and clone the repo
+
+```bash
+ssh user@your-vps-ip
 git clone <repo-url>
 cd TabletopSpellsWeb
-
-# 2. Create your .env file (see above)
-
-# 3. Build and start all containers
-docker compose up --build
 ```
 
-| Service | URL | Notes |
-|---------|-----|-------|
-| React PWA | http://localhost:3000 | Full app with nginx |
-| PostgreSQL | `localhost:5432` | Accessible to local DB clients |
+### Step 2 — Generate strong secrets and create `.env`
 
-The database **migrates automatically** on every API startup — no manual steps needed.
-
-To stop:
 ```bash
-docker compose down          # Stop containers, keep data
-docker compose down -v       # Stop containers AND delete the database volume
+# Generate each secret separately
+openssl rand -base64 32  # run three times: once for each key
+
+# Create your .env
+cat > .env << 'EOF'
+POSTGRES_PASSWORD=<strong-random-value>
+JWT_KEY=<strong-random-value>
+CHAT_MASTER_KEY=<strong-random-value>
+SERVER_HOSTNAME=yourdomain.com
+EOF
 ```
 
-To rebuild after code changes:
-```bash
-docker compose up --build
+> ⚠️ **Never reuse LAN/dev secrets in production.** Generate fresh values for each.
+
+### Step 3 — Update the Caddyfile for your domain
+
+Open `Caddyfile` and remove the `tls internal` line (and the `local_certs` global block). With a real domain, Caddy gets a free Let's Encrypt cert automatically:
+
+```caddy
+{$SERVER_HOSTNAME} {
+    reverse_proxy api:8080
+}
 ```
 
-To rebuild only the API after backend changes:
+### Step 4 — Start the stack
+
 ```bash
-docker compose build api && docker compose up -d api
+docker compose up --build -d
 ```
+
+Caddy will automatically obtain a Let's Encrypt certificate for your domain. Give it 30–60 seconds on first start.
+
+### Step 5 — Verify
+
+```bash
+docker compose logs caddy   # should show "certificate obtained successfully"
+docker compose logs api     # should show "Application started"
+```
+
+Then visit `https://yourdomain.com` — you should get a green padlock and the fully installable PWA with no cert warnings on any device.
+
+### Common Docker Compose operations
+
+```bash
+docker compose down          # Stop containers, keep database
+docker compose down -v       # Stop containers AND delete all data
+docker compose up --build -d # Rebuild and restart after code changes
+docker compose pull && docker compose up -d  # If using pre-built images
+```
+
+### Minimum VPS sizing
+
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| RAM | 512 MB | 1 GB |
+| CPU | 1 vCPU | 1–2 vCPU |
+| Disk | 5 GB | 10 GB |
+
+A standard 1 GB RAM VPS (~15–30 DKK/month from providers like suble.io) is more than sufficient for a personal/small-group deployment.
 
 ---
 
