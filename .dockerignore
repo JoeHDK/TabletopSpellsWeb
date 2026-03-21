@@ -2,10 +2,10 @@
 **
 
 # .NET API source
-!TabletopSpells.Api/**
-TabletopSpells.Api/bin/
-TabletopSpells.Api/obj/
-TabletopSpells.Api/.idea/
+!Chronicle.Api/**
+Chronicle.Api/bin/
+Chronicle.Api/obj/
+Chronicle.Api/.idea/
 
 # React frontend source
 !chronicle-web/**
