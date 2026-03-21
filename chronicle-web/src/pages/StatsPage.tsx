@@ -21,6 +21,73 @@ const ABILITY_SHORT: Record<string, string> = {
   Intelligence: 'INT', Wisdom: 'WIS', Charisma: 'CHA',
 }
 
+const RESOURCE_DESCRIPTIONS: Record<string, { title: string; desc: string }> = {
+  rage: {
+    title: 'Rage',
+    desc: 'While raging you have advantage on Strength checks and saving throws, bonus to melee damage, and resistance to bludgeoning, piercing, and slashing damage. You can\'t cast or concentrate on spells while raging.',
+  },
+  ki_points: {
+    title: 'Ki Points',
+    desc: 'Ki points fuel special monk abilities. You regain all spent ki points after a short or long rest. Ki save DC = 8 + proficiency bonus + Wisdom modifier.',
+  },
+  channel_divinity: {
+    title: 'Channel Divinity',
+    desc: 'Channel Divinity lets you harness divine energy to fuel magical effects. Each use expends one charge. You regain all uses after a short or long rest (Cleric) or after a short or long rest (Paladin at higher levels).',
+  },
+  divine_sense: {
+    title: 'Divine Sense',
+    desc: 'Until the end of your next turn you know the location of any celestial, fiend, or undead within 60 ft that is not behind total cover. You also know if a place or object has been consecrated or desecrated. Uses = 1 + Charisma modifier per long rest.',
+  },
+  lay_on_hands: {
+    title: 'Lay on Hands',
+    desc: 'Your blessed touch can heal wounds. A pool of hit points = 5 × Paladin level. As an action you can restore up to that many hit points (divided among creatures), or expend 5 points to cure one disease or neutralise one poison.',
+  },
+  cleansing_touch: {
+    title: 'Cleansing Touch',
+    desc: 'As an action you can end one spell on yourself or a willing creature by touch. Uses = Charisma modifier (minimum 1) per long rest.',
+  },
+  divine_intervention: {
+    title: 'Divine Intervention',
+    desc: 'You can call on your deity to intervene on your behalf. Roll a d100; if you roll equal to or lower than your Cleric level, your deity intervenes. Success resets after a long rest.',
+  },
+  sorcery_points: {
+    title: 'Sorcery Points',
+    desc: 'Sorcery points are the currency of your magical power. You can convert them to spell slots (Flexible Casting) or expend them for Metamagic options. You regain all spent sorcery points after a long rest.',
+  },
+  bardic_inspiration: {
+    title: 'Bardic Inspiration',
+    desc: 'As a bonus action, give a creature within 60 ft a Bardic Inspiration die (d6 at bard level 1, scaling up). The creature can add the die to one ability check, attack roll, or saving throw within 10 minutes. You regain uses on a short or long rest (College of Lore) or long rest.',
+  },
+  second_wind: {
+    title: 'Second Wind',
+    desc: 'As a bonus action you can regain hit points equal to 1d10 + your Fighter level. You must finish a short or long rest before using this again.',
+  },
+  action_surge: {
+    title: 'Action Surge',
+    desc: 'On your turn you can take one additional action. You must finish a short or long rest before using this again (two uses at Fighter level 17).',
+  },
+  indomitable: {
+    title: 'Indomitable',
+    desc: 'You can reroll a saving throw that you fail. You must use the new roll. You must finish a long rest before using this again (up to 3 uses at Fighter level 17).',
+  },
+  pact_magic_slots: {
+    title: 'Pact Magic',
+    desc: 'Your Warlock spell slots are recovered on a short or long rest. All slots are the same level (determined by Warlock level) and you have a limited number per rest.',
+  },
+  mystic_arcanum_6: { title: 'Mystic Arcanum (6th)', desc: 'Once per long rest you can cast a 6th-level Warlock spell without expending a spell slot.' },
+  mystic_arcanum_7: { title: 'Mystic Arcanum (7th)', desc: 'Once per long rest you can cast a 7th-level Warlock spell without expending a spell slot.' },
+  mystic_arcanum_8: { title: 'Mystic Arcanum (8th)', desc: 'Once per long rest you can cast an 8th-level Warlock spell without expending a spell slot.' },
+  mystic_arcanum_9: { title: 'Mystic Arcanum (9th)', desc: 'Once per long rest you can cast a 9th-level Warlock spell without expending a spell slot.' },
+  infusions: {
+    title: 'Infusions',
+    desc: 'Artificer infusions are magical upgrades you can embed in non-magical items over a long rest. You can only have a limited number of infused items active at once. An infusion ends when you die or re-infuse the item.',
+  },
+  arcane_firearm: {
+    title: 'Arcane Firearm',
+    desc: 'After a long rest you can use woodcarver\'s tools to inscribe a firearm or wand as your arcane firearm. When you cast an Artificer spell through it, you can add 1d8 to one of the spell\'s damage rolls.',
+  },
+}
+
 const DND5E_SKILLS = [
   { name: 'Acrobatics', ability: 'Dexterity' },
   { name: 'Animal Handling', ability: 'Wisdom' },
@@ -394,6 +461,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const [showAttackForm, setShowAttackForm] = useState(false)
   const [editingAttack, setEditingAttack] = useState<CharacterAttack | null>(null)
   const [attackForm, setAttackForm] = useState<AddAttackRequest>(BLANK_ATTACK)
+  const [resourceInfoKey, setResourceInfoKey] = useState<string | null>(null)
 
   const addAttackMutation = useMutation({
     mutationFn: (req: AddAttackRequest) => attacksApi.add(id!, req),
@@ -820,7 +888,16 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                 return (
                   <div key={res.resourceKey} className="space-y-2">
                     <div className="flex items-center gap-3">
-                      <span className="flex-1 text-sm text-gray-200">{res.name}</span>
+                      <button
+                        className="flex-1 text-sm text-gray-200 text-left hover:text-indigo-300 transition-colors"
+                        onClick={() => RESOURCE_DESCRIPTIONS[res.resourceKey] && setResourceInfoKey(res.resourceKey)}
+                        title={RESOURCE_DESCRIPTIONS[res.resourceKey] ? 'Tap for description' : undefined}
+                      >
+                        {res.name}
+                        {RESOURCE_DESCRIPTIONS[res.resourceKey] && (
+                          <span className="ml-1 text-gray-600 text-xs">ℹ</span>
+                        )}
+                      </button>
                       <div className="flex items-center gap-1">
                         {res.isHpPool ? (
                           <div className="flex items-center gap-1">
@@ -899,6 +976,19 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
               })}
             </div>
           </section>
+        )}
+
+        {/* Resource description modal */}
+        {resourceInfoKey && RESOURCE_DESCRIPTIONS[resourceInfoKey] && (
+          <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setResourceInfoKey(null)}>
+            <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-5 space-y-3" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="text-base font-bold">{RESOURCE_DESCRIPTIONS[resourceInfoKey].title}</h2>
+                <button onClick={() => setResourceInfoKey(null)} className="text-gray-400 hover:text-white text-xl leading-none shrink-0">✕</button>
+              </div>
+              <p className="text-sm text-gray-300 leading-relaxed">{RESOURCE_DESCRIPTIONS[resourceInfoKey].desc}</p>
+            </div>
+          </div>
         )}
 
         {/* Wild Shape */}

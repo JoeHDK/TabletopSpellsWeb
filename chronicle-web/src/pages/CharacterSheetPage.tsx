@@ -17,8 +17,9 @@ import FeatsPage from './FeatsPage'
 import InventoryPage from './InventoryPage'
 import SearchSpellsPage from './SearchSpellsPage'
 import PrepareSpellsPage from './PrepareSpellsPage'
+import CharacteristicsPage from './CharacteristicsPage'
 
-type MainTab = 'stats' | 'spells' | 'log' | 'feats' | 'inventory'
+type MainTab = 'stats' | 'spells' | 'log' | 'feats' | 'inventory' | 'bio'
 type SpellSubTab = 'list' | 'perday' | 'search' | 'prepare'
 
 export default function CharacterSheetPage() {
@@ -63,6 +64,7 @@ export default function CharacterSheetPage() {
     { id: 'log', label: 'Log', icon: '📜' },
     { id: 'feats', label: 'Feats', icon: '🎯' },
     { id: 'inventory', label: 'Inv', icon: '🎒' },
+    { id: 'bio', label: 'Bio', icon: '🧙' },
   ]
 
   const spellSubTabs: { id: SpellSubTab; label: string }[] = [
@@ -136,6 +138,7 @@ export default function CharacterSheetPage() {
         {tab === 'log' && <SpellLogPage embedded />}
         {tab === 'feats' && <FeatsPage embedded />}
         {tab === 'inventory' && <InventoryPage embedded />}
+        {tab === 'bio' && <CharacteristicsPage embedded />}
       </div>
     </div>
   )

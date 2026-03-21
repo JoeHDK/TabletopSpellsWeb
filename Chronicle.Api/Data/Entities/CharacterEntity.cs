@@ -50,4 +50,19 @@ public class CharacterEntity
     public ICollection<CharacterThemeEntity> Themes { get; set; } = new List<CharacterThemeEntity>();
     public ICollection<CharacterInventoryItemEntity> Inventory { get; set; } = new List<CharacterInventoryItemEntity>();
     public ICollection<CharacterAttackEntity> Attacks { get; set; } = new List<CharacterAttackEntity>();
+
+    // ── Roleplay / Characteristics (D&D 5e character sheet fields) ────────────
+    public string? PersonalityTraits { get; set; }
+    public string? Ideals { get; set; }
+    public string? Bonds { get; set; }
+    public string? Flaws { get; set; }
+    public string? Backstory { get; set; }
+    public string? Appearance { get; set; }
+    public string? Age { get; set; }
+    public string? Height { get; set; }
+    public string? Weight { get; set; }
+    public string? Eyes { get; set; }
+    public string? Hair { get; set; }
+    public string? Skin { get; set; }
+    public string? AlliesAndOrganizations { get; set; }
 }

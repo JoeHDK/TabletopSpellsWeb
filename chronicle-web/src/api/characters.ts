@@ -1,5 +1,5 @@
 import api from './client'
-import type { Character, CreateCharacterRequest, UpdateCharacterRequest } from '../types'
+import type { Character, CreateCharacterRequest, UpdateCharacterRequest, UpdateCharacteristicsRequest } from '../types'
 
 export const charactersApi = {
   getAll: () => api.get<Character[]>('/characters').then((r) => r.data),
@@ -10,6 +10,8 @@ export const charactersApi = {
   delete: (id: string) => api.delete(`/characters/${id}`),
   updateHp: (id: string, currentHp: number, maxHp?: number) =>
     api.patch<Character>(`/characters/${id}/hp`, { currentHp, maxHp }).then((r) => r.data),
+  updateCharacteristics: (id: string, req: UpdateCharacteristicsRequest) =>
+    api.patch<Character>(`/characters/${id}/characteristics`, req).then((r) => r.data),
   uploadAvatar: (id: string, file: File) => {
     const form = new FormData()
     form.append('file', file)

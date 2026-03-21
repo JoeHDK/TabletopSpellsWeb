@@ -33,6 +33,36 @@ export interface Character {
   wildShapeBeastCurrentHp: number | null
   wildShapeBeastMaxHp: number | null
   race?: string
+  // Roleplay / Characteristics
+  personalityTraits?: string
+  ideals?: string
+  bonds?: string
+  flaws?: string
+  backstory?: string
+  appearance?: string
+  age?: string
+  height?: string
+  weight?: string
+  eyes?: string
+  hair?: string
+  skin?: string
+  alliesAndOrganizations?: string
+}
+
+export interface UpdateCharacteristicsRequest {
+  personalityTraits?: string
+  ideals?: string
+  bonds?: string
+  flaws?: string
+  backstory?: string
+  appearance?: string
+  age?: string
+  height?: string
+  weight?: string
+  eyes?: string
+  hair?: string
+  skin?: string
+  alliesAndOrganizations?: string
 }
 
 export interface CreateCharacterRequest {

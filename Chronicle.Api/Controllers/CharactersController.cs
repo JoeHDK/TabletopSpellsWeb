@@ -222,6 +222,33 @@ public class CharactersController : ControllerBase
         return Ok(MapToDto(entity));
     }
 
+    /// <summary>Update roleplay / characteristics fields for a character.</summary>
+    [HttpPatch("{id:guid}/characteristics")]
+    public async Task<IActionResult> UpdateCharacteristics(Guid id, [FromBody] UpdateCharacteristicsRequest req)
+    {
+        var userId = UserId;
+        var entity = await _db.Characters.FindAsync(id);
+        if (entity == null || entity.UserId != userId) return NotFound();
+
+        entity.PersonalityTraits = req.PersonalityTraits ?? entity.PersonalityTraits;
+        entity.Ideals = req.Ideals ?? entity.Ideals;
+        entity.Bonds = req.Bonds ?? entity.Bonds;
+        entity.Flaws = req.Flaws ?? entity.Flaws;
+        entity.Backstory = req.Backstory ?? entity.Backstory;
+        entity.Appearance = req.Appearance ?? entity.Appearance;
+        entity.Age = req.Age ?? entity.Age;
+        entity.Height = req.Height ?? entity.Height;
+        entity.Weight = req.Weight ?? entity.Weight;
+        entity.Eyes = req.Eyes ?? entity.Eyes;
+        entity.Hair = req.Hair ?? entity.Hair;
+        entity.Skin = req.Skin ?? entity.Skin;
+        entity.AlliesAndOrganizations = req.AlliesAndOrganizations ?? entity.AlliesAndOrganizations;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return Ok(MapToDto(entity));
+    }
+
     private static List<string> DeserializeList(string json)
     {
         if (string.IsNullOrWhiteSpace(json)) return new();
@@ -258,5 +285,18 @@ public class CharactersController : ControllerBase
         WildShapeBeastCurrentHp = e.WildShapeBeastCurrentHp,
         WildShapeBeastMaxHp = e.WildShapeBeastMaxHp,
         Race = e.Race,
+        PersonalityTraits = e.PersonalityTraits,
+        Ideals = e.Ideals,
+        Bonds = e.Bonds,
+        Flaws = e.Flaws,
+        Backstory = e.Backstory,
+        Appearance = e.Appearance,
+        Age = e.Age,
+        Height = e.Height,
+        Weight = e.Weight,
+        Eyes = e.Eyes,
+        Hair = e.Hair,
+        Skin = e.Skin,
+        AlliesAndOrganizations = e.AlliesAndOrganizations,
     };
 }
