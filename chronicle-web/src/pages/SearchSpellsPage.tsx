@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { spellsApi, preparedSpellsApi } from '../api/spells'
 import { charactersApi } from '../api/characters'
-import type { Spell } from '../types'
+import type { Spell, PreparedSpell } from '../types'
 import SpellDetailModal from '../components/SpellDetailModal'
 import { getLevelForClass, parseFirstLevel, resolveClassName } from '../utils/spellUtils'
 
@@ -40,12 +40,18 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
         isDomainSpell: false,
       })
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['preparedSpells', id] }),
+    onSuccess: (updated) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', id], old => {
+      if (!old) return [updated]
+      const exists = old.some(p => p.spellId === updated.spellId)
+      return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+    }),
   })
 
   const removeMutation = useMutation({
     mutationFn: (spell: Spell) => preparedSpellsApi.delete(id!, spell.id ?? spell.name!),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['preparedSpells', id] }),
+    onSuccess: (_void, spell) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', id], old =>
+      old?.filter(p => p.spellId !== (spell.id ?? spell.name!)) ?? []
+    ),
   })
 
   const filtered = useMemo(() => {

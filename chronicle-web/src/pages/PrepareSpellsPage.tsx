@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { spellsApi, preparedSpellsApi } from '../api/spells'
 import { charactersApi } from '../api/characters'
 import { isPreparingCaster } from '../utils/spellUtils'
-import type { Spell, Character } from '../types'
+import type { Spell, Character, PreparedSpell } from '../types'
 
 export default function PrepareSpellsPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
@@ -80,7 +80,11 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
         isFavorite: false,
         isDomainSpell: false,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] }),
+    onSuccess: (updated) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
+      if (!old) return [updated]
+      const exists = old.some(p => p.spellId === updated.spellId)
+      return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+    }),
   })
 
   const filteredCantripPicker = allCantrips.filter(
@@ -254,7 +258,11 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
         isFavorite: false,
         isDomainSpell: false,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] }),
+    onSuccess: (updated) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
+      if (!old) return [updated]
+      const exists = old.some(p => p.spellId === updated.spellId)
+      return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+    }),
   })
 
   // Prepared count excludes cantrips

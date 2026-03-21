@@ -126,7 +126,11 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
   const addMutation = useMutation({
     mutationFn: ({ featIndex, notes }: { featIndex: string; notes?: string }) =>
       characterFeatsApi.add(id!, { featIndex, notes }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['character-feats', id] }),
+    onSuccess: (newFeat) => {
+      qc.setQueryData<CharacterFeat[]>(['character-feats', id], old => [...(old ?? []), newFeat])
+      // ASI feats modify ability scores on the server — invalidate character to pick up the change
+      qc.invalidateQueries({ queryKey: ['character', id] })
+    },
   })
 
   const handleAdd = (featIndex: string) => {
@@ -151,7 +155,10 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
 
   const removeMutation = useMutation({
     mutationFn: (featId: string) => characterFeatsApi.remove(id!, featId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['character-feats', id] }),
+    onSuccess: (_void, featId) => {
+      qc.setQueryData<CharacterFeat[]>(['character-feats', id], old => old?.filter(f => f.id !== featId) ?? [])
+      qc.invalidateQueries({ queryKey: ['character', id] })
+    },
   })
 
   const ownedIndexMap = useMemo(

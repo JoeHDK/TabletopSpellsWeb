@@ -34,12 +34,8 @@ import SettingsPage from './pages/SettingsPage'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      networkMode: 'offlineFirst',
-      staleTime: 1000 * 60 * 5,       // 5 minutes
-      gcTime: 1000 * 60 * 60 * 24 * 7, // 7 days (keep cache for offline use)
-    },
-    mutations: {
-      networkMode: 'offlineFirst',
+      staleTime: 0,
+      gcTime: 1000 * 60 * 60 * 24 * 7, // 7 days (IDB offline fallback)
     },
   },
 })

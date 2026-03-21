@@ -13,7 +13,7 @@ import EditableNumber from '../components/EditableNumber'
 import BeastPickerModal from '../components/BeastPickerModal'
 import { resizeImage } from '../utils/resizeImage'
 import { resolveClassName } from '../utils/spellUtils'
-import type { UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey, Beast, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race } from '../types'
+import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey, Beast, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race } from '../types'
 
 const ABILITY_KEYS = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']
 const ABILITY_SHORT: Record<string, string> = {
@@ -321,8 +321,8 @@ function RaceSelector({ characterId, currentRace }: { characterId: string; curre
   const { data: allRaces = [] } = useQuery({ queryKey: ['races'], queryFn: () => racesApi.getAll() })
   const mutation = useMutation({
     mutationFn: (race: string | undefined) => charactersApi.update(characterId, { race }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['character', characterId] })
+    onSuccess: (updated) => {
+      qc.setQueryData<Character>(['character', characterId], updated)
       qc.invalidateQueries({ queryKey: ['race'] })
     },
   })
@@ -408,14 +408,22 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       if (action === 'short-rest') return classResourcesApi.shortRest(id!)
       return classResourcesApi.sync(id!)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['classResources', id] }),
+    onSuccess: (updated) => qc.setQueryData<ClassResource[]>(['classResources', id], old => {
+      if (!old) return updated
+      const map = new Map(updated.map(r => [r.resourceKey, r]))
+      return old.map(r => map.get(r.resourceKey) ?? r)
+    }),
   })
 
   useEffect(() => {
     if (id) classResourcesApi.sync(id)
-      .then(() => qc.invalidateQueries({ queryKey: ['classResources', id] }))
+      .then(updated => qc.setQueryData<ClassResource[]>(['classResources', id], old => {
+        if (!old) return updated
+        const map = new Map(updated.map(r => [r.resourceKey, r]))
+        return old.map(r => map.get(r.resourceKey) ?? r)
+      }))
       .catch(() => {/* endpoint not yet available */})
-  }, [id, character?.characterClass, character?.level])
+  }, [id, character?.characterClass, character?.level]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Local draft state — only set when something is dirty
   const [draft, setDraft] = useState<UpdateCharacterRequest & { currentHp?: number; maxHp?: number } | null>(null)
@@ -430,18 +438,18 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
   const updateMutation = useMutation({
     mutationFn: (req: UpdateCharacterRequest) => charactersApi.update(id!, req),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
+    onSuccess: (updated) => qc.setQueryData<Character>(['character', id], updated),
   })
 
   const hpMutation = useMutation({
     mutationFn: ({ currentHp, maxHp }: { currentHp: number; maxHp?: number }) =>
       charactersApi.updateHp(id!, currentHp, maxHp),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
+    onSuccess: (updated) => qc.setQueryData<Character>(['character', id], updated),
   })
 
   const avatarMutation = useMutation({
     mutationFn: (file: File) => charactersApi.uploadAvatar(id!, file),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
+    onSuccess: (updated) => qc.setQueryData<Character>(['character', id], updated),
   })
 
   // ── Wild Shape state ──────────────────────────────────────────
@@ -450,7 +458,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const wildShapeMutation = useMutation({
     mutationFn: (req: Parameters<typeof beastsApi.updateWildShape>[1]) =>
       beastsApi.updateWildShape(id!, req),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
+    onSuccess: (updated) => qc.setQueryData<Character>(['character', id], updated),
   })
 
   // ── Attack form state ──────────────────────────────────────────
@@ -465,16 +473,24 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
   const addAttackMutation = useMutation({
     mutationFn: (req: AddAttackRequest) => attacksApi.add(id!, req),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attacks', id] }); setShowAttackForm(false); setAttackForm(BLANK_ATTACK) },
+    onSuccess: (newAttack) => {
+      qc.setQueryData<CharacterAttack[]>(['attacks', id], old => [...(old ?? []), newAttack])
+      setShowAttackForm(false)
+      setAttackForm(BLANK_ATTACK)
+    },
   })
   const updateAttackMutation = useMutation({
     mutationFn: ({ attackId, req }: { attackId: string; req: AddAttackRequest }) =>
       attacksApi.update(id!, attackId, req),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['attacks', id] }); setEditingAttack(null); setAttackForm(BLANK_ATTACK) },
+    onSuccess: (updated) => {
+      qc.setQueryData<CharacterAttack[]>(['attacks', id], old => old?.map(a => a.id === updated.id ? updated : a) ?? [])
+      setEditingAttack(null)
+      setAttackForm(BLANK_ATTACK)
+    },
   })
   const deleteAttackMutation = useMutation({
     mutationFn: (attackId: string) => attacksApi.remove(id!, attackId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['attacks', id] }),
+    onSuccess: (_void, attackId) => qc.setQueryData<CharacterAttack[]>(['attacks', id], old => old?.filter(a => a.id !== attackId) ?? []),
   })
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

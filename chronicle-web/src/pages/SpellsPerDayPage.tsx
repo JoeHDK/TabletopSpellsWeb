@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import type { Character, SpellsPerDay } from '../types'
 import { getExpectedSpellSlots } from '../utils/spellSlotsTable'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -26,7 +27,7 @@ export default function SpellsPerDayPage({ embedded }: { embedded?: boolean } = 
   const updateMaxMutation = useMutation({
     mutationFn: (newMax: Record<number, number>) =>
       charactersApi.update(id!, { maxSpellsPerDay: newMax }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['character', id] }),
+    onSuccess: (updatedCharacter) => qc.setQueryData<Character>(['character', id], updatedCharacter),
   })
 
   const resetMutation = useMutation({
@@ -44,7 +45,9 @@ export default function SpellsPerDayPage({ embedded }: { embedded?: boolean } = 
       ])
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['spellsPerDay', id] })
+      qc.setQueryData<SpellsPerDay[]>(['spellsPerDay', id], old =>
+        old?.map(s => ({ ...s, usedSlots: 0 })) ?? []
+      )
       qc.invalidateQueries({ queryKey: ['classResources', id] })
     },
   })
