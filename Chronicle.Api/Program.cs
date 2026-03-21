@@ -96,7 +96,17 @@ var app = builder.Build();
 if (!app.Environment.IsProduction())
     app.UseHttpsRedirection();
 app.UseDefaultFiles();   // serves index.html for "/"
-app.UseStaticFiles();    // serves React build from wwwroot/
+// Service worker must not be cached by the HTTP cache so the browser always
+// checks for updates. All other static assets use the default (content-addressed
+// filenames from Vite, so long-lived caching is safe).
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        if (ctx.File.Name == "sw.js")
+            ctx.Context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+    }
+});
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

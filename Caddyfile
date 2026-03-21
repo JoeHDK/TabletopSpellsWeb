@@ -1,19 +1,21 @@
 # ---------------------------------------------------------------
-# LAN mode (default): uses Caddy's internal CA.
+# LAN / dev mode: uncomment the two lines below and set
+# SERVER_HOSTNAME to your LAN IP (e.g. 192.168.1.83,localhost).
 # Install caddy-root.crt on each device once (see DEVELOPER_SETUP.md).
 #
-# VPS / real domain mode: delete the two lines below that say
-# "local_certs" and "tls internal" — Caddy will get a free
-# Let's Encrypt cert automatically. No cert installation needed.
+# VPS / real domain mode (default): leave as-is.
+# Caddy gets a free Let's Encrypt cert automatically when
+# SERVER_HOSTNAME is a publicly reachable domain like
+# 192-121-119-125.sslip.io.
 # ---------------------------------------------------------------
-{
-	local_certs
-}
+# {
+# 	local_certs
+# }
 
 # Set SERVER_HOSTNAME in your .env file.
 # LAN example:  SERVER_HOSTNAME=192.168.1.83,localhost
-# VPS example:  SERVER_HOSTNAME=yourdomain.com
+# VPS example:  SERVER_HOSTNAME=192-121-119-125.sslip.io
 {$SERVER_HOSTNAME} {
-	tls internal   # <-- remove this line for VPS / real domain
+	# tls internal   # <-- uncomment for LAN / dev mode only
 	reverse_proxy api:8080
 }
