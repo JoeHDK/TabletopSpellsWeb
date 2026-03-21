@@ -30,8 +30,8 @@ namespace Chronicle.Api.Migrations
                 SET ""SavingThrowProficienciesJson"" = '[]',
                     ""SkillProficienciesJson"" = '[]'
                 WHERE ""SavingThrowProficienciesJson"" IS NULL
-                   OR ""SavingThrowProficienciesJson"" = ''
-                   OR ""SavingThrowProficienciesJson"" = '{}';");
+                   OR ""SavingThrowProficienciesJson""::text = ''
+                   OR ""SavingThrowProficienciesJson""::text = '{}';");
         }
 
         /// <inheritdoc />
