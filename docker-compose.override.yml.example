@@ -1,8 +1,8 @@
 # docker-compose.override.yml — local development only
 #
-# Docker Compose automatically merges this file when you run
-# `docker compose up` locally. It is NOT present on the VPS,
-# so postgres stays internal-only in production.
+# Copy this file to docker-compose.override.yml (gitignored).
+# Docker Compose automatically merges it when you run `docker compose up` locally.
+# The VPS does NOT have this file, so postgres stays internal-only in production.
 #
 # This file adds the postgres port mapping so local DB clients
 # (pgAdmin, DBeaver, etc.) can connect to localhost:5432.
