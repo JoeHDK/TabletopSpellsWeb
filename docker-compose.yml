@@ -8,8 +8,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Port intentionally not exposed here — postgres is internal-only on VPS.
+    # For local DB client access (pgAdmin/DBeaver), docker-compose.override.yml
+    # re-adds the port mapping automatically.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d tabletopspells"]
       interval: 5s

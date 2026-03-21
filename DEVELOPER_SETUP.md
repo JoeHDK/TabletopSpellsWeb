@@ -308,6 +308,12 @@ npm run dev
 
 ## Database Access (PostgreSQL)
 
+PostgreSQL is **not exposed publicly** — it runs on Docker's internal network only. On a VPS, this means it's never reachable from the internet.
+
+**Locally**, `docker-compose.override.yml` (auto-merged by Docker Compose) adds `ports: "5432:5432"` so desktop DB clients can connect to `localhost:5432`. This file is not present on the VPS, so the port stays closed there.
+
+> To connect to the VPS database, SSH into the server and use `docker exec` (see psql instructions below).
+
 ### Connection details
 
 | Field | Docker default | Local dev default |
