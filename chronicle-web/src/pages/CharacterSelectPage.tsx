@@ -84,12 +84,17 @@ export default function CharacterSelectPage() {
 
   const createMutation = useMutation({
     mutationFn: (req: CreateCharacterRequest) => charactersApi.create(req),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['characters'] }); setShowCreate(false) },
+    onSuccess: (newChar) => {
+      qc.setQueryData<Character[]>(['characters'], (old = []) => [...old, newChar])
+      setShowCreate(false)
+    },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => charactersApi.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['characters'] }),
+    onSuccess: (_, deletedId) => {
+      qc.setQueryData<Character[]>(['characters'], (old = []) => old.filter((c) => c.id !== deletedId))
+    },
   })
 
   const createGameMutation = useMutation({
@@ -151,7 +156,7 @@ export default function CharacterSelectPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <header className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-indigo-400">⚔️ TabletopSpells</h1>
+        <h1 className="text-xl font-bold text-indigo-400">⚔️ Chronicle</h1>
         <BurgerMenu />
       </header>
 
