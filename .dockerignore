@@ -8,7 +8,7 @@ TabletopSpells.Api/obj/
 TabletopSpells.Api/.idea/
 
 # React frontend source
-!tabletopspells-web/**
-tabletopspells-web/node_modules/
-tabletopspells-web/dist/
-tabletopspells-web/.idea/
+!chronicle-web/**
+chronicle-web/node_modules/
+chronicle-web/dist/
+chronicle-web/.idea/

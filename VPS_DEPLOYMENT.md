@@ -1,6 +1,6 @@
-# TabletopSpells — VPS Deployment Guide
+# Chronicle — VPS Deployment Guide
 
-A complete, step-by-step guide for deploying TabletopSpells to a public VPS.
+A complete, step-by-step guide for deploying Chronicle to a public VPS.
 When done, you'll have a fully HTTPS-secured, publicly accessible PWA with a free
 Let's Encrypt certificate — no certificate installation needed on any device.
 
@@ -12,7 +12,7 @@ Before you start, you need:
 
 - [ ] A **VPS** running Ubuntu 22.04+ (e.g. suble.io BXS s0 or larger)
 - [ ] A **domain name** with an A record pointing to your VPS IP  
-      e.g. `tabletopspells.yourdomain.com` → `<VPS-IP>`  
+      e.g. `Chronicle.yourdomain.com` → `<VPS-IP>`  
       DNS changes can take up to 24 hours to propagate (usually minutes)
 - [ ] **SSH access** to the VPS (password or SSH key)
 - [ ] A **Git remote** for this repo (GitHub, GitLab, etc.)
@@ -85,8 +85,8 @@ OpenSSH                    ALLOW       Anywhere
 
 ```bash
 cd /opt
-git clone <your-repo-url> tabletopspells
-cd tabletopspells
+git clone <your-repo-url> Chronicle
+cd Chronicle
 ```
 
 ---
@@ -119,7 +119,7 @@ Fill in your values:
 POSTGRES_PASSWORD=<paste first openssl output>
 JWT_KEY=<paste second openssl output>
 CHAT_MASTER_KEY=<paste third openssl output>
-SERVER_HOSTNAME=tabletopspells.yourdomain.com
+SERVER_HOSTNAME=Chronicle.yourdomain.com
 ```
 
 Save with `Ctrl+O`, exit with `Ctrl+X`.
@@ -195,9 +195,9 @@ docker compose ps
 Expected output:
 ```
 NAME                          STATUS
-tabletopspells-postgres-1     Up (healthy)
-tabletopspells-api-1          Up
-tabletopspells-caddy-1        Up
+Chronicle-postgres-1     Up (healthy)
+Chronicle-api-1          Up
+Chronicle-caddy-1        Up
 ```
 
 ### Check Caddy got a Let's Encrypt certificate
@@ -208,7 +208,7 @@ docker compose logs caddy | grep "certificate obtained"
 
 Expected output:
 ```
-certificate obtained successfully  identifier=tabletopspells.yourdomain.com  issuer=acme-v02.api.letsencrypt.org
+certificate obtained successfully  identifier=Chronicle.yourdomain.com  issuer=acme-v02.api.letsencrypt.org
 ```
 
 ### Check the API started correctly
@@ -220,10 +220,10 @@ docker compose logs api | grep "Application started"
 ### Open the app in a browser
 
 ```
-https://tabletopspells.yourdomain.com
+https://Chronicle.yourdomain.com
 ```
 
-You should see a green padlock and the TabletopSpells login page.
+You should see a green padlock and the Chronicle login page.
 
 ---
 
@@ -248,7 +248,7 @@ Expected output:
 
 > **Write this password down.** It is not stored in plaintext anywhere and won't appear again.
 
-Log in at `https://tabletopspells.yourdomain.com` with `admin` and the password above.
+Log in at `https://Chronicle.yourdomain.com` with `admin` and the password above.
 Change the password in the app after first login.
 
 ---
@@ -258,7 +258,7 @@ Change the password in the app after first login.
 ### Update to a new version
 
 ```bash
-cd /opt/tabletopspells
+cd /opt/Chronicle
 git pull
 docker compose up --build -d
 ```
@@ -288,7 +288,7 @@ docker compose down -v          # stops containers AND deletes all data ⚠️
 ### Access the database (from the VPS)
 
 ```bash
-docker exec -it tabletopspells-postgres-1 psql -U postgres -d tabletopspells
+docker exec -it Chronicle-postgres-1 psql -U postgres -d Chronicle
 ```
 
 ---
@@ -298,8 +298,8 @@ docker exec -it tabletopspells-postgres-1 psql -U postgres -d tabletopspells
 ### Backup the database
 
 ```bash
-docker exec tabletopspells-postgres-1 \
-  pg_dump -U postgres tabletopspells \
+docker exec Chronicle-postgres-1 \
+  pg_dump -U postgres Chronicle \
   > backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
@@ -310,8 +310,8 @@ docker exec tabletopspells-postgres-1 \
 docker compose stop api
 
 # Restore
-docker exec -i tabletopspells-postgres-1 \
-  psql -U postgres tabletopspells < backup_YYYYMMDD_HHMMSS.sql
+docker exec -i Chronicle-postgres-1 \
+  psql -U postgres Chronicle < backup_YYYYMMDD_HHMMSS.sql
 
 # Restart the API
 docker compose start api
@@ -321,7 +321,7 @@ docker compose start api
 
 ```bash
 # Run this on your LOCAL machine
-scp root@<your-vps-ip>:/opt/tabletopspells/backup_*.sql ./
+scp root@<your-vps-ip>:/opt/Chronicle/backup_*.sql ./
 ```
 
 ---
@@ -335,7 +335,7 @@ docker compose logs caddy | tail -30
 ```
 
 Common causes:
-- **DNS not propagated yet** — wait a few minutes and try `nslookup tabletopspells.yourdomain.com` until it returns your VPS IP
+- **DNS not propagated yet** — wait a few minutes and try `nslookup Chronicle.yourdomain.com` until it returns your VPS IP
 - **Port 80/443 blocked** — verify `ufw status` shows both ports as `ALLOW`
 - **Rate limited** — Let's Encrypt allows 5 cert requests per domain per week; if you hit the limit, wait before retrying
 
@@ -364,7 +364,7 @@ Reset it via psql (the API uses ASP.NET Identity — hash the new password):
 # Easiest: use the API's register endpoint to create a new account,
 # then promote it to admin via psql if needed.
 # Or: delete the admin user and restart the API to re-seed it.
-docker exec -it tabletopspells-postgres-1 psql -U postgres -d tabletopspells
+docker exec -it Chronicle-postgres-1 psql -U postgres -d Chronicle
 ```
 ```sql
 -- Delete the admin user (will be re-created with a new password on next restart)
@@ -391,4 +391,4 @@ docker compose logs api | grep -A5 "Admin account"
 
 ---
 
-*Generated for TabletopSpells — see `DEVELOPER_SETUP.md` for local development instructions.*
+*Generated for Chronicle — see `DEVELOPER_SETUP.md` for local development instructions.*

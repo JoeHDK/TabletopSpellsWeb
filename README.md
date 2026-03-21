@@ -1,4 +1,4 @@
-# TabletopSpells Web
+# Chronicle Web
 
 A Progressive Web App for managing D&D 5e and Pathfinder 1e spells, with user accounts and cross-device sync.
 
@@ -6,8 +6,8 @@ A Progressive Web App for managing D&D 5e and Pathfinder 1e spells, with user ac
 
 | Folder | Description |
 |--------|-------------|
-| `TabletopSpells.Api/` | ASP.NET Core 8 Web API backend |
-| `tabletopspells-web/` | Vite + React + TypeScript PWA frontend |
+| `Chronicle.Api/` | ASP.NET Core 8 Web API backend |
+| `chronicle-web/` | Vite + React + TypeScript PWA frontend |
 
 ## Tech Stack
 
@@ -25,7 +25,7 @@ A Progressive Web App for managing D&D 5e and Pathfinder 1e spells, with user ac
 ### Run with Docker (recommended)
 
 ```bash
-cd C:\code\TabletopSpellsWeb
+cd C:\code\ChronicleWeb
 
 # Start everything (postgres + api + web)
 docker compose up --build
@@ -55,7 +55,7 @@ docker compose up --build
 Secrets live in `.env` at the project root (never committed):
 
 ```env
-POSTGRES_PASSWORD=tabletopspells_local
+POSTGRES_PASSWORD=Chronicle_local
 JWT_KEY=local_dev_jwt_secret_key_must_be_at_least_32_chars!
 ```
 
@@ -64,12 +64,12 @@ Change `JWT_KEY` to a long random string for any non-local deployment.
 ### Local Dev (without Docker)
 
 **Backend:**
-1. Update `TabletopSpells.Api/appsettings.Development.json` with your PostgreSQL connection string and JWT key
-2. `cd TabletopSpells.Api && dotnet run`
+1. Update `Chronicle.Api/appsettings.Development.json` with your PostgreSQL connection string and JWT key
+2. `cd Chronicle.Api && dotnet run`
 
 **Frontend:**
 ```bash
-cd tabletopspells-web && npm install && npm run dev
+cd chronicle-web && npm install && npm run dev
 ```
 
 The Vite dev server runs on `http://localhost:5173` and proxies `/api` to `http://localhost:5000`.

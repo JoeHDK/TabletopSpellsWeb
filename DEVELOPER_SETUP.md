@@ -1,4 +1,4 @@
-# TabletopSpells — Developer Setup Guide
+# Chronicle — Developer Setup Guide
 
 A Progressive Web App for managing D&D 5e and Pathfinder 1e spells, characters, and party sessions.
 
@@ -91,7 +91,7 @@ This runs the full stack on your machine, accessible from any device on your loc
 Set `SERVER_HOSTNAME` to your machine's LAN IP(s):
 
 ```env
-POSTGRES_PASSWORD=tabletopspells_local
+POSTGRES_PASSWORD=Chronicle_local
 JWT_KEY=local_dev_jwt_secret_key_must_be_at_least_32_chars!
 CHAT_MASTER_KEY=local_dev_chat_master_key_change_in_production!
 SERVER_HOSTNAME=192.168.1.50,localhost
@@ -125,7 +125,7 @@ certutil -addstore -f "ROOT" caddy-root.crt
 **Install on Android:**
 1. Copy `caddy-root.crt` to your phone (email it to yourself)
 2. Settings → Security → Install from storage → Select the file
-3. Name it "TabletopSpells CA" → Install as CA certificate
+3. Name it "Chronicle CA" → Install as CA certificate
 
 **Install on iOS / iPadOS:**
 1. Email `caddy-root.crt` to yourself and open it → Settings offers to install a profile
@@ -146,8 +146,8 @@ The app is fully installable as a PWA. Use "Add to Home Screen" in your browser.
 
 **Windows Firewall** — if other devices can't connect, allow ports 80 and 443 inbound (Private profile only):
 ```powershell
-New-NetFirewallRule -DisplayName "TabletopSpells HTTP (80)"  -Direction Inbound -Protocol TCP -LocalPort 80  -Profile Private,Domain -Action Allow
-New-NetFirewallRule -DisplayName "TabletopSpells HTTPS (443)" -Direction Inbound -Protocol TCP -LocalPort 443 -Profile Private,Domain -Action Allow
+New-NetFirewallRule -DisplayName "Chronicle HTTP (80)"  -Direction Inbound -Protocol TCP -LocalPort 80  -Profile Private,Domain -Action Allow
+New-NetFirewallRule -DisplayName "Chronicle HTTPS (443)" -Direction Inbound -Protocol TCP -LocalPort 443 -Profile Private,Domain -Action Allow
 ```
 
 | Service | URL |
@@ -173,7 +173,7 @@ Hosting on a VPS gives you a public URL with a real HTTPS certificate — no CA 
 ```bash
 ssh user@your-vps-ip
 git clone <repo-url>
-cd TabletopSpellsWeb
+cd ChronicleWeb
 ```
 
 ### Step 2 — Generate strong secrets and create `.env`
@@ -253,25 +253,25 @@ The easiest option is still to run only the database in Docker:
 docker compose up -d postgres
 ```
 
-Alternatively, use a local PostgreSQL 16 installation. Make sure a database named `tabletopspells` exists:
+Alternatively, use a local PostgreSQL 16 installation. Make sure a database named `Chronicle` exists:
 
 ```sql
-CREATE DATABASE tabletopspells;
+CREATE DATABASE Chronicle;
 ```
 
 ### Step 2 — Configure the API
 
-Edit `TabletopSpells.Api/appsettings.Development.json`:
+Edit `Chronicle.Api/appsettings.Development.json`:
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=tabletopspells;Username=postgres;Password=YOUR_PASSWORD"
+    "DefaultConnection": "Host=localhost;Port=5432;Database=Chronicle;Username=postgres;Password=YOUR_PASSWORD"
   },
   "Jwt": {
     "Key": "local_dev_jwt_secret_key_must_be_at_least_32_chars_long!",
-    "Issuer": "TabletopSpellsApi",
-    "Audience": "TabletopSpellsWeb"
+    "Issuer": "ChronicleApi",
+    "Audience": "ChronicleWeb"
   },
   "Cors": {
     "AllowedOrigins": [ "http://localhost:5173" ]
@@ -285,7 +285,7 @@ Edit `TabletopSpells.Api/appsettings.Development.json`:
 ### Step 3 — Run the API
 
 ```bash
-cd TabletopSpells.Api
+cd Chronicle.Api
 dotnet run
 # API starts on http://localhost:5000 (HTTP) and https://localhost:5001 (HTTPS)
 ```
@@ -295,7 +295,7 @@ Migrations run automatically on startup.
 ### Step 4 — Run the Frontend
 
 ```bash
-cd tabletopspells-web
+cd chronicle-web
 npm install
 npm run dev
 # Vite starts on http://localhost:5173
@@ -320,7 +320,7 @@ PostgreSQL is **not exposed publicly** — it runs on Docker's internal network 
 |-------|---------------|-------------------|
 | Host | `localhost` | `localhost` |
 | Port | `5432` | `5432` |
-| Database | `tabletopspells` | `tabletopspells` |
+| Database | `Chronicle` | `Chronicle` |
 | Username | `postgres` | `postgres` |
 | Password | Value from `.env` → `POSTGRES_PASSWORD` | As configured |
 
@@ -328,10 +328,10 @@ PostgreSQL is **not exposed publicly** — it runs on Docker's internal network 
 
 ```bash
 # Connect via Docker exec (no local psql needed)
-docker exec -it tabletopspellsweb-postgres-1 psql -U postgres -d tabletopspells
+docker exec -it ChronicleWeb-postgres-1 psql -U postgres -d Chronicle
 
 # Or with local psql installed
-psql -h localhost -p 5432 -U postgres -d tabletopspells
+psql -h localhost -p 5432 -U postgres -d Chronicle
 ```
 
 Useful queries once connected:
@@ -361,11 +361,11 @@ ORDER BY c."Name";
 1. Download and install [pgAdmin 4](https://www.pgadmin.org/download/)
 2. Right-click **Servers** → **Register → Server**
 3. Fill in the **General** tab:
-   - Name: `TabletopSpells Local`
+   - Name: `Chronicle Local`
 4. Fill in the **Connection** tab:
    - Host: `localhost`
    - Port: `5432`
-   - Maintenance database: `tabletopspells`
+   - Maintenance database: `Chronicle`
    - Username: `postgres`
    - Password: value from your `.env` file
 5. Click **Save**
@@ -374,7 +374,7 @@ ORDER BY c."Name";
 
 Use the same connection string:
 ```
-postgresql://postgres:<POSTGRES_PASSWORD>@localhost:5432/tabletopspells
+postgresql://postgres:<POSTGRES_PASSWORD>@localhost:5432/Chronicle
 ```
 
 ---
@@ -384,7 +384,7 @@ postgresql://postgres:<POSTGRES_PASSWORD>@localhost:5432/tabletopspells
 Migrations are applied automatically on API startup. To manage them manually:
 
 ```bash
-cd TabletopSpells.Api
+cd Chronicle.Api
 
 # List existing migrations
 dotnet ef migrations list

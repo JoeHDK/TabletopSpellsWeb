@@ -1,0 +1,31 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Chronicle.Api.Services;
+
+namespace Chronicle.Api.Controllers;
+
+[Authorize]
+[ApiController]
+[Route("api/[controller]")]
+public class ItemsController : ControllerBase
+{
+    private readonly ItemService _itemService;
+    public ItemsController(ItemService itemService) => _itemService = itemService;
+
+    [HttpGet]
+    public IActionResult GetAll(
+        [FromQuery] string? search,
+        [FromQuery] string? category,
+        [FromQuery] string? rarity,
+        [FromQuery] string? itemType)
+    {
+        if (search?.Length > 100)
+            return BadRequest("Search query must be 100 characters or fewer.");
+
+        var items = _itemService.Search(search, category, rarity, itemType);
+        return Ok(items);
+    }
+
+    [HttpGet("categories")]
+    public IActionResult GetCategories() => Ok(_itemService.GetCategories());
+}

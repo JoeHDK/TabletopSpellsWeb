@@ -20,7 +20,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: TabletopSpells.Api/Dockerfile
+      dockerfile: Chronicle.Api/Dockerfile
     restart: unless-stopped
     depends_on:
       postgres:
@@ -30,8 +30,8 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=tabletopspells;Username=postgres;Password=${POSTGRES_PASSWORD}"
       Jwt__Key: ${JWT_KEY}
-      Jwt__Issuer: TabletopSpellsApi
-      Jwt__Audience: TabletopSpellsWeb
+      Jwt__Issuer: ChronicleApi
+      Jwt__Audience: ChronicleWeb
       Chat__MasterKey: ${CHAT_MASTER_KEY}
     # No ports exposed directly — Caddy is the only entry point
 
