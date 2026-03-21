@@ -239,6 +239,15 @@ export default function BurgerMenu() {
 
           {/* Settings */}
           <div className="py-1">
+            {/* Account settings */}
+            <button
+              onClick={() => { setOpen(false); navigate('/settings') }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+            >
+              <span className="text-base">⚙️</span>
+              <span className="flex-1 text-left">Settings</span>
+            </button>
+
             {/* Dark mode toggle */}
             <button
               onClick={toggle}

@@ -29,6 +29,7 @@ import CombatTrackerPage from './pages/CombatTrackerPage'
 import SessionPlannerPage from './pages/SessionPlannerPage'
 import FeatsPage from './pages/FeatsPage'
 import FeaturesPage from './pages/FeaturesPage'
+import SettingsPage from './pages/SettingsPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +75,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/creatures" element={<ProtectedRoute><CreatureLibraryPage /></ProtectedRoute>} />
           <Route path="/games/:id/combat" element={<ProtectedRoute><CombatTrackerPage /></ProtectedRoute>} />
           <Route path="/games/:id/planner" element={<ProtectedRoute><SessionPlannerPage /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </PersistQueryClientProvider>
