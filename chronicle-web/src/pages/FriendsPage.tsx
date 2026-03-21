@@ -27,6 +27,7 @@ export default function FriendsPage() {
   const { data: requests = [] } = useQuery({
     queryKey: ['friend-requests'],
     queryFn: friendsApi.getIncomingRequests,
+    refetchInterval: 30_000,
   })
 
   const sendMutation = useMutation({

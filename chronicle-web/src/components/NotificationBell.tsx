@@ -18,6 +18,8 @@ const TYPE_ICON: Record<string, string> = {
   GameInvite: '🎲',
   ItemReceived: '🎁',
   ItemSent: '↗️',
+  FriendRequest: '👥',
+  FriendAccepted: '✅',
 }
 
 export default function NotificationBell() {
