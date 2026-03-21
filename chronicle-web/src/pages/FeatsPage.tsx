@@ -105,6 +105,12 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
   const [tab, setTab] = useState<'my' | 'browse'>('my')
   const [search, setSearch] = useState('')
 
+  // ASI feat selection modal state
+  const [asiPendingFeat, setAsiPendingFeat] = useState<string | null>(null)
+  const [asiMode, setAsiMode] = useState<'two_one' | 'one_two'>('two_one') // +2 to one, or +1 to two
+  const [asiAbility1, setAsiAbility1] = useState('Strength')
+  const [asiAbility2, setAsiAbility2] = useState('Dexterity')
+
   const { data: allFeats = [], isLoading: featsLoading } = useQuery({
     queryKey: ['feats', search],
     queryFn: () => featsApi.getAll(search || undefined),
@@ -118,9 +124,30 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
   })
 
   const addMutation = useMutation({
-    mutationFn: (featIndex: string) => characterFeatsApi.add(id!, { featIndex }),
+    mutationFn: ({ featIndex, notes }: { featIndex: string; notes?: string }) =>
+      characterFeatsApi.add(id!, { featIndex, notes }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['character-feats', id] }),
   })
+
+  const handleAdd = (featIndex: string) => {
+    if (featIndex === 'ability-score-improvement') {
+      setAsiPendingFeat(featIndex)
+      setAsiMode('two_one')
+      setAsiAbility1('Strength')
+      setAsiAbility2('Dexterity')
+    } else {
+      addMutation.mutate({ featIndex })
+    }
+  }
+
+  const handleAsiConfirm = () => {
+    if (!asiPendingFeat) return
+    const asiChoices: Record<string, number> = asiMode === 'two_one'
+      ? { [asiAbility1]: 2 }
+      : { [asiAbility1]: 1, [asiAbility2]: 1 }
+    addMutation.mutate({ featIndex: asiPendingFeat, notes: JSON.stringify({ asiChoices }) })
+    setAsiPendingFeat(null)
+  }
 
   const removeMutation = useMutation({
     mutationFn: (featId: string) => characterFeatsApi.remove(id!, featId),
@@ -214,7 +241,7 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
                     feat={feat}
                     isOwned={ownedIndexMap.has(feat.index)}
                     ownedId={ownedIndexMap.get(feat.index)}
-                    onAdd={(idx) => addMutation.mutate(idx)}
+                    onAdd={handleAdd}
                     onRemove={(featId) => removeMutation.mutate(featId)}
                     adding={addMutation.isPending}
                   />
@@ -224,12 +251,91 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
           )}
         </div>
       </div>
+
+      {/* ASI Feat Selection Modal */}
+      {asiPendingFeat && (() => {
+        const ABILITY_KEYS = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']
+        return (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setAsiPendingFeat(null)}>
+            <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+              <h3 className="font-bold text-lg mb-1">Ability Score Improvement</h3>
+              <p className="text-sm text-gray-400 mb-4">Choose how to apply your bonus:</p>
+
+              {/* Mode selection */}
+              <div className="space-y-2 mb-4">
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors">
+                  <input type="radio" checked={asiMode === 'two_one'} onChange={() => setAsiMode('two_one')} className="accent-indigo-500" />
+                  <span className="text-sm font-medium">+2 to one ability score</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors">
+                  <input type="radio" checked={asiMode === 'one_two'} onChange={() => setAsiMode('one_two')} className="accent-indigo-500" />
+                  <span className="text-sm font-medium">+1 to two ability scores</span>
+                </label>
+              </div>
+
+              {/* Ability selectors */}
+              <div className="space-y-3 mb-5">
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">
+                    {asiMode === 'two_one' ? 'Ability (+2)' : 'First ability (+1)'}
+                  </label>
+                  <select
+                    value={asiAbility1}
+                    onChange={e => setAsiAbility1(e.target.value)}
+                    className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                  >
+                    {ABILITY_KEYS.map(k => <option key={k}>{k}</option>)}
+                  </select>
+                </div>
+                {asiMode === 'one_two' && (
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Second ability (+1)</label>
+                    <select
+                      value={asiAbility2}
+                      onChange={e => setAsiAbility2(e.target.value)}
+                      className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                    >
+                      {ABILITY_KEYS.filter(k => k !== asiAbility1).map(k => <option key={k}>{k}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setAsiPendingFeat(null)}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded-lg text-sm"
+                >Cancel</button>
+                <button
+                  onClick={handleAsiConfirm}
+                  disabled={addMutation.isPending}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 py-2 rounded-lg text-sm font-semibold"
+                >Add Feat</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
 
 function CharacterFeatCard({ charFeat, onRemove }: { charFeat: CharacterFeat; onRemove: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false)
+
+  // Parse ASI choices from notes JSON
+  let asiDisplay: string | null = null
+  if (charFeat.featIndex === 'ability-score-improvement' && charFeat.notes) {
+    try {
+      const parsed = JSON.parse(charFeat.notes)
+      if (parsed.asiChoices) {
+        asiDisplay = Object.entries(parsed.asiChoices as Record<string, number>)
+          .map(([ability, val]) => `${ability} +${val}`)
+          .join(', ')
+      }
+    } catch { /* ignore malformed */ }
+  }
+
   return (
     <div className="bg-gray-900 rounded-xl overflow-hidden ring-1 ring-indigo-500/30">
       <div
@@ -240,11 +346,14 @@ function CharacterFeatCard({ charFeat, onRemove }: { charFeat: CharacterFeat; on
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold">{charFeat.name}</span>
             {charFeat.modifiers.map((m, i) => <ModifierBadge key={i} mod={m} />)}
+            {asiDisplay && (
+              <span className="text-xs bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded-full">{asiDisplay}</span>
+            )}
           </div>
           {charFeat.takenAtLevel && (
             <p className="text-xs text-gray-500 mt-0.5">Taken at level {charFeat.takenAtLevel}</p>
           )}
-          {charFeat.notes && (
+          {charFeat.notes && !asiDisplay && (
             <p className="text-xs text-gray-400 mt-0.5 italic">{charFeat.notes}</p>
           )}
         </div>

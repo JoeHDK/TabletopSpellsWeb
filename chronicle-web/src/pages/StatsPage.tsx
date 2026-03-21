@@ -353,6 +353,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   // Local draft state — only set when something is dirty
   const [draft, setDraft] = useState<UpdateCharacterRequest & { currentHp?: number; maxHp?: number } | null>(null)
   const [editingName, setEditingName] = useState(false)
+  const [abilityBreakdownKey, setAbilityBreakdownKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (editingName) nameRef.current?.focus()
@@ -433,7 +434,24 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     skillProficiencies: draft?.skillProficiencies ?? character.skillProficiencies ?? [],
   }
 
-  const acInfo = calculateAC(character.characterClass, d.abilityScores, inventory, d.baseArmorClass, charFeats, classFeatures)
+  const getRacialBonus = (key: string) =>
+    race?.modifiers
+      .filter(m => m.type === 'ability_score' && m.ability?.toLowerCase() === key.toLowerCase())
+      .reduce((sum, m) => sum + m.value, 0) ?? 0
+
+  const getAsiBonus = (key: string) =>
+    charFeats
+      .filter(f => f.featIndex === 'ability-score-improvement' && f.notes)
+      .reduce((sum, f) => {
+        try { return sum + (JSON.parse(f.notes!).asiChoices?.[key] ?? 0) } catch { return sum }
+      }, 0)
+
+  const totalAbilityScore = (key: string) =>
+    (d.abilityScores[key] ?? 10) + getRacialBonus(key) + getAsiBonus(key)
+
+  const totalScores = Object.fromEntries(ABILITY_KEYS.map(k => [k, totalAbilityScore(k)]))
+
+  const acInfo = calculateAC(character.characterClass, totalScores, inventory, d.baseArmorClass, charFeats, classFeatures)
 
   const patch = (fields: Partial<typeof d>) => setDraft(prev => ({ ...prev, ...fields }))
 
@@ -457,7 +475,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     }
   }
 
-  const abilityMod = (key: string) => Math.floor(((d.abilityScores[key] ?? 10) - 10) / 2)
+  const abilityMod = (key: string) => Math.floor((totalAbilityScore(key) - 10) / 2)
   const featInitBonus = getFeatModifier(charFeats, 'initiative')
   const featPassivePercBonus = getFeatModifier(charFeats, 'passive_perception')
   const featHpPerLevel = getFeatModifier([...charFeats, ...classFeatures], 'hp_per_level')
@@ -1222,24 +1240,17 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
               <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Ability Scores</h2>
               <div className="grid grid-cols-2 gap-1.5">
                 {ABILITY_KEYS.map(key => {
-                  const racialBonus = race?.modifiers
-                    .filter(m => m.type === 'ability_score' && m.ability?.toLowerCase() === key.toLowerCase())
-                    .reduce((sum, m) => sum + m.value, 0) ?? 0
+                  const total = totalAbilityScore(key)
                   return (
-                    <div key={key} className="bg-gray-800 rounded-xl p-2 text-center relative">
+                    <button
+                      key={key}
+                      onClick={() => setAbilityBreakdownKey(key)}
+                      className="bg-gray-800 hover:bg-gray-700 rounded-xl p-2 text-center transition-colors"
+                    >
                       <p className="text-[10px] text-gray-400 mb-0.5">{ABILITY_SHORT[key]}</p>
-                      <EditableNumber
-                        value={d.abilityScores[key] ?? 10}
-                        onChange={v => patch({ abilityScores: { ...d.abilityScores, [key]: v } })}
-                        min={1} max={30}
-                        label={key}
-                        className="text-sm font-bold"
-                      />
-                      <p className="text-[10px] text-indigo-400">{mod(d.abilityScores[key] ?? 10)}</p>
-                      {racialBonus > 0 && (
-                        <span className="absolute top-1 right-1 text-[9px] text-emerald-400 font-bold leading-none">+{racialBonus}</span>
-                      )}
-                    </div>
+                      <p className="text-sm font-bold">{total}</p>
+                      <p className="text-[10px] text-indigo-400">{mod(total)}</p>
+                    </button>
                   )
                 })}
               </div>
@@ -1307,6 +1318,56 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
         </div>
       </div>{/* grid */}
       </div>{/* overflow-y-auto */}
+
+      {/* Ability Score Breakdown Modal */}
+      {abilityBreakdownKey && (() => {
+        const key = abilityBreakdownKey
+        const base = d.abilityScores[key] ?? 10
+        const racial = getRacialBonus(key)
+        const asi = getAsiBonus(key)
+        const total = base + racial + asi
+        return (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setAbilityBreakdownKey(null)}>
+            <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-xs" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-lg">{key}</h3>
+                <button onClick={() => setAbilityBreakdownKey(null)} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
+              </div>
+              <div className="space-y-2 text-sm mb-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">Base score</span>
+                  <input
+                    type="number" min={1} max={30}
+                    value={base}
+                    onChange={e => patch({ abilityScores: { ...d.abilityScores, [key]: Math.max(1, Math.min(30, Number(e.target.value) || 1)) } })}
+                    className="w-16 text-center bg-gray-800 rounded-lg px-2 py-1 border border-gray-700 text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+                {racial !== 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Racial bonus{race ? ` (${race.name})` : ''}</span>
+                    <span className="text-emerald-400 font-semibold">{racial >= 0 ? `+${racial}` : racial}</span>
+                  </div>
+                )}
+                {asi !== 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Feat (ASI)</span>
+                    <span className="text-emerald-400 font-semibold">{asi >= 0 ? `+${asi}` : asi}</span>
+                  </div>
+                )}
+                <div className="border-t border-gray-700 pt-2 flex items-center justify-between font-bold">
+                  <span>Total</span>
+                  <span className="text-white text-base">{total} <span className="text-indigo-400 font-normal text-xs">({mod(total)})</span></span>
+                </div>
+              </div>
+              {isDirty && (
+                <p className="text-xs text-amber-400 text-center">Don't forget to save your changes.</p>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
     </div>
   )
 }
