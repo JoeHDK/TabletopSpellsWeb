@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authApi } from '../api/auth'
 import { useAuthStore } from '../store/authStore'
+import { queryClient } from '../lib/queryClient'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -19,6 +20,7 @@ export default function LoginPage() {
     try {
       const fn = tab === 'login' ? authApi.login : authApi.register
       const data = await fn(username, password)
+      queryClient.clear()
       login(data.token, data.username, data.userId, data.isDm)
       navigate('/characters')
     } catch (err: unknown) {
