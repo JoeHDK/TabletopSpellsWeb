@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryClient } from '@tanstack/react-query'
+import { queryClient } from './lib/queryClient'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createIDBPersister } from './lib/queryPersister'
 import OfflineBanner from './components/OfflineBanner'
@@ -30,15 +30,6 @@ import SessionPlannerPage from './pages/SessionPlannerPage'
 import FeatsPage from './pages/FeatsPage'
 import FeaturesPage from './pages/FeaturesPage'
 import SettingsPage from './pages/SettingsPage'
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 0,
-      gcTime: 1000 * 60 * 60 * 24 * 7, // 7 days (IDB offline fallback)
-    },
-  },
-})
 
 const persister = createIDBPersister()
 

@@ -6,6 +6,7 @@ import { friendsApi } from '../api/friends'
 import { chatApi } from '../api/chat'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
+import { queryClient } from '../lib/queryClient'
 import type { Notification } from '../types'
 
 function timeAgo(dateStr: string): string {
@@ -259,7 +260,7 @@ export default function BurgerMenu() {
 
             {/* Sign out */}
             <button
-              onClick={() => { setOpen(false); logout() }}
+              onClick={() => { setOpen(false); queryClient.clear(); logout() }}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
             >
               <span className="text-base">🚪</span>
