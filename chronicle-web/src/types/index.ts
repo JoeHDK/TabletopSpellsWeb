@@ -318,6 +318,30 @@ export interface GiveItemRequest {
   notes?: string
 }
 
+export interface CreateLootItemRequest {
+  name: string
+  itemSource: ItemSource
+  srdItemIndex?: string
+  customItemId?: string
+  quantity: number
+  acBonus?: number
+  damageOverride?: string
+  notes?: string
+}
+
+export interface LootItem {
+  id: string
+  name: string
+  itemSource: ItemSource
+  srdItemIndex?: string
+  customItemId?: string
+  quantity: number
+  acBonus?: number
+  damageOverride?: string
+  notes?: string
+  createdAt: string
+}
+
 export interface SendItemRequest {
   recipientCharacterId: string
 }

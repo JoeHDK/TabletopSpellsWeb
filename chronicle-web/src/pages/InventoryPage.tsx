@@ -465,7 +465,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                             <option key={t} value={t}>{ARMOR_TYPE_LABEL[t]}</option>
                           ))}
                         </select>
-                        <p className="text-xs text-gray-500 mt-1">Used for automatic AC calculation (DEX cap).</p>
+                        <p className="text-xs text-gray-400 mt-1">Used for automatic AC calculation (DEX cap).</p>
                       </div>
                     )}
                     <div>
@@ -505,7 +505,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
               />
 
               {filteredItems.length === 0 ? (
-                <p className="text-gray-500 text-center py-10">
+                <p className="text-gray-400 text-center py-10">
                   {items.length === 0 ? 'No items yet. Use Browse to add some!' : 'No items match your search.'}
                 </p>
               ) : (
@@ -546,7 +546,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                               </span>
                             )}
                           </div>
-                          {item.notes && <p className="text-xs text-gray-500 mt-0.5">{item.notes}</p>}
+                          {item.notes && <p className="text-xs text-gray-400 mt-0.5">{item.notes}</p>}
                           {item.grantedByUsername && (
                             <p className="text-xs text-gray-600 mt-0.5">From @{item.grantedByUsername}</p>
                           )}
@@ -599,7 +599,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                           ))}
                           {item.equippedSlot === 'Armor' && (
                             <>
-                              <span className="text-xs text-gray-500 self-center">|</span>
+                              <span className="text-xs text-gray-400 self-center">|</span>
                               {ARMOR_TYPES.map(t => (
                                 <button
                                   key={t}
@@ -683,7 +683,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                             <div className="flex gap-2 flex-wrap mt-0.5">
                               {item.acBonus != null && <span className="text-xs text-green-400">AC +{item.acBonus}</span>}
                               {item.damageOverride && <span className="text-xs text-red-400">{item.damageOverride}</span>}
-                              {item.notes && <span className="text-xs text-gray-500">{item.notes}</span>}
+                              {item.notes && <span className="text-xs text-gray-400">{item.notes}</span>}
                             </div>
                           </div>
                           <button
@@ -701,7 +701,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
               )
             })}
             {items.filter(i => i.isEquipped).length === 0 && (
-              <p className="text-gray-500 text-center py-10">
+              <p className="text-gray-400 text-center py-10">
                 Nothing equipped yet.<br />
                 <span className="text-indigo-400 text-sm">Tap "+ Equip" on a slot above.</span>
               </p>
@@ -721,7 +721,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
               <button onClick={() => setSelectingSlot(null)} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
             </div>
             {items.filter(i => !i.isEquipped).length === 0 ? (
-              <p className="text-gray-500 text-sm">No unequipped items in inventory.</p>
+              <p className="text-gray-400 text-sm">No unequipped items in inventory.</p>
             ) : (
               <div className="space-y-2">
                 {items.filter(i => !i.isEquipped).map(item => (
@@ -738,7 +738,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                       <div className="flex gap-2 flex-wrap mt-0.5">
                         {item.acBonus != null && <span className="text-xs text-green-400">AC +{item.acBonus}</span>}
                         {item.damageOverride && <span className="text-xs text-red-400">{item.damageOverride}</span>}
-                        {item.notes && <span className="text-xs text-gray-500">{item.notes}</span>}
+                        {item.notes && <span className="text-xs text-gray-400">{item.notes}</span>}
                       </div>
                     </div>
                     <span className="text-indigo-400 text-xs shrink-0">Equip →</span>
@@ -839,7 +839,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-xs text-indigo-400">{item.category}</span>
                           <span className={`text-xs px-1.5 py-0.5 rounded-full ${rarityColor(item.rarity)}`}>{item.rarity}</span>
-                          {item.damage && <span className="text-xs text-gray-500">{item.damage}</span>}
+                          {item.damage && <span className="text-xs text-gray-400">{item.damage}</span>}
                         </div>
                       </button>
                       <button
@@ -898,7 +898,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                           <div className="flex items-center gap-2 mt-0.5">
                             {item.category && <span className="text-xs text-indigo-400">{item.category}</span>}
                             {item.rarity && <span className={`text-xs px-1.5 py-0.5 rounded-full ${rarityColor(item.rarity)}`}>{item.rarity}</span>}
-                            {item.damage && <span className="text-xs text-gray-500">{item.damage}</span>}
+                            {item.damage && <span className="text-xs text-gray-400">{item.damage}</span>}
                           </div>
                         </button>
                         <button

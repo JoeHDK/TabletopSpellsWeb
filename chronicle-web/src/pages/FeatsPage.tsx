@@ -28,22 +28,37 @@ function ModifierBadge({ mod }: { mod: FeatModifier }) {
   )
 }
 
+function AsiDisplay({ notes }: { notes?: string | null }) {
+  if (!notes) return null
+  try {
+    const parsed = JSON.parse(notes)
+    if (parsed.asiChoices) {
+      const text = Object.entries(parsed.asiChoices as Record<string, number>)
+        .map(([ability, val]) => `${ability} +${val}`)
+        .join(', ')
+      return <span className="text-xs bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded-full">{text}</span>
+    }
+  } catch { /* ignore malformed */ }
+  return null
+}
+
 function FeatCard({
   feat,
-  isOwned,
+  ownedInstances,
   onAdd,
   onRemove,
-  ownedId,
   adding,
 }: {
   feat: Feat
-  isOwned: boolean
-  ownedId?: string
+  ownedInstances: CharacterFeat[]
   onAdd: (index: string) => void
   onRemove: (id: string) => void
   adding: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
+  const isAsi = feat.index === 'ability-score-improvement'
+  const isOwned = ownedInstances.length > 0
+
   return (
     <div className={`bg-gray-900 rounded-xl overflow-hidden ${isOwned ? 'ring-1 ring-indigo-500/50' : ''}`}>
       <div
@@ -53,13 +68,16 @@ function FeatCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold">{feat.name}</span>
-            {isOwned && (
-              <span className="text-xs bg-indigo-800 text-indigo-200 px-1.5 py-0.5 rounded-full">✓ Known</span>
+            {isOwned && !isAsi && (
+              <span className="text-xs bg-indigo-800 text-indigo-200 px-1.5 py-0.5 rounded-full">✓ Added</span>
+            )}
+            {isAsi && ownedInstances.length > 0 && (
+              <span className="text-xs bg-indigo-800 text-indigo-200 px-1.5 py-0.5 rounded-full">×{ownedInstances.length} taken</span>
             )}
             {feat.modifiers.map((m, i) => <ModifierBadge key={i} mod={m} />)}
           </div>
           {feat.prerequisites.length > 0 && (
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-400 mt-0.5">
               Requires: {feat.prerequisites.map(p =>
                 p.type === 'ability_score' ? `${p.ability} ${p.minimum_score}+` : p.proficiency ?? p.ability ?? p.type
               ).join(', ')}
@@ -67,9 +85,9 @@ function FeatCard({
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {isOwned ? (
+          {isOwned && !isAsi ? (
             <button
-              onClick={e => { e.stopPropagation(); ownedId && onRemove(ownedId) }}
+              onClick={e => { e.stopPropagation(); onRemove(ownedInstances[0].id) }}
               className="text-xs bg-red-900/40 hover:bg-red-800/60 text-red-400 px-2 py-1 rounded transition-colors"
             >
               Remove
@@ -91,6 +109,23 @@ function FeatCard({
           {feat.desc.map((line, i) => (
             <p key={i} className="text-sm text-gray-300 leading-relaxed">{line}</p>
           ))}
+          {/* Show owned ASI instances with individual remove buttons */}
+          {isAsi && ownedInstances.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-700 space-y-1.5">
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Your ASIs</p>
+              {ownedInstances.map(cf => (
+                <div key={cf.id} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-1.5">
+                  <AsiDisplay notes={cf.notes} />
+                  <button
+                    onClick={() => onRemove(cf.id)}
+                    className="text-xs text-red-400 hover:text-red-300 px-2 py-0.5 rounded transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -102,22 +137,20 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const qc = useQueryClient()
 
-  const [tab, setTab] = useState<'my' | 'browse'>('my')
   const [search, setSearch] = useState('')
 
   // ASI feat selection modal state
   const [asiPendingFeat, setAsiPendingFeat] = useState<string | null>(null)
-  const [asiMode, setAsiMode] = useState<'two_one' | 'one_two'>('two_one') // +2 to one, or +1 to two
+  const [asiMode, setAsiMode] = useState<'two_one' | 'one_two'>('two_one')
   const [asiAbility1, setAsiAbility1] = useState('Strength')
   const [asiAbility2, setAsiAbility2] = useState('Dexterity')
 
   const { data: allFeats = [], isLoading: featsLoading } = useQuery({
     queryKey: ['feats', search],
     queryFn: () => featsApi.getAll(search || undefined),
-    enabled: tab === 'browse',
   })
 
-  const { data: charFeats = [], isLoading: charFeatsLoading } = useQuery({
+  const { data: charFeats = [] } = useQuery({
     queryKey: ['character-feats', id],
     queryFn: () => characterFeatsApi.getAll(id!),
     enabled: !!id,
@@ -128,7 +161,6 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
       characterFeatsApi.add(id!, { featIndex, notes }),
     onSuccess: (newFeat) => {
       qc.setQueryData<CharacterFeat[]>(['character-feats', id], old => [...(old ?? []), newFeat])
-      // ASI feats modify ability scores on the server — invalidate character to pick up the change
       qc.invalidateQueries({ queryKey: ['character', id] })
     },
   })
@@ -161,15 +193,15 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
     },
   })
 
-  const ownedIndexMap = useMemo(
-    () => new Map(charFeats.map(cf => [cf.featIndex, cf.id])),
-    [charFeats]
-  )
-
-  const filteredMine = useMemo(() => {
-    if (!search.trim()) return charFeats
-    return charFeats.filter(cf => cf.name.toLowerCase().includes(search.toLowerCase()))
-  }, [charFeats, search])
+  // Group owned feats by featIndex so ASI instances are accessible per feat
+  const ownedByIndex = useMemo(() => {
+    const map = new Map<string, CharacterFeat[]>()
+    for (const cf of charFeats) {
+      const existing = map.get(cf.featIndex) ?? []
+      map.set(cf.featIndex, [...existing, cf])
+    }
+    return map
+  }, [charFeats])
 
   return (
     <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
@@ -177,27 +209,9 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
         <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
           <button onClick={() => navigate(`/characters/${id}`)} className="text-gray-400 hover:text-white">←</button>
           <h1 className="text-lg font-bold flex-1">Feats</h1>
-          <span className="text-xs text-gray-500">{charFeats.length} known</span>
+          <span className="text-xs text-gray-400">{charFeats.length} known</span>
         </header>
       )}
-
-      {/* Tabs */}
-      <div className="flex gap-1 px-4 pt-3">
-        {([
-          { id: 'my', label: '✨ My Feats' },
-          { id: 'browse', label: '🔍 Browse' },
-        ] as const).map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-1.5 rounded-t-lg text-sm font-medium transition-colors ${
-              tab === t.id ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-2xl mx-auto space-y-3">
@@ -208,53 +222,19 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
             className="w-full bg-gray-900 text-white rounded-lg px-3 py-2 border border-gray-800 focus:border-indigo-500 focus:outline-none text-sm"
           />
 
-          {/* My Feats tab */}
-          {tab === 'my' && (
-            <>
-              {charFeatsLoading ? (
-                <p className="text-gray-400 text-center py-8">Loading…</p>
-              ) : filteredMine.length === 0 ? (
-                <div className="text-center py-10 text-gray-500">
-                  <p className="text-4xl mb-3">🎯</p>
-                  <p>{charFeats.length === 0 ? 'No feats yet.' : 'No matching feats.'}</p>
-                  <button
-                    onClick={() => setTab('browse')}
-                    className="mt-2 text-indigo-400 text-sm hover:underline"
-                  >
-                    Browse feats to add some
-                  </button>
-                </div>
-              ) : (
-                filteredMine.map(cf => (
-                  <CharacterFeatCard
-                    key={cf.id}
-                    charFeat={cf}
-                    onRemove={(featId) => removeMutation.mutate(featId)}
-                  />
-                ))
-              )}
-            </>
-          )}
-
-          {/* Browse tab */}
-          {tab === 'browse' && (
-            <>
-              {featsLoading ? (
-                <p className="text-gray-400 text-center py-8">Loading feats…</p>
-              ) : (
-                allFeats.map(feat => (
-                  <FeatCard
-                    key={feat.index}
-                    feat={feat}
-                    isOwned={ownedIndexMap.has(feat.index)}
-                    ownedId={ownedIndexMap.get(feat.index)}
-                    onAdd={handleAdd}
-                    onRemove={(featId) => removeMutation.mutate(featId)}
-                    adding={addMutation.isPending}
-                  />
-                ))
-              )}
-            </>
+          {featsLoading ? (
+            <p className="text-gray-400 text-center py-8">Loading feats…</p>
+          ) : (
+            allFeats.map(feat => (
+              <FeatCard
+                key={feat.index}
+                feat={feat}
+                ownedInstances={ownedByIndex.get(feat.index) ?? []}
+                onAdd={handleAdd}
+                onRemove={(featId) => removeMutation.mutate(featId)}
+                adding={addMutation.isPending}
+              />
+            ))
           )}
         </div>
       </div>
@@ -268,7 +248,6 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
               <h3 className="font-bold text-lg mb-1">Ability Score Improvement</h3>
               <p className="text-sm text-gray-400 mb-4">Choose how to apply your bonus:</p>
 
-              {/* Mode selection */}
               <div className="space-y-2 mb-4">
                 <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors">
                   <input type="radio" checked={asiMode === 'two_one'} onChange={() => setAsiMode('two_one')} className="accent-indigo-500" />
@@ -280,7 +259,6 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
                 </label>
               </div>
 
-              {/* Ability selectors */}
               <div className="space-y-3 mb-5">
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">
@@ -323,64 +301,6 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
           </div>
         )
       })()}
-    </div>
-  )
-}
-
-function CharacterFeatCard({ charFeat, onRemove }: { charFeat: CharacterFeat; onRemove: (id: string) => void }) {
-  const [expanded, setExpanded] = useState(false)
-
-  // Parse ASI choices from notes JSON
-  let asiDisplay: string | null = null
-  if (charFeat.featIndex === 'ability-score-improvement' && charFeat.notes) {
-    try {
-      const parsed = JSON.parse(charFeat.notes)
-      if (parsed.asiChoices) {
-        asiDisplay = Object.entries(parsed.asiChoices as Record<string, number>)
-          .map(([ability, val]) => `${ability} +${val}`)
-          .join(', ')
-      }
-    } catch { /* ignore malformed */ }
-  }
-
-  return (
-    <div className="bg-gray-900 rounded-xl overflow-hidden ring-1 ring-indigo-500/30">
-      <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-        onClick={() => setExpanded(v => !v)}
-      >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold">{charFeat.name}</span>
-            {charFeat.modifiers.map((m, i) => <ModifierBadge key={i} mod={m} />)}
-            {asiDisplay && (
-              <span className="text-xs bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded-full">{asiDisplay}</span>
-            )}
-          </div>
-          {charFeat.takenAtLevel && (
-            <p className="text-xs text-gray-500 mt-0.5">Taken at level {charFeat.takenAtLevel}</p>
-          )}
-          {charFeat.notes && !asiDisplay && (
-            <p className="text-xs text-gray-400 mt-0.5 italic">{charFeat.notes}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={e => { e.stopPropagation(); onRemove(charFeat.id) }}
-            className="text-xs bg-red-900/40 hover:bg-red-800/60 text-red-400 px-2 py-1 rounded transition-colors"
-          >
-            Remove
-          </button>
-          <span className="text-gray-600 text-xs">{expanded ? '▲' : '▼'}</span>
-        </div>
-      </div>
-      {expanded && (
-        <div className="border-t border-gray-800 px-4 py-3 space-y-2">
-          {charFeat.desc.map((line, i) => (
-            <p key={i} className="text-sm text-gray-300 leading-relaxed">{line}</p>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

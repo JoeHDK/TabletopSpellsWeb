@@ -63,7 +63,7 @@ export default function CharacterSheetPage() {
     { id: 'spells', label: 'Spells', icon: '🔮' },
     { id: 'log', label: 'Log', icon: '📜' },
     { id: 'feats', label: 'Feats', icon: '🎯' },
-    { id: 'inventory', label: 'Inv', icon: '🎒' },
+    { id: 'inventory', label: 'Inventory', icon: '🎒' },
     { id: 'bio', label: 'Bio', icon: '🧙' },
   ]
 

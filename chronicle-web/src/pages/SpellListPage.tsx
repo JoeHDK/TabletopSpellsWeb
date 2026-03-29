@@ -178,10 +178,10 @@ function ArcaneSpellList({ characterId, character, embedded }: { characterId: st
                       </span>
                     )}
                     {ritualOnly && (
-                      <span className="shrink-0 text-[10px] text-gray-500 leading-none">unprepared</span>
+                      <span className="shrink-0 text-[10px] text-gray-400 leading-none">unprepared</span>
                     )}
                     {showUnprepared && (
-                      <span className="shrink-0 text-[10px] text-gray-500 leading-none">unprepared</span>
+                      <span className="shrink-0 text-[10px] text-gray-400 leading-none">unprepared</span>
                     )}
                   </div>
                   <span className="shrink-0 text-xs text-gray-400 bg-gray-800 px-2 py-0.5 rounded-full">

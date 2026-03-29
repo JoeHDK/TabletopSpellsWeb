@@ -7,6 +7,15 @@ import type { Spell, PreparedSpell } from '../types'
 import SpellDetailModal from '../components/SpellDetailModal'
 import { getLevelForClass, parseFirstLevel, resolveClassName } from '../utils/spellUtils'
 
+// Classes with spells in D&D 5e
+const DND5E_SPELL_CLASSES = ['bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard', 'artificer']
+// Classes with spells in Pathfinder 1e
+const PF1E_SPELL_CLASSES = ['bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'wizard', 'inquisitor', 'summoner', 'witch', 'alchemist', 'magus', 'oracle', 'shaman', 'spiritualist', 'occultist', 'psychic', 'mesmerist']
+
+function getSpellClassesForGame(gameType?: string): string[] {
+  return gameType === 'pathfinder1e' ? PF1E_SPELL_CLASSES : DND5E_SPELL_CLASSES
+}
+
 export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -14,6 +23,7 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
   const [search, setSearch] = useState('')
   const [levelFilter, setLevelFilter] = useState<number | undefined>()
   const [selectedSpell, setSelectedSpell] = useState<Spell | null>(null)
+  const [classOverride, setClassOverride] = useState<string | null>(null) // null = use character class or 'all'
 
   const { data: character } = useQuery({ queryKey: ['character', id], queryFn: () => charactersApi.get(id!), enabled: !!id })
   const { data: allSpells = [], isLoading } = useQuery({
@@ -29,12 +39,19 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
 
   const knownIds = new Set(preparedList.map((p) => p.spellId))
 
+  // Determine the effective class used for filtering
+  const charClass = resolveClassName(character?.characterClass)
+  const spellClasses = getSpellClassesForGame(character?.gameType)
+  const charClassHasSpells = spellClasses.includes(charClass)
+  // Default to character class if they have spells, otherwise 'all'
+  const effectiveClass = classOverride ?? (charClassHasSpells ? charClass : 'all')
+
   const addMutation = useMutation({
     mutationFn: (spell: Spell) => {
       const isCantrip = spell.spell_level === '0' || spell.spell_level === 'Cantrip'
       return preparedSpellsApi.upsert(id!, spell.id ?? spell.name!, {
         spellId: spell.id ?? spell.name!,
-        isPrepared: isCantrip, // cantrips are always "known" (no daily toggle)
+        isPrepared: isCantrip,
         isAlwaysPrepared: false,
         isFavorite: false,
         isDomainSpell: false,
@@ -55,21 +72,23 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
   })
 
   const filtered = useMemo(() => {
-    const charClass = resolveClassName(character?.characterClass)
     return allSpells
       .filter((s) => {
-        if (getLevelForClass(s.spell_level, charClass) === null) return false
+        if (effectiveClass !== 'all' && getLevelForClass(s.spell_level, effectiveClass) === null) return false
         if (search && !s.name?.toLowerCase().includes(search.toLowerCase())) return false
-        if (levelFilter !== undefined) return getLevelForClass(s.spell_level, charClass) === levelFilter
+        if (levelFilter !== undefined) {
+          const lvl = effectiveClass === 'all' ? parseFirstLevel(s.spell_level) : getLevelForClass(s.spell_level, effectiveClass)
+          return lvl === levelFilter
+        }
         return true
       })
       .sort((a, b) => {
-        const aLvl = getLevelForClass(a.spell_level, charClass) ?? parseFirstLevel(a.spell_level)
-        const bLvl = getLevelForClass(b.spell_level, charClass) ?? parseFirstLevel(b.spell_level)
+        const aLvl = effectiveClass === 'all' ? parseFirstLevel(a.spell_level) : (getLevelForClass(a.spell_level, effectiveClass) ?? parseFirstLevel(a.spell_level))
+        const bLvl = effectiveClass === 'all' ? parseFirstLevel(b.spell_level) : (getLevelForClass(b.spell_level, effectiveClass) ?? parseFirstLevel(b.spell_level))
         if (aLvl !== bLvl) return aLvl - bLvl
         return (a.name ?? '').localeCompare(b.name ?? '')
       })
-  }, [allSpells, search, levelFilter, character])
+  }, [allSpells, search, levelFilter, effectiveClass])
 
   return (
     <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
@@ -86,6 +105,21 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
           placeholder="Search spells…"
           className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none"
         />
+
+        {/* Class selector */}
+        <select
+          value={effectiveClass}
+          onChange={e => { setClassOverride(e.target.value); setLevelFilter(undefined) }}
+          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm capitalize"
+        >
+          <option value="all">All Classes</option>
+          {spellClasses.map(cls => (
+            <option key={cls} value={cls} className="capitalize">
+              {cls.charAt(0).toUpperCase() + cls.slice(1)}{cls === charClass ? ' (My Class)' : ''}
+            </option>
+          ))}
+        </select>
+
         <div className="flex gap-2 overflow-x-auto pb-1">
           {[undefined, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((l) => (
             <button
@@ -111,8 +145,9 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
           filtered.map((spell) => {
             const key = spell.id ?? spell.name!
             const isInList = knownIds.has(key)
-            const charClass = resolveClassName(character?.characterClass)
-            const lvl = getLevelForClass(spell.spell_level, charClass) ?? parseFirstLevel(spell.spell_level)
+            const lvl = effectiveClass === 'all'
+              ? parseFirstLevel(spell.spell_level)
+              : (getLevelForClass(spell.spell_level, effectiveClass) ?? parseFirstLevel(spell.spell_level))
             return (
               <div key={key} className="bg-gray-900 rounded-xl px-4 py-3 flex items-center gap-3">
                 <button className="flex-1 text-left" onClick={() => setSelectedSpell(spell)}>

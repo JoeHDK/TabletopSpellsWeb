@@ -311,6 +311,82 @@ public class GamesController : ControllerBase
         return Ok();
     }
 
+    [HttpGet("{id:guid}/loot")]
+    public async Task<IActionResult> GetLoot(Guid id)
+    {
+        if (!await IsDmOrAdmin(id)) return Forbid();
+
+        var items = await _db.GameLootItems
+            .Where(l => l.GameRoomId == id)
+            .OrderBy(l => l.CreatedAt)
+            .Select(l => new LootItemDto
+            {
+                Id = l.Id,
+                Name = l.Name,
+                ItemSource = l.ItemSource,
+                SrdItemIndex = l.SrdItemIndex,
+                CustomItemId = l.CustomItemId,
+                Quantity = l.Quantity,
+                AcBonus = l.AcBonus,
+                DamageOverride = l.DamageOverride,
+                Notes = l.Notes,
+                CreatedAt = l.CreatedAt,
+            })
+            .ToListAsync();
+
+        return Ok(items);
+    }
+
+    [HttpPost("{id:guid}/loot")]
+    public async Task<IActionResult> CreateLootItem(Guid id, [FromBody] CreateLootItemRequest req)
+    {
+        if (!await IsDmOrAdmin(id)) return Forbid();
+
+        var item = new GameLootItemEntity
+        {
+            GameRoomId = id,
+            Name = req.Name,
+            ItemSource = req.ItemSource,
+            SrdItemIndex = req.SrdItemIndex,
+            CustomItemId = req.CustomItemId,
+            Quantity = req.Quantity,
+            AcBonus = req.AcBonus,
+            DamageOverride = req.DamageOverride,
+            Notes = req.Notes,
+        };
+
+        _db.GameLootItems.Add(item);
+        await _db.SaveChangesAsync();
+
+        return Ok(new LootItemDto
+        {
+            Id = item.Id,
+            Name = item.Name,
+            ItemSource = item.ItemSource,
+            SrdItemIndex = item.SrdItemIndex,
+            CustomItemId = item.CustomItemId,
+            Quantity = item.Quantity,
+            AcBonus = item.AcBonus,
+            DamageOverride = item.DamageOverride,
+            Notes = item.Notes,
+            CreatedAt = item.CreatedAt,
+        });
+    }
+
+    [HttpDelete("{id:guid}/loot/{itemId:guid}")]
+    public async Task<IActionResult> DeleteLootItem(Guid id, Guid itemId)
+    {
+        if (!await IsDmOrAdmin(id)) return Forbid();
+
+        var item = await _db.GameLootItems
+            .FirstOrDefaultAsync(l => l.Id == itemId && l.GameRoomId == id);
+        if (item == null) return NotFound();
+
+        _db.GameLootItems.Remove(item);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private async Task<bool> IsMember(Guid gameId) =>
         await _db.GameMembers.AnyAsync(m => m.GameRoomId == gameId && m.UserId == UserId)
         || await IsGlobalAdmin();

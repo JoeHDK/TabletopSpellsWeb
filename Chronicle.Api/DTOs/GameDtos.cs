@@ -85,3 +85,35 @@ public class GiveItemRequest
     [StringLength(500)]
     public string? Notes { get; set; }
 }
+
+public class CreateLootItemRequest
+{
+    [Required, StringLength(100, MinimumLength = 1)]
+    public required string Name { get; set; }
+    public ItemSource ItemSource { get; set; }
+    [StringLength(100)]
+    public string? SrdItemIndex { get; set; }
+    public Guid? CustomItemId { get; set; }
+    [Range(1, 9999)]
+    public int Quantity { get; set; } = 1;
+    [Range(0, 99)]
+    public int? AcBonus { get; set; }
+    [StringLength(100)]
+    public string? DamageOverride { get; set; }
+    [StringLength(500)]
+    public string? Notes { get; set; }
+}
+
+public class LootItemDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = "";
+    public ItemSource ItemSource { get; set; }
+    public string? SrdItemIndex { get; set; }
+    public Guid? CustomItemId { get; set; }
+    public int Quantity { get; set; }
+    public int? AcBonus { get; set; }
+    public string? DamageOverride { get; set; }
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; }
+}

@@ -30,6 +30,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<EncounterTemplateCreatureEntity> EncounterTemplateCreatures => Set<EncounterTemplateCreatureEntity>();
     public DbSet<CharacterFeatEntity> CharacterFeats => Set<CharacterFeatEntity>();
     public DbSet<ClassResourceEntity> ClassResources => Set<ClassResourceEntity>();
+    public DbSet<GameLootItemEntity> GameLootItems => Set<GameLootItemEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -243,5 +244,18 @@ public class AppDbContext : IdentityDbContext<AppUser>
         builder.Entity<ClassResourceEntity>()
             .HasIndex(r => new { r.CharacterId, r.ResourceKey })
             .IsUnique();
+
+        builder.Entity<GameLootItemEntity>()
+            .HasOne(l => l.GameRoom)
+            .WithMany()
+            .HasForeignKey(l => l.GameRoomId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<GameLootItemEntity>()
+            .HasOne(l => l.CustomItem)
+            .WithMany()
+            .HasForeignKey(l => l.CustomItemId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
     }
 }

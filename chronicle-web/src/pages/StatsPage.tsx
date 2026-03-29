@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
@@ -678,11 +678,11 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
             <div className="flex-1 space-y-3">
               <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                 <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Class</p>
+                  <p className="text-xs text-gray-400 mb-0.5">Class</p>
                   <p className="font-medium text-sm">{character.characterClass}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Level</p>
+                  <p className="text-xs text-gray-400 mb-0.5">Level</p>
                   <EditableNumber
                     value={d.level}
                     onChange={v => patch({ level: v })}
@@ -691,27 +691,20 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                     className="font-bold text-lg"
                   />
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">System</p>
-                  <p className="font-medium text-sm">{character.gameType === 'dnd5e' ? 'D&D 5e' : 'Pathfinder 1e'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-0.5">Caster</p>
-                  <p className="font-medium text-sm">{character.isDivineCaster ? 'Divine' : 'Arcane'}</p>
-                </div>
+
               </div>
 
               {/* Race (D&D 5e only) */}
               {character.gameType === 'dnd5e' && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Race</p>
+                  <p className="text-xs text-gray-400 mb-1">Race</p>
                   <RaceSelector characterId={character.id} currentRace={character.race} />
                 </div>
               )}
 
               {/* Subclass */}
               <div>
-                <p className="text-xs text-gray-500 mb-1">Subclass</p>
+                <p className="text-xs text-gray-400 mb-1">Subclass</p>
                 {subclassList.length > 0 ? (
                   <select
                     className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
@@ -762,7 +755,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
           {/* HP */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-gray-500">Hit Points</span>
+              <span className="text-xs text-gray-400">Hit Points</span>
               <div className="flex items-center gap-1 text-sm">
                 <EditableNumber
                   value={d.currentHp}
@@ -799,7 +792,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                 <p className="text-xs text-yellow-600 mt-0.5">Set armor type for DEX calc</p>
               )}
               <div className="mt-1.5">
-                <label className="text-xs text-gray-500">Bonus</label>
+                <label className="text-xs text-gray-400">Bonus</label>
                 <EditableNumber
                   value={d.baseArmorClass}
                   onChange={v => patch({ baseArmorClass: v })}
@@ -812,26 +805,26 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
             <div className="bg-gray-800 rounded-xl p-3 text-center">
               <p className="text-xs text-gray-400 mb-1">Initiative</p>
               <p className="text-xl font-bold">{initiative >= 0 ? `+${initiative}` : initiative}</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5">
                 DEX{featInitBonus !== 0 ? ` ${featInitBonus >= 0 ? '+' : ''}${featInitBonus} feat` : ''}
               </p>
             </div>
             <div className="bg-gray-800 rounded-xl p-3 text-center">
               <p className="text-xs text-gray-400 mb-1">Prof. Bonus</p>
               <p className="text-xl font-bold">{profBonus(d.level)}</p>
-              <p className="text-xs text-gray-500 mt-0.5">Lv {d.level}</p>
+              <p className="text-xs text-gray-400 mt-0.5">Lv {d.level}</p>
             </div>
             <div className="bg-gray-800 rounded-xl p-3 text-center">
               <p className="text-xs text-gray-400 mb-1">Passive Perception</p>
               <p className="text-xl font-bold">{passivePerception}</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5">
                 10 + WIS{featPassivePercBonus !== 0 ? ` +${featPassivePercBonus} feat` : ''}
               </p>
             </div>
             <div className="bg-gray-800 rounded-xl p-3 text-center">
               <p className="text-xs text-gray-400 mb-1">Speed</p>
               <p className="text-xl font-bold">{(race?.speed ?? 30) + movementBonus} ft</p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5">
                 {race?.speed ?? 30}{movementBonus > 0 ? ` +${movementBonus} class` : ''}
               </p>
             </div>
@@ -840,12 +833,12 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                 <div className="bg-gray-800 rounded-xl p-3 text-center">
                   <p className="text-xs text-gray-400 mb-1">Spell Save DC</p>
                   <p className="text-xl font-bold">{spellSaveDC}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">8 + prof + {ABILITY_SHORT[castingAbility!]}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">8 + prof + {ABILITY_SHORT[castingAbility!]}</p>
                 </div>
                 <div className="bg-gray-800 rounded-xl p-3 text-center">
                   <p className="text-xs text-gray-400 mb-1">Spell Attack</p>
                   <p className="text-xl font-bold">{fmtMod(spellAttackBonus!)}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">prof + {ABILITY_SHORT[castingAbility!]}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">prof + {ABILITY_SHORT[castingAbility!]}</p>
                 </div>
               </>
             )}
@@ -1012,7 +1005,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
           character.level < 2 ? (
             <section className="bg-gray-900 rounded-2xl p-4">
               <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Wild Shape</h2>
-              <p className="text-sm text-gray-500">Available at level 2.</p>
+              <p className="text-sm text-gray-400">Available at level 2.</p>
             </section>
           ) : (() => {
             const limits = getWildShapeLimits(character.level, character.subclass)
@@ -1063,7 +1056,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-500">Beast HP</span>
+                        <span className="text-xs text-gray-400">Beast HP</span>
                         <div className="flex items-center gap-1 text-sm">
                           <EditableNumber
                             value={character.wildShapeBeastCurrentHp ?? 0}
@@ -1219,7 +1212,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                   <div key={atk.id} className="bg-gray-800 rounded-xl px-3 py-2.5 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{atk.name}
-                        <span className="text-[10px] text-gray-500 ml-1.5 font-normal">{atk.slot ?? 'unarmed'}</span>
+                        <span className="text-[10px] text-gray-400 ml-1.5 font-normal">{atk.slot ?? 'unarmed'}</span>
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">{atk.dmgStr}</p>
                     </div>
@@ -1248,11 +1241,11 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                       <div className="flex flex-col gap-1 shrink-0">
                         <button
                           onClick={() => { setEditingAttack(atk); setAttackForm({ name: atk.name, damageFormula: atk.damageFormula ?? '', damageType: atk.damageType ?? '', abilityMod: atk.abilityMod, useProficiency: atk.useProficiency, magicBonus: atk.magicBonus, notes: atk.notes ?? '', sortOrder: atk.sortOrder }); setShowAttackForm(false) }}
-                          className="text-xs text-gray-500 hover:text-indigo-400 transition-colors"
+                          className="text-xs text-gray-400 hover:text-indigo-400 transition-colors"
                         >✏</button>
                         <button
                           onClick={() => deleteAttackMutation.mutate(atk.id)}
-                          className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                          className="text-xs text-gray-400 hover:text-red-400 transition-colors"
                         >🗑</button>
                       </div>
                     </div>

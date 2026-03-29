@@ -63,7 +63,8 @@ public class CharacterFeatsController : ControllerBase
 
         var alreadyHas = await _db.CharacterFeats
             .AnyAsync(f => f.CharacterId == characterId && f.FeatIndex == req.FeatIndex);
-        if (alreadyHas) return Conflict("Character already has this feat.");
+        if (alreadyHas && req.FeatIndex != "ability-score-improvement")
+            return Conflict("Character already has this feat.");
 
         var charFeat = new CharacterFeatEntity
         {

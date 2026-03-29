@@ -4,12 +4,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { gamesApi } from '../api/games'
 import { charactersApi } from '../api/characters'
 import { useAuthStore } from '../store/authStore'
-import type { AddMemberRequest, GiveItemRequest, ItemSource } from '../types'
+import type { AddMemberRequest, GiveItemRequest, CreateLootItemRequest, LootItem, ItemSource } from '../types'
 
 const defaultGiveForm = (): Omit<GiveItemRequest, 'recipientCharacterId'> & { acBonusStr: string } => ({
   name: '',
   itemSource: 'SRD' as ItemSource,
   srdItemIndex: '',
+  quantity: 1,
+  acBonusStr: '',
+  damageOverride: '',
+  notes: '',
+})
+
+const defaultLootForm = (): CreateLootItemRequest & { acBonusStr: string } => ({
+  name: '',
+  itemSource: 'SRD' as ItemSource,
   quantity: 1,
   acBonusStr: '',
   damageOverride: '',
@@ -31,6 +40,14 @@ export default function GamePage() {
   const [giveRecipientId, setGiveRecipientId] = useState('')
   const [giveError, setGiveError] = useState('')
 
+  // Loot stash state
+  const [showLootStash, setShowLootStash] = useState(false)
+  const [showLootForm, setShowLootForm] = useState(false)
+  const [lootForm, setLootForm] = useState(defaultLootForm())
+  const [givingLootId, setGivingLootId] = useState<string | null>(null)
+  const [lootRecipientId, setLootRecipientId] = useState('')
+  const [lootGiveError, setLootGiveError] = useState('')
+
   const { data: game, isLoading } = useQuery({
     queryKey: ['game', id],
     queryFn: () => gamesApi.get(id!),
@@ -40,6 +57,12 @@ export default function GamePage() {
   const { data: myCharacters = [] } = useQuery({
     queryKey: ['characters'],
     queryFn: charactersApi.getAll,
+  })
+
+  const { data: lootItems = [] } = useQuery({
+    queryKey: ['game-loot', id],
+    queryFn: () => gamesApi.getLoot(id!),
+    enabled: !!id && showLootStash,
   })
 
   const addMemberMutation = useMutation({
@@ -90,6 +113,43 @@ export default function GamePage() {
       setGiveError('')
     },
     onError: () => setGiveError('Failed to give item. Check the recipient character.'),
+  })
+
+  const createLootMutation = useMutation({
+    mutationFn: (req: CreateLootItemRequest) => gamesApi.createLootItem(id!, req),
+    onSuccess: (newItem) => {
+      qc.setQueryData<LootItem[]>(['game-loot', id], old => [...(old ?? []), newItem])
+      setLootForm(defaultLootForm())
+      setShowLootForm(false)
+    },
+  })
+
+  const deleteLootMutation = useMutation({
+    mutationFn: (itemId: string) => gamesApi.deleteLootItem(id!, itemId),
+    onSuccess: (_, itemId) => {
+      qc.setQueryData<LootItem[]>(['game-loot', id], old => old?.filter(i => i.id !== itemId) ?? [])
+    },
+  })
+
+  const giveLootMutation = useMutation({
+    mutationFn: ({ item, recipientCharacterId }: { item: LootItem; recipientCharacterId: string }) =>
+      gamesApi.giveItem(id!, {
+        recipientCharacterId,
+        itemSource: item.itemSource,
+        srdItemIndex: item.srdItemIndex,
+        customItemId: item.customItemId,
+        name: item.name,
+        quantity: item.quantity,
+        acBonus: item.acBonus,
+        damageOverride: item.damageOverride,
+        notes: item.notes,
+      }),
+    onSuccess: () => {
+      setGivingLootId(null)
+      setLootRecipientId('')
+      setLootGiveError('')
+    },
+    onError: () => setLootGiveError('Failed to give item.'),
   })
 
   const copyInviteCode = () => {
@@ -415,6 +475,173 @@ export default function GamePage() {
                   >
                     Give Item
                   </button>
+                </div>
+              )}
+            </section>
+
+            {/* Loot Stash */}
+            <section className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">🎁 Loot Stash</h2>
+                <button
+                  onClick={() => { setShowLootStash(v => !v); setShowLootForm(false) }}
+                  className="text-sm text-indigo-400 hover:text-indigo-300"
+                >
+                  {showLootStash ? 'Hide' : 'Manage'}
+                </button>
+              </div>
+              {!showLootStash && (
+                <p className="text-xs text-gray-400">Pre-create items to quickly bestow loot to players.</p>
+              )}
+
+              {showLootStash && (
+                <div className="space-y-2">
+                  {/* Existing stash items */}
+                  {lootItems.length === 0 && !showLootForm && (
+                    <p className="text-sm text-gray-400 py-2">No items in stash yet.</p>
+                  )}
+                  {lootItems.map(item => (
+                    <div key={item.id} className="bg-gray-900 rounded-xl px-4 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-sm">{item.name}</span>
+                          {item.quantity > 1 && (
+                            <span className="text-xs text-gray-400 ml-2">×{item.quantity}</span>
+                          )}
+                          {item.damageOverride && (
+                            <span className="text-xs text-gray-400 ml-2">{item.damageOverride}</span>
+                          )}
+                          {item.notes && (
+                            <p className="text-xs text-gray-400 mt-0.5 truncate">{item.notes}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button
+                            onClick={() => { setGivingLootId(item.id); setLootRecipientId(''); setLootGiveError('') }}
+                            className="text-xs bg-indigo-600 hover:bg-indigo-500 px-2 py-1 rounded transition-colors"
+                          >
+                            Give
+                          </button>
+                          <button
+                            onClick={() => deleteLootMutation.mutate(item.id)}
+                            className="text-xs text-gray-500 hover:text-red-400 px-2 py-1 rounded transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                      {/* Inline recipient picker */}
+                      {givingLootId === item.id && (
+                        <div className="mt-2 flex gap-2 items-center">
+                          <select
+                            className="flex-1 bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:outline-none text-sm"
+                            value={lootRecipientId}
+                            onChange={e => setLootRecipientId(e.target.value)}
+                          >
+                            <option value="">Select recipient…</option>
+                            {game.characters.map(c => (
+                              <option key={c.characterId} value={c.characterId}>
+                                {c.characterName} ({c.ownerUsername})
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            disabled={giveLootMutation.isPending || !lootRecipientId}
+                            onClick={() => giveLootMutation.mutate({ item, recipientCharacterId: lootRecipientId })}
+                            className="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-3 py-1.5 rounded transition-colors"
+                          >
+                            Send
+                          </button>
+                          <button
+                            onClick={() => { setGivingLootId(null); setLootGiveError('') }}
+                            className="text-xs text-gray-500 hover:text-white px-2 py-1.5"
+                          >✕</button>
+                        </div>
+                      )}
+                      {givingLootId === item.id && lootGiveError && (
+                        <p className="text-red-400 text-xs mt-1">{lootGiveError}</p>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Create new stash item form */}
+                  {showLootForm ? (
+                    <div className="bg-gray-900 rounded-xl p-4 space-y-3">
+                      <p className="text-sm font-semibold">New Stash Item</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
+                          <label className="text-xs text-gray-400 block mb-1">Item Name *</label>
+                          <input
+                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                            placeholder="e.g. Sword of Flames"
+                            value={lootForm.name}
+                            onChange={e => setLootForm(f => ({ ...f, name: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-400 block mb-1">Quantity</label>
+                          <input
+                            type="number" min={1}
+                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                            value={lootForm.quantity}
+                            onChange={e => setLootForm(f => ({ ...f, quantity: Number(e.target.value) }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-400 block mb-1">Damage</label>
+                          <input
+                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                            placeholder="e.g. 1d8+3"
+                            value={lootForm.damageOverride ?? ''}
+                            onChange={e => setLootForm(f => ({ ...f, damageOverride: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-400 block mb-1">AC Bonus</label>
+                          <input
+                            type="number"
+                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                            placeholder="None"
+                            value={lootForm.acBonusStr}
+                            onChange={e => setLootForm(f => ({ ...f, acBonusStr: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-400 block mb-1">Notes</label>
+                          <input
+                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                            value={lootForm.notes ?? ''}
+                            onChange={e => setLootForm(f => ({ ...f, notes: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setShowLootForm(false); setLootForm(defaultLootForm()) }}
+                          className="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded-lg text-sm"
+                        >Cancel</button>
+                        <button
+                          disabled={createLootMutation.isPending || !lootForm.name}
+                          onClick={() => createLootMutation.mutate({
+                            name: lootForm.name,
+                            itemSource: lootForm.itemSource,
+                            quantity: lootForm.quantity,
+                            acBonus: lootForm.acBonusStr ? Number(lootForm.acBonusStr) : undefined,
+                            damageOverride: lootForm.damageOverride || undefined,
+                            notes: lootForm.notes || undefined,
+                          })}
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 py-2 rounded-lg text-sm font-semibold"
+                        >Save to Stash</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowLootForm(true)}
+                      className="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 rounded-xl py-2.5 text-sm text-gray-400 hover:text-white transition-colors"
+                    >
+                      + Add Item to Stash
+                    </button>
+                  )}
                 </div>
               )}
             </section>

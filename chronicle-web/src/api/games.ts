@@ -1,5 +1,5 @@
 import api from './client'
-import type { GameRoom, GameSummary, GameMember, CreateGameRequest, JoinGameRequest, AddMemberRequest, LinkCharacterRequest, PartyMember, GiveItemRequest } from '../types'
+import type { GameRoom, GameSummary, GameMember, CreateGameRequest, JoinGameRequest, AddMemberRequest, LinkCharacterRequest, PartyMember, GiveItemRequest, CreateLootItemRequest, LootItem } from '../types'
 
 export const gamesApi = {
   getAll: () =>
@@ -31,4 +31,13 @@ export const gamesApi = {
 
   giveItem: (gameId: string, data: GiveItemRequest) =>
     api.post(`/games/${gameId}/give-item`, data),
+
+  getLoot: (gameId: string) =>
+    api.get<LootItem[]>(`/games/${gameId}/loot`).then((r) => r.data),
+
+  createLootItem: (gameId: string, data: CreateLootItemRequest) =>
+    api.post<LootItem>(`/games/${gameId}/loot`, data).then((r) => r.data),
+
+  deleteLootItem: (gameId: string, itemId: string) =>
+    api.delete(`/games/${gameId}/loot/${itemId}`),
 }
