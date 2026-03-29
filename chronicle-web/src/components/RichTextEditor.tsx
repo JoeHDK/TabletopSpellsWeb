@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -11,11 +12,12 @@ interface RichTextDisplayProps {
 }
 
 export function RichTextDisplay({ html, className }: RichTextDisplayProps) {
-  const resolved = html.trim().startsWith('<') ? html : `<p>${html}</p>`
+  const raw = html.trim().startsWith('<') ? html : `<p>${html}</p>`
+  const safe = DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } })
   return (
     <div
       className={`tiptap-prose text-sm text-gray-400 leading-relaxed ${className ?? ''}`}
-      dangerouslySetInnerHTML={{ __html: resolved }}
+      dangerouslySetInnerHTML={{ __html: safe }}
     />
   )
 }

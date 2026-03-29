@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Chronicle.Api.Services;
 
@@ -5,6 +6,7 @@ namespace Chronicle.Api.Controllers;
 
 [ApiController]
 [Route("api/feats")]
+[Authorize]
 public class FeatsController : ControllerBase
 {
     private readonly FeatService _feats;

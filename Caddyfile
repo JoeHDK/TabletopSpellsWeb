@@ -17,5 +17,11 @@
 # VPS example:  SERVER_HOSTNAME=192-121-119-125.sslip.io
 {$SERVER_HOSTNAME} {
 	# tls internal   # <-- uncomment for LAN / dev mode only
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
 	reverse_proxy api:8080
 }

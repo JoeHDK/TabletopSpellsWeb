@@ -1,6 +1,8 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Chronicle.Api;
@@ -92,6 +94,19 @@ var vapid = new Chronicle.Api.Services.VapidConfiguration
 builder.Services.AddSingleton(vapid);
 builder.Services.AddSingleton<WebPushService>();
 
+// Rate limiting — protect auth endpoints from brute force
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("auth", o =>
+    {
+        o.Window = TimeSpan.FromMinutes(1);
+        o.PermitLimit = 10;
+        o.QueueLimit = 0;
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
 // SignalR
 builder.Services.AddSignalR();
 
@@ -118,6 +133,7 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

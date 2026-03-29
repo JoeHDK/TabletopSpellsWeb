@@ -49,18 +49,31 @@ public class CharacterDto
 
 public class UpdateCharacteristicsRequest
 {
+    [StringLength(500)]
     public string? PersonalityTraits { get; set; }
+    [StringLength(500)]
     public string? Ideals { get; set; }
+    [StringLength(500)]
     public string? Bonds { get; set; }
+    [StringLength(500)]
     public string? Flaws { get; set; }
+    [StringLength(50000)]
     public string? Backstory { get; set; }
+    [StringLength(2000)]
     public string? Appearance { get; set; }
+    [StringLength(50)]
     public string? Age { get; set; }
+    [StringLength(50)]
     public string? Height { get; set; }
+    [StringLength(50)]
     public string? Weight { get; set; }
+    [StringLength(50)]
     public string? Eyes { get; set; }
+    [StringLength(50)]
     public string? Hair { get; set; }
+    [StringLength(50)]
     public string? Skin { get; set; }
+    [StringLength(2000)]
     public string? AlliesAndOrganizations { get; set; }
 }
 
@@ -125,11 +138,14 @@ public class AddAttackRequest
 {
     [Required, StringLength(100, MinimumLength = 1)]
     public required string Name { get; set; }
+    [StringLength(50)]
     public string? DamageFormula { get; set; }
+    [StringLength(50)]
     public string? DamageType { get; set; }
     public string AbilityMod { get; set; } = "Strength";
     public bool UseProficiency { get; set; } = true;
     public int MagicBonus { get; set; } = 0;
+    [StringLength(500)]
     public string? Notes { get; set; }
     public int SortOrder { get; set; } = 0;
 }

@@ -15,11 +15,17 @@ registerRoute(
 )
 
 // StaleWhileRevalidate for general API calls (serve cached, refresh in background)
+// Excludes: auth, notifications, push — these must always be fresh
 registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/spells/'),
+  ({ url }) =>
+    url.pathname.startsWith('/api/') &&
+    !url.pathname.startsWith('/api/spells/') &&
+    !url.pathname.startsWith('/api/auth/') &&
+    !url.pathname.startsWith('/api/notifications') &&
+    !url.pathname.startsWith('/api/push/'),
   new StaleWhileRevalidate({
     cacheName: 'api-cache',
-    plugins: [new ExpirationPlugin({ maxAgeSeconds: 60 * 60 * 24 * 7 })],
+    plugins: [new ExpirationPlugin({ maxAgeSeconds: 60 * 60 * 24 })],
   })
 )
 
