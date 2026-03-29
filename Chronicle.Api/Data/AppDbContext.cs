@@ -31,6 +31,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<CharacterFeatEntity> CharacterFeats => Set<CharacterFeatEntity>();
     public DbSet<ClassResourceEntity> ClassResources => Set<ClassResourceEntity>();
     public DbSet<GameLootItemEntity> GameLootItems => Set<GameLootItemEntity>();
+    public DbSet<PushSubscriptionEntity> PushSubscriptions => Set<PushSubscriptionEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -257,5 +258,15 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .HasForeignKey(l => l.CustomItemId)
             .OnDelete(DeleteBehavior.SetNull)
             .IsRequired(false);
+
+        builder.Entity<PushSubscriptionEntity>()
+            .HasOne(p => p.User)
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<PushSubscriptionEntity>()
+            .HasIndex(p => new { p.UserId, p.Endpoint })
+            .IsUnique();
     }
 }

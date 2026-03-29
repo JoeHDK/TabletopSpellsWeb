@@ -10,6 +10,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
         name: 'Chronicle',
@@ -21,30 +24,6 @@ export default defineConfig({
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-        ],
-      },
-      workbox: {
-        navigateFallback: 'index.html',
-        runtimeCaching: [
-          {
-            // StaleWhileRevalidate: return cached data instantly, update cache in background.
-            // No wait when offline — cached data is served immediately without a timeout.
-            urlPattern: /\/api\/.*/,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'api-cache',
-              expiration: { maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
-          },
-          {
-            // Keep long-lived CacheFirst for the static spell/item compendium data
-            urlPattern: /\/api\/spells\/.*/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'spells-cache',
-              expiration: { maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
-          },
         ],
       },
     }),

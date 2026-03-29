@@ -2,11 +2,13 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
+using Chronicle.Api.Hubs;
 using Chronicle.Api.Models.Enums;
 using Chronicle.Api.Services;
 
@@ -20,15 +22,35 @@ public class GamesController : ControllerBase
     private readonly AppDbContext _db;
     private readonly UserManager<AppUser> _userManager;
     private readonly EncryptionService _encryption;
+    private readonly IHubContext<NotificationHub> _notifHub;
+    private readonly WebPushService _pushService;
 
-    public GamesController(AppDbContext db, UserManager<AppUser> userManager, EncryptionService encryption)
+    public GamesController(AppDbContext db, UserManager<AppUser> userManager, EncryptionService encryption, IHubContext<NotificationHub> notifHub, WebPushService pushService)
     {
         _db = db;
         _userManager = userManager;
         _encryption = encryption;
+        _notifHub = notifHub;
+        _pushService = pushService;
     }
 
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+    private async Task PushNotifAsync(NotificationEntity entity)
+    {
+        var dto = new NotificationDto
+        {
+            Id = entity.Id,
+            Type = entity.Type.ToString(),
+            Title = entity.Title,
+            Message = entity.Message,
+            Link = entity.Link,
+            IsRead = false,
+            CreatedAt = entity.CreatedAt,
+        };
+        await _notifHub.Clients.Group($"notifications-{entity.UserId}").SendAsync("ReceiveNotification", dto);
+        await _pushService.SendNotificationAsync(entity.UserId, dto);
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetMyGames()
@@ -172,19 +194,21 @@ public class GamesController : ControllerBase
 
         var game = await _db.GameRooms.FindAsync(id);
         var inviterName = User.Identity?.Name ?? "The DM";
-        _db.Notifications.Add(new NotificationEntity
+        var gameInviteNotif = new NotificationEntity
         {
             UserId = targetUser.Id,
             Type = NotificationType.GameInvite,
             Title = "You've been added to a game",
             Message = $"{inviterName} added you to \"{game?.Name ?? "a game"}\".",
             Link = $"/games/{id}",
-        });
+        };
+        _db.Notifications.Add(gameInviteNotif);
 
         // Add new member to the game room's chat conversation
         await AddUserToGameRoomChat(id, targetUser.Id);
 
         await _db.SaveChangesAsync();
+        await PushNotifAsync(gameInviteNotif);
 
         return Ok(new GameMemberDto
         {
@@ -298,16 +322,18 @@ public class GamesController : ControllerBase
 
         var game = await _db.GameRooms.FindAsync(id);
         var giver = User.Identity?.Name ?? "The DM";
-        _db.Notifications.Add(new NotificationEntity
+        var itemNotif = new NotificationEntity
         {
             UserId = recipientChar.UserId,
             Type = NotificationType.ItemReceived,
             Title = "You received an item",
             Message = $"{giver} gave \"{req.Name}\" (×{req.Quantity}) to {recipientChar.Name} in \"{game?.Name ?? "your game"}\".",
             Link = $"/characters/{recipientChar.Id}/inventory",
-        });
+        };
+        _db.Notifications.Add(itemNotif);
 
         await _db.SaveChangesAsync();
+        await PushNotifAsync(itemNotif);
         return Ok();
     }
 

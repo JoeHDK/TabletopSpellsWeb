@@ -82,6 +82,16 @@ builder.Services.AddSingleton<RaceService>();
 builder.Services.AddSingleton<EncryptionService>();
 builder.Services.AddSingleton<ClassResourceSeedService>();
 
+// VAPID / Web Push
+var vapid = new Chronicle.Api.Services.VapidConfiguration
+{
+    Subject = builder.Configuration["Vapid:Subject"] ?? "",
+    PublicKey = builder.Configuration["Vapid:PublicKey"] ?? "",
+    PrivateKey = builder.Configuration["Vapid:PrivateKey"] ?? "",
+};
+builder.Services.AddSingleton(vapid);
+builder.Services.AddSingleton<WebPushService>();
+
 // SignalR
 builder.Services.AddSignalR();
 
@@ -113,6 +123,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<EncounterHub>("/hubs/encounter");
+app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapFallbackToFile("index.html"); // SPA fallback — client-side routing
 
 // Run migrations on every startup (safe — EF skips already-applied migrations)

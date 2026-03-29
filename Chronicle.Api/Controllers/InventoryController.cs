@@ -1,10 +1,13 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
+using Chronicle.Api.Hubs;
+using Chronicle.Api.Services;
 
 namespace Chronicle.Api.Controllers;
 
@@ -14,9 +17,32 @@ namespace Chronicle.Api.Controllers;
 public class InventoryController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IHubContext<NotificationHub> _notifHub;
+    private readonly WebPushService _pushService;
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    public InventoryController(AppDbContext db) => _db = db;
+    public InventoryController(AppDbContext db, IHubContext<NotificationHub> notifHub, WebPushService pushService)
+    {
+        _db = db;
+        _notifHub = notifHub;
+        _pushService = pushService;
+    }
+
+    private async Task PushNotifAsync(NotificationEntity entity)
+    {
+        var dto = new NotificationDto
+        {
+            Id = entity.Id,
+            Type = entity.Type.ToString(),
+            Title = entity.Title,
+            Message = entity.Message,
+            Link = entity.Link,
+            IsRead = false,
+            CreatedAt = entity.CreatedAt,
+        };
+        await _notifHub.Clients.Group($"notifications-{entity.UserId}").SendAsync("ReceiveNotification", dto);
+        await _pushService.SendNotificationAsync(entity.UserId, dto);
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid characterId)
@@ -109,16 +135,18 @@ public class InventoryController : ControllerBase
         item.EquippedSlot = null;
         item.GrantedByUserId = UserId;
 
-        _db.Notifications.Add(new Data.Entities.NotificationEntity
+        var tradeNotif = new NotificationEntity
         {
             UserId = recipientChar.UserId,
-            Type = Data.Entities.NotificationType.ItemReceived,
+            Type = NotificationType.ItemReceived,
             Title = "You received an item",
             Message = $"{User.Identity?.Name ?? "A player"} sent \"{item.Name}\" (×{item.Quantity}) to {recipientChar.Name}.",
             Link = $"/characters/{recipientChar.Id}/inventory",
-        });
+        };
+        _db.Notifications.Add(tradeNotif);
 
         await _db.SaveChangesAsync();
+        await PushNotifAsync(tradeNotif);
         return NoContent();
     }
 

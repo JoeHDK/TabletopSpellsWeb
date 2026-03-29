@@ -429,6 +429,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const [draft, setDraft] = useState<UpdateCharacterRequest & { currentHp?: number; maxHp?: number } | null>(null)
   const [editingName, setEditingName] = useState(false)
   const [abilityBreakdownKey, setAbilityBreakdownKey] = useState<string | null>(null)
+  const [abilityScoreRaw, setAbilityScoreRaw] = useState<string>('')
 
   useEffect(() => {
     if (editingName) nameRef.current?.focus()
@@ -1343,7 +1344,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                   return (
                     <button
                       key={key}
-                      onClick={() => setAbilityBreakdownKey(key)}
+                      onClick={() => { setAbilityScoreRaw(String(d.abilityScores[key] ?? 10)); setAbilityBreakdownKey(key) }}
                       className="bg-gray-800 hover:bg-gray-700 rounded-xl p-2 text-center transition-colors"
                     >
                       <p className="text-[10px] text-gray-400 mb-0.5">{ABILITY_SHORT[key]}</p>
@@ -1437,8 +1438,20 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                   <span className="text-gray-400">Base score</span>
                   <input
                     type="number" min={1} max={30}
-                    value={base}
-                    onChange={e => patch({ abilityScores: { ...d.abilityScores, [key]: Math.max(1, Math.min(30, Number(e.target.value) || 1)) } })}
+                    value={abilityScoreRaw}
+                    onChange={e => setAbilityScoreRaw(e.target.value)}
+                    onBlur={e => {
+                      const n = parseInt(e.target.value, 10)
+                      if (!e.target.value.trim() || isNaN(n)) {
+                        const orig = character.abilityScores[key] ?? 10
+                        setAbilityScoreRaw(String(orig))
+                        patch({ abilityScores: { ...d.abilityScores, [key]: orig } })
+                      } else {
+                        const clamped = Math.max(1, Math.min(30, n))
+                        setAbilityScoreRaw(String(clamped))
+                        patch({ abilityScores: { ...d.abilityScores, [key]: clamped } })
+                      }
+                    }}
                     className="w-16 text-center bg-gray-800 rounded-lg px-2 py-1 border border-gray-700 text-white focus:border-indigo-500 focus:outline-none"
                   />
                 </div>

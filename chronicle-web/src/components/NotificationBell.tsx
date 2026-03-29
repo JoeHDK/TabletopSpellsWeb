@@ -31,10 +31,20 @@ export default function NotificationBell() {
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ['notifications'],
     queryFn: notificationsApi.getAll,
-    refetchInterval: 30000,
+    refetchInterval: 300000, // 5 min fallback — SignalR pushes updates in real-time
   })
 
   const unreadCount = notifications.filter(n => !n.isRead).length
+
+  // App Badge API — shows notification count on the installed PWA icon
+  useEffect(() => {
+    if (!('setAppBadge' in navigator)) return
+    if (unreadCount > 0) {
+      navigator.setAppBadge(unreadCount).catch(() => {})
+    } else {
+      navigator.clearAppBadge().catch(() => {})
+    }
+  }, [unreadCount])
 
   const markReadMutation = useMutation({
     mutationFn: notificationsApi.markRead,

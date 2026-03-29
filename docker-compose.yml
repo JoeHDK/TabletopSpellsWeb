@@ -33,6 +33,9 @@ services:
       Jwt__Issuer: ChronicleApi
       Jwt__Audience: ChronicleWeb
       Chat__MasterKey: ${CHAT_MASTER_KEY}
+      Vapid__Subject: ${VAPID_SUBJECT}
+      Vapid__PublicKey: ${VAPID_PUBLIC_KEY}
+      Vapid__PrivateKey: ${VAPID_PRIVATE_KEY}
     # No ports exposed directly — Caddy is the only entry point
 
   caddy:
