@@ -59,7 +59,6 @@ const BACKGROUND_SKILLS: Record<string, string[]> = {
 // Standard D&D 5e point buy
 const POINT_BUY_COST: Record<number, number> = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 }
 const POINT_BUY_BUDGET = 27
-const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8]
 
 const RESOURCE_DESCRIPTIONS: Record<string, { title: string; desc: string }> = {
   rage: {
@@ -530,7 +529,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     mutationFn: (req: UpdateCharacterRequest) => charactersApi.update(id!, req),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', id], updated)
-      qc.invalidateQueries({ queryKey: ['character', id] })
     },
   })
 
@@ -539,7 +537,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       charactersApi.updateHp(id!, currentHp, maxHp),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', id], updated)
-      qc.invalidateQueries({ queryKey: ['character', id] })
     },
   })
 
@@ -547,7 +544,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     mutationFn: (file: File) => charactersApi.uploadAvatar(id!, file),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', id], updated)
-      qc.invalidateQueries({ queryKey: ['character', id] })
     },
   })
 
@@ -559,7 +555,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       beastsApi.updateWildShape(id!, req),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', id], updated)
-      qc.invalidateQueries({ queryKey: ['character', id] })
     },
   })
 
@@ -577,7 +572,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     mutationFn: (req: AddAttackRequest) => attacksApi.add(id!, req),
     onSuccess: (newAttack) => {
       qc.setQueryData<CharacterAttack[]>(['attacks', id], old => [...(old ?? []), newAttack])
-      qc.invalidateQueries({ queryKey: ['attacks', id] })
       setShowAttackForm(false)
       setAttackForm(BLANK_ATTACK)
     },
@@ -587,7 +581,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       attacksApi.update(id!, attackId, req),
     onSuccess: (updated) => {
       qc.setQueryData<CharacterAttack[]>(['attacks', id], old => old?.map(a => a.id === updated.id ? updated : a) ?? [])
-      qc.invalidateQueries({ queryKey: ['attacks', id] })
       setEditingAttack(null)
       setAttackForm(BLANK_ATTACK)
     },
@@ -596,7 +589,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     mutationFn: (attackId: string) => attacksApi.remove(id!, attackId),
     onSuccess: (_void, attackId) => {
       qc.setQueryData<CharacterAttack[]>(['attacks', id], old => old?.filter(a => a.id !== attackId) ?? [])
-      qc.invalidateQueries({ queryKey: ['attacks', id] })
     },
   })
 
@@ -608,6 +600,17 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     }
     e.target.value = ''
   }
+
+  // Auto-fill saving throws from class when a character first loads with no saves set
+  useEffect(() => {
+    if (!character) return
+    const classSaves = CLASS_SAVING_THROWS[character.characterClass]
+    if (classSaves && (character.savingThrowProficiencies ?? []).length === 0) {
+      updateMutation.mutate({ savingThrowProficiencies: classSaves })
+    }
+    // Only run when the character ID changes (new character loaded)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [character?.id])
 
   if (isLoading || !character) return (
     <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">Loading…</div>
@@ -1282,13 +1285,17 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
           // Normal (non-wild-shape) attacks
           // Auto-generate attack profiles from equipped weapons
-          const equippedWeapons = inventory.filter(i => i.isEquipped && (i.equippedSlot === 'Weapon' || i.equippedSlot === 'Offhand'))
+          const equippedWeapons = inventory.filter(i => i.isEquipped && (
+            i.equippedSlot === 'Weapon' || i.equippedSlot === 'Offhand' ||
+            i.equippedSlot === 'MainHand' || i.equippedSlot === 'OffHand'
+          ))
           const RANGED_RE = /\b(bow|crossbow|dart|sling|blowgun|net)\b/i
           const autoAttacks = equippedWeapons.map(item => {
             const isRanged = RANGED_RE.test(item.name) || RANGED_RE.test(item.notes ?? '')
             const ability = isRanged ? 'Dexterity' : 'Strength'
             const aMod = Math.floor(((d.abilityScores[ability] ?? 10) - 10) / 2)
-            const toHit = aMod + profBonusNum + (item.equippedSlot === 'Offhand' ? -profBonusNum : 0)
+            const isOffHand = item.equippedSlot === 'Offhand' || item.equippedSlot === 'OffHand'
+            const toHit = aMod + profBonusNum + (isOffHand ? -profBonusNum : 0)
             const dmgBonus = aMod
             const dmgStr = item.damageOverride
               ? `${item.damageOverride}${dmgBonus !== 0 ? fmtMod(dmgBonus) : ''}`
@@ -1466,17 +1473,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                 <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Ability Scores</h2>
                 {character.gameType === 'dnd5e' && (
                   <div className="flex gap-1">
-                    {pointBuyMode && (
-                      <button
-                        onClick={() => {
-                          const newScores = { ...d.abilityScores }
-                          ABILITY_KEYS.forEach((k, i) => { newScores[k] = STANDARD_ARRAY[i] })
-                          patch({ abilityScores: newScores })
-                        }}
-                        className="text-[10px] text-gray-400 hover:text-white px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
-                        title="Set scores to 15,14,13,12,10,8"
-                      >Array</button>
-                    )}
                     <button
                       onClick={() => setPointBuyMode(m => !m)}
                       className={`text-[10px] px-2 py-0.5 rounded transition-colors ${pointBuyMode ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400 hover:text-white'}`}
