@@ -278,7 +278,14 @@ export interface InventoryItem {
   acBonus?: number
   armorType?: ArmorType
   damageOverride?: string
+  damageEntries?: DamageEntry[]
   isTwoHanded?: boolean
+  strBonus?: number
+  conBonus?: number
+  dexBonus?: number
+  wisBonus?: number
+  intBonus?: number
+  chaBonus?: number
   notes?: string
   grantedByUsername?: string
   acquiredAt: string
@@ -327,7 +334,15 @@ export interface GiveItemRequest {
   name: string
   quantity: number
   acBonus?: number
+  armorType?: ArmorType
   damageOverride?: string
+  damageEntries?: DamageEntry[]
+  strBonus?: number
+  conBonus?: number
+  dexBonus?: number
+  wisBonus?: number
+  intBonus?: number
+  chaBonus?: number
   notes?: string
 }
 

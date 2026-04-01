@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -7,6 +8,7 @@ using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
 using Chronicle.Api.Hubs;
+using Chronicle.Api.Models;
 using Chronicle.Api.Services;
 
 namespace Chronicle.Api.Controllers;
@@ -178,7 +180,16 @@ public class InventoryController : ControllerBase
         AcBonus = e.AcBonus,
         ArmorType = e.ArmorType?.ToString(),
         DamageOverride = e.DamageOverride,
+        DamageEntries = e.DamageEntriesJson != null
+            ? JsonSerializer.Deserialize<List<DamageEntryDto>>(e.DamageEntriesJson)
+            : null,
         IsTwoHanded = e.IsTwoHanded,
+        StrBonus = e.StrBonus,
+        ConBonus = e.ConBonus,
+        DexBonus = e.DexBonus,
+        WisBonus = e.WisBonus,
+        IntBonus = e.IntBonus,
+        ChaBonus = e.ChaBonus,
         Notes = e.Notes,
         GrantedByUsername = e.GrantedBy?.UserName,
         AcquiredAt = e.AcquiredAt,
