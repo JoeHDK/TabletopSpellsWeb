@@ -33,6 +33,7 @@ export interface Character {
   wildShapeBeastCurrentHp: number | null
   wildShapeBeastMaxHp: number | null
   race?: string
+  background?: string
   // Roleplay / Characteristics
   personalityTraits?: string
   ideals?: string
@@ -50,6 +51,7 @@ export interface Character {
 }
 
 export interface UpdateCharacteristicsRequest {
+  background?: string
   personalityTraits?: string
   ideals?: string
   bonds?: string

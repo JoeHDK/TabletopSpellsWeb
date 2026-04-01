@@ -243,6 +243,7 @@ public class CharactersController : ControllerBase
         entity.Hair = req.Hair ?? entity.Hair;
         entity.Skin = req.Skin ?? entity.Skin;
         entity.AlliesAndOrganizations = req.AlliesAndOrganizations ?? entity.AlliesAndOrganizations;
+        if (req.Background != null) entity.Background = req.Background;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -285,6 +286,7 @@ public class CharactersController : ControllerBase
         WildShapeBeastCurrentHp = e.WildShapeBeastCurrentHp,
         WildShapeBeastMaxHp = e.WildShapeBeastMaxHp,
         Race = e.Race,
+        Background = e.Background,
         PersonalityTraits = e.PersonalityTraits,
         Ideals = e.Ideals,
         Bonds = e.Bonds,

@@ -9,6 +9,7 @@ import { characterFeatsApi } from '../api/characterFeats'
 import { classFeaturesApi } from '../api/classFeatures'
 import { classResourcesApi } from '../api/classResources'
 import { racesApi } from '../api/races'
+import { backgroundsApi } from '../api/backgrounds'
 import EditableNumber from '../components/EditableNumber'
 import BeastPickerModal from '../components/BeastPickerModal'
 import { resizeImage } from '../utils/resizeImage'
@@ -20,6 +21,45 @@ const ABILITY_SHORT: Record<string, string> = {
   Strength: 'STR', Dexterity: 'DEX', Constitution: 'CON',
   Intelligence: 'INT', Wisdom: 'WIS', Charisma: 'CHA',
 }
+
+// D&D 5e class saving throw proficiencies (fixed per class)
+const CLASS_SAVING_THROWS: Record<string, string[]> = {
+  Barbarian: ['Strength', 'Constitution'],
+  Bard: ['Dexterity', 'Charisma'],
+  Cleric: ['Wisdom', 'Charisma'],
+  Druid: ['Intelligence', 'Wisdom'],
+  Fighter: ['Strength', 'Constitution'],
+  Monk: ['Strength', 'Dexterity'],
+  Paladin: ['Wisdom', 'Charisma'],
+  Ranger: ['Strength', 'Dexterity'],
+  Rogue: ['Dexterity', 'Intelligence'],
+  Sorcerer: ['Constitution', 'Charisma'],
+  Warlock: ['Wisdom', 'Charisma'],
+  Wizard: ['Intelligence', 'Wisdom'],
+  Artificer: ['Constitution', 'Intelligence'],
+}
+
+// D&D 5e SRD background skill proficiencies
+const BACKGROUND_SKILLS: Record<string, string[]> = {
+  'acolyte': ['Insight', 'Religion'],
+  'charlatan': ['Deception', 'Sleight of Hand'],
+  'criminal': ['Deception', 'Stealth'],
+  'entertainer': ['Acrobatics', 'Performance'],
+  'folk-hero': ['Animal Handling', 'Survival'],
+  'guild-artisan': ['Insight', 'Persuasion'],
+  'hermit': ['Medicine', 'Religion'],
+  'noble': ['History', 'Persuasion'],
+  'outlander': ['Athletics', 'Survival'],
+  'sage': ['Arcana', 'History'],
+  'sailor': ['Athletics', 'Perception'],
+  'soldier': ['Athletics', 'Intimidation'],
+  'urchin': ['Sleight of Hand', 'Stealth'],
+}
+
+// Standard D&D 5e point buy
+const POINT_BUY_COST: Record<number, number> = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 }
+const POINT_BUY_BUDGET = 27
+const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8]
 
 const RESOURCE_DESCRIPTIONS: Record<string, { title: string; desc: string }> = {
   rage: {
@@ -339,6 +379,55 @@ function RaceSelector({ characterId, currentRace }: { characterId: string; curre
   )
 }
 
+function BackgroundSelector({ characterId, currentBackground, currentSkillProficiencies }: {
+  characterId: string
+  currentBackground?: string
+  currentSkillProficiencies: string[]
+}) {
+  const qc = useQueryClient()
+  const { data: backgrounds = [] } = useQuery({ queryKey: ['backgrounds'], queryFn: () => backgroundsApi.getAll() })
+
+  const bgMutation = useMutation({
+    mutationFn: async ({ background, skillProficiencies }: { background?: string; skillProficiencies: string[] }) => {
+      await charactersApi.updateCharacteristics(characterId, { background: background || undefined })
+      return charactersApi.update(characterId, { skillProficiencies })
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData<Character>(['character', characterId], updated)
+      qc.invalidateQueries({ queryKey: ['character', characterId] })
+    },
+  })
+
+  const handleChange = (newBgIndex: string) => {
+    const oldBgSkills = currentBackground ? (BACKGROUND_SKILLS[currentBackground] ?? []) : []
+    const newBgSkills = newBgIndex ? (BACKGROUND_SKILLS[newBgIndex] ?? []) : []
+    let updatedSkills = currentSkillProficiencies.filter(s => !oldBgSkills.includes(s))
+    newBgSkills.forEach(s => { if (!updatedSkills.includes(s)) updatedSkills.push(s) })
+    bgMutation.mutate({ background: newBgIndex || undefined, skillProficiencies: updatedSkills })
+  }
+
+  const bgSkills = currentBackground ? (BACKGROUND_SKILLS[currentBackground] ?? []) : []
+
+  return (
+    <div>
+      <select
+        className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
+        value={currentBackground ?? ''}
+        onChange={e => handleChange(e.target.value)}
+        disabled={bgMutation.isPending}
+      >
+        <option value="">— None —</option>
+        {backgrounds.map(b => (
+          <option key={b.index} value={b.index}>{b.name}</option>
+        ))}
+      </select>
+      {bgSkills.length > 0 && (
+        <p className="text-xs text-amber-400/80 mt-0.5">Grants: {bgSkills.join(', ')}</p>
+      )}
+    </div>
+  )
+}
+
 
 export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
@@ -434,6 +523,8 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   }, [editingName])
 
   const isDirty = draft !== null
+
+  const [pointBuyMode, setPointBuyMode] = useState(false)
 
   const updateMutation = useMutation({
     mutationFn: (req: UpdateCharacterRequest) => charactersApi.update(id!, req),
@@ -722,6 +813,18 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Race</p>
                   <RaceSelector characterId={character.id} currentRace={character.race} />
+                </div>
+              )}
+
+              {/* Background (D&D 5e only) */}
+              {character.gameType === 'dnd5e' && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Background</p>
+                  <BackgroundSelector
+                    characterId={character.id}
+                    currentBackground={character.background}
+                    currentSkillProficiencies={d.skillProficiencies}
+                  />
                 </div>
               )}
 
@@ -1359,36 +1462,114 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
             {/* Ability Scores */}
             <section className="bg-gray-900 rounded-2xl p-3">
-              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Ability Scores</h2>
-              <div className="grid grid-cols-2 gap-1.5">
-                {ABILITY_KEYS.map(key => {
-                  const total = totalAbilityScore(key)
-                  return (
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Ability Scores</h2>
+                {character.gameType === 'dnd5e' && (
+                  <div className="flex gap-1">
+                    {pointBuyMode && (
+                      <button
+                        onClick={() => {
+                          const newScores = { ...d.abilityScores }
+                          ABILITY_KEYS.forEach((k, i) => { newScores[k] = STANDARD_ARRAY[i] })
+                          patch({ abilityScores: newScores })
+                        }}
+                        className="text-[10px] text-gray-400 hover:text-white px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+                        title="Set scores to 15,14,13,12,10,8"
+                      >Array</button>
+                    )}
                     <button
-                      key={key}
-                      onClick={() => { setAbilityScoreRaw(String(d.abilityScores[key] ?? 10)); setAbilityBreakdownKey(key) }}
-                      className="bg-gray-800 hover:bg-gray-700 rounded-xl p-2 text-center transition-colors"
-                    >
-                      <p className="text-[10px] text-gray-400 mb-0.5">{ABILITY_SHORT[key]}</p>
-                      <p className="text-sm font-bold">{total}</p>
-                      <p className="text-[10px] text-indigo-400">{mod(total)}</p>
-                    </button>
-                  )
-                })}
+                      onClick={() => setPointBuyMode(m => !m)}
+                      className={`text-[10px] px-2 py-0.5 rounded transition-colors ${pointBuyMode ? 'bg-indigo-600 text-white' : 'bg-gray-700 text-gray-400 hover:text-white'}`}
+                    >Point Buy</button>
+                  </div>
+                )}
               </div>
+              {pointBuyMode && character.gameType === 'dnd5e' && (() => {
+                const pointsSpent = ABILITY_KEYS.reduce((sum, key) => {
+                  const base = Math.min(Math.max(d.abilityScores[key] ?? 8, 8), 15)
+                  return sum + (POINT_BUY_COST[base] ?? 0)
+                }, 0)
+                const pointsRemaining = POINT_BUY_BUDGET - pointsSpent
+                return (
+                  <>
+                    <div className={`text-center text-xs font-semibold mb-2 ${pointsRemaining < 0 ? 'text-red-400' : pointsRemaining === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {pointsSpent} / {POINT_BUY_BUDGET} points used — {pointsRemaining} remaining
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {ABILITY_KEYS.map(key => {
+                        const base = Math.min(Math.max(d.abilityScores[key] ?? 8, 8), 15)
+                        const racial = getRacialBonus(key)
+                        const asi = getAsiBonus(key)
+                        const total = base + racial + asi
+                        const cost = POINT_BUY_COST[base] ?? 0
+                        const canIncrease = base < 15 && pointsRemaining >= ((POINT_BUY_COST[base + 1] ?? 9) - cost)
+                        const canDecrease = base > 8
+                        return (
+                          <div key={key} className="bg-gray-800 rounded-xl p-2 text-center">
+                            <p className="text-[10px] text-gray-400 mb-0.5">{ABILITY_SHORT[key]}</p>
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => canDecrease && patch({ abilityScores: { ...d.abilityScores, [key]: base - 1 } })}
+                                disabled={!canDecrease}
+                                className="w-5 h-5 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-30 text-xs leading-none flex items-center justify-center"
+                              >−</button>
+                              <span className="text-sm font-bold w-6 text-center">{base}</span>
+                              <button
+                                onClick={() => canIncrease && patch({ abilityScores: { ...d.abilityScores, [key]: base + 1 } })}
+                                disabled={!canIncrease}
+                                className="w-5 h-5 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-30 text-xs leading-none flex items-center justify-center"
+                              >+</button>
+                            </div>
+                            <p className="text-[10px] text-indigo-400">{mod(total)}{racial !== 0 ? ` (${total})` : ''}</p>
+                            <p className="text-[9px] text-gray-600">{cost}pt</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )
+              })()}
+              {!pointBuyMode && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {ABILITY_KEYS.map(key => {
+                    const total = totalAbilityScore(key)
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => { setAbilityScoreRaw(String(d.abilityScores[key] ?? 10)); setAbilityBreakdownKey(key) }}
+                        className="bg-gray-800 hover:bg-gray-700 rounded-xl p-2 text-center transition-colors"
+                      >
+                        <p className="text-[10px] text-gray-400 mb-0.5">{ABILITY_SHORT[key]}</p>
+                        <p className="text-sm font-bold">{total}</p>
+                        <p className="text-[10px] text-indigo-400">{mod(total)}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </section>
 
             {/* Saving Throws */}
             <section className="bg-gray-900 rounded-2xl p-3">
-              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">
-                Saves
-                {savingThrowChaBonus !== 0 && (
-                  <span className="ml-1 text-indigo-400 normal-case">+{savingThrowChaBonus} CHA (aura)</span>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                  Saves
+                  {savingThrowChaBonus !== 0 && (
+                    <span className="ml-1 text-indigo-400 normal-case">+{savingThrowChaBonus} CHA (aura)</span>
+                  )}
+                </h2>
+                {character.gameType === 'dnd5e' && CLASS_SAVING_THROWS[character.characterClass] && (
+                  <button
+                    onClick={() => patch({ savingThrowProficiencies: CLASS_SAVING_THROWS[character.characterClass] })}
+                    className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                    title={`Set to ${CLASS_SAVING_THROWS[character.characterClass]?.join(' + ')}`}
+                  >Fill from class</button>
                 )}
-              </h2>
+              </div>
               <div className="space-y-0.5">
                 {saveList.map(({ name, ability }) => {
                   const isProficient = d.savingThrowProficiencies.includes(name)
+                  const isClassSave = character.gameType === 'dnd5e' && (CLASS_SAVING_THROWS[character.characterClass] ?? []).includes(name)
                   const total = abilityMod(ability) + (isProficient ? profBonusNum : 0) + savingThrowChaBonus
                   return (
                     <button
@@ -1398,6 +1579,9 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                     >
                       <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors ${isProficient ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
                       <span className="flex-1 text-xs truncate">{name}</span>
+                      {isProficient && isClassSave && (
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-indigo-900/60 text-indigo-400">class</span>
+                      )}
                       <span className={`text-xs font-semibold w-6 text-right flex-shrink-0 ${isProficient ? 'text-indigo-300' : 'text-gray-300'}`}>{fmtMod(total)}</span>
                     </button>
                   )
@@ -1418,18 +1602,24 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
             <div className="space-y-0.5">
               {skillList.map(({ name, ability }) => {
                 const isProficient = d.skillProficiencies.includes(name)
-                const disabled = !isProficient && atSkillLimit
+                const bgSkills = character.background ? (BACKGROUND_SKILLS[character.background] ?? []) : []
+                const isFromBackground = bgSkills.includes(name)
+                const lockedByBackground = isFromBackground && isProficient
+                const disabled = lockedByBackground || (!isProficient && atSkillLimit)
                 const total = abilityMod(ability) + (isProficient ? profBonusNum : 0)
                 return (
                   <button
                     key={name}
                     onClick={() => !disabled && toggleSkillProficiency(name)}
                     disabled={disabled}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-gray-800'}`}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${lockedByBackground ? 'cursor-default' : disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-gray-800'}`}
                   >
-                    <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors ${isProficient ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
+                    <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors ${isProficient ? (isFromBackground ? 'bg-amber-500 border-amber-500' : 'bg-indigo-500 border-indigo-500') : 'border-gray-500'}`} />
                     <span className="flex-1 text-xs truncate">{name}</span>
-                    <span className={`text-xs font-semibold w-6 text-right flex-shrink-0 ${isProficient ? 'text-indigo-300' : 'text-gray-300'}`}>{fmtMod(total)}</span>
+                    {isFromBackground && isProficient && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-400">bg</span>
+                    )}
+                    <span className={`text-xs font-semibold w-6 text-right flex-shrink-0 ${isProficient ? (isFromBackground ? 'text-amber-300' : 'text-indigo-300') : 'text-gray-300'}`}>{fmtMod(total)}</span>
                   </button>
                 )
               })}

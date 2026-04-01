@@ -31,6 +31,7 @@ public class CharacterDto
     public int? WildShapeBeastCurrentHp { get; set; }
     public int? WildShapeBeastMaxHp { get; set; }
     public string? Race { get; set; }
+    public string? Background { get; set; }
     // Roleplay / Characteristics
     public string? PersonalityTraits { get; set; }
     public string? Ideals { get; set; }
@@ -49,6 +50,8 @@ public class CharacterDto
 
 public class UpdateCharacteristicsRequest
 {
+    [StringLength(100)]
+    public string? Background { get; set; }
     [StringLength(500)]
     public string? PersonalityTraits { get; set; }
     [StringLength(500)]
