@@ -7,7 +7,7 @@ import { itemsApi } from '../api/items'
 import { customItemsApi } from '../api/customItems'
 import { useAuthStore } from '../store/authStore'
 import { lookupArmor } from '../utils/armorTable'
-import type { AddMemberRequest, GiveItemRequest, CreateLootItemRequest, LootItem, ItemSource, DamageEntry, ArmorType } from '../types'
+import type { AddMemberRequest, GiveItemRequest, ItemSource, DamageEntry, ArmorType, SaveCustomItemRequest } from '../types'
 
 const DAMAGE_TYPES = [
   'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
@@ -22,15 +22,6 @@ type GiveFormState = {
   quantity: number
   acBonusStr: string
   armorType: ArmorType | undefined
-  damageOverride: string
-  damageEntries: DamageEntry[]
-  strBonusStr: string
-  conBonusStr: string
-  dexBonusStr: string
-  wisBonusStr: string
-  intBonusStr: string
-  chaBonusStr: string
-  notes: string
 }
 
 const defaultGiveForm = (): GiveFormState => ({
@@ -41,23 +32,33 @@ const defaultGiveForm = (): GiveFormState => ({
   quantity: 1,
   acBonusStr: '',
   armorType: undefined,
-  damageOverride: '',
+})
+
+type AddCustomFormState = {
+  name: string
+  damage: string
+  damageEntries: DamageEntry[]
+  acBonusStr: string
+  strBonusStr: string
+  conBonusStr: string
+  dexBonusStr: string
+  wisBonusStr: string
+  intBonusStr: string
+  chaBonusStr: string
+  notes: string
+}
+
+const defaultAddCustomForm = (): AddCustomFormState => ({
+  name: '',
+  damage: '',
   damageEntries: [],
+  acBonusStr: '',
   strBonusStr: '',
   conBonusStr: '',
   dexBonusStr: '',
   wisBonusStr: '',
   intBonusStr: '',
   chaBonusStr: '',
-  notes: '',
-})
-
-const defaultLootForm = (): CreateLootItemRequest & { acBonusStr: string } => ({
-  name: '',
-  itemSource: 'SRD' as ItemSource,
-  quantity: 1,
-  acBonusStr: '',
-  damageOverride: '',
   notes: '',
 })
 
@@ -78,13 +79,10 @@ export default function GamePage() {
   const [itemSearch, setItemSearch] = useState('')
   const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null)
 
-  // Loot stash state
-  const [showLootStash, setShowLootStash] = useState(false)
-  const [showLootForm, setShowLootForm] = useState(false)
-  const [lootForm, setLootForm] = useState(defaultLootForm())
-  const [givingLootId, setGivingLootId] = useState<string | null>(null)
-  const [lootRecipientId, setLootRecipientId] = useState('')
-  const [lootGiveError, setLootGiveError] = useState('')
+  // Add Custom Item state
+  const [showAddCustom, setShowAddCustom] = useState(false)
+  const [addCustomForm, setAddCustomForm] = useState(defaultAddCustomForm())
+  const [addCustomError, setAddCustomError] = useState('')
 
   const { data: game, isLoading } = useQuery({
     queryKey: ['game', id],
@@ -121,12 +119,6 @@ export default function GamePage() {
     const q = itemSearch.toLowerCase()
     return combinedItems.filter(i => i.name.toLowerCase().includes(q)).slice(0, 50)
   }, [combinedItems, itemSearch])
-
-  const { data: lootItems = [] } = useQuery({
-    queryKey: ['game-loot', id],
-    queryFn: () => gamesApi.getLoot(id!),
-    enabled: !!id && showLootStash,
-  })
 
   const addMemberMutation = useMutation({
     mutationFn: (data: AddMemberRequest) => gamesApi.addMember(id!, data),
@@ -178,41 +170,15 @@ export default function GamePage() {
     onError: () => setGiveError('Failed to give item. Check the recipient character.'),
   })
 
-  const createLootMutation = useMutation({
-    mutationFn: (req: CreateLootItemRequest) => gamesApi.createLootItem(id!, req),
-    onSuccess: (newItem) => {
-      qc.setQueryData<LootItem[]>(['game-loot', id], old => [...(old ?? []), newItem])
-      setLootForm(defaultLootForm())
-      setShowLootForm(false)
-    },
-  })
-
-  const deleteLootMutation = useMutation({
-    mutationFn: (itemId: string) => gamesApi.deleteLootItem(id!, itemId),
-    onSuccess: (_, itemId) => {
-      qc.setQueryData<LootItem[]>(['game-loot', id], old => old?.filter(i => i.id !== itemId) ?? [])
-    },
-  })
-
-  const giveLootMutation = useMutation({
-    mutationFn: ({ item, recipientCharacterId }: { item: LootItem; recipientCharacterId: string }) =>
-      gamesApi.giveItem(id!, {
-        recipientCharacterId,
-        itemSource: item.itemSource,
-        srdItemIndex: item.srdItemIndex,
-        customItemId: item.customItemId,
-        name: item.name,
-        quantity: item.quantity,
-        acBonus: item.acBonus,
-        damageOverride: item.damageOverride,
-        notes: item.notes,
-      }),
+  const addCustomItemMutation = useMutation({
+    mutationFn: (req: SaveCustomItemRequest) => customItemsApi.create(req),
     onSuccess: () => {
-      setGivingLootId(null)
-      setLootRecipientId('')
-      setLootGiveError('')
+      qc.invalidateQueries({ queryKey: ['custom-items'] })
+      setAddCustomForm(defaultAddCustomForm())
+      setShowAddCustom(false)
+      setAddCustomError('')
     },
-    onError: () => setLootGiveError('Failed to give item.'),
+    onError: () => setAddCustomError('Failed to create item.'),
   })
 
   const copyInviteCode = () => {
@@ -473,7 +439,7 @@ export default function GamePage() {
                       <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2 border border-indigo-600">
                         <span className="flex-1 text-sm text-white">{giveForm.name}</span>
                         <span className="text-xs text-gray-400 px-2 py-0.5 bg-gray-700 rounded">{giveForm.itemSource}</span>
-                        <button onClick={() => { setSelectedItemKey(null); setGiveForm(f => ({ ...f, name: '', srdItemIndex: '', customItemId: '', damageOverride: '', acBonusStr: '', armorType: undefined })); setItemSearch('') }} className="text-gray-400 hover:text-white text-xs">✕</button>
+                        <button onClick={() => { setSelectedItemKey(null); setGiveForm(f => ({ ...f, name: '', srdItemIndex: '', customItemId: '', acBonusStr: '', armorType: undefined })); setItemSearch('') }} className="text-gray-400 hover:text-white text-xs">✕</button>
                       </div>
                     ) : (
                       <div className="space-y-1">
@@ -500,7 +466,6 @@ export default function GamePage() {
                                     itemSource: item.source,
                                     srdItemIndex: item.srdIndex ?? '',
                                     customItemId: item.customId ?? '',
-                                    damageOverride: item.damage ?? '',
                                     acBonusStr: armor ? String(armor.ac) : f.acBonusStr,
                                     armorType: armor?.type ?? f.armorType,
                                   }))
@@ -549,6 +514,52 @@ export default function GamePage() {
                     />
                   </div>
 
+                  {giveError && <p className="text-red-400 text-sm">{giveError}</p>}
+                  <button
+                    disabled={giveItemMutation.isPending || !giveForm.name || !giveRecipientId}
+                    onClick={() => giveItemMutation.mutate({
+                      recipientCharacterId: giveRecipientId,
+                      itemSource: giveForm.itemSource,
+                      srdItemIndex: giveForm.srdItemIndex || undefined,
+                      customItemId: giveForm.customItemId || undefined,
+                      name: giveForm.name,
+                      quantity: giveForm.quantity,
+                      acBonus: giveForm.acBonusStr ? Number(giveForm.acBonusStr) : undefined,
+                      armorType: giveForm.armorType,
+                    })}
+                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 py-2 rounded-lg text-sm"
+                  >
+                    {giveItemMutation.isPending ? 'Giving…' : 'Give Item'}
+                  </button>
+                </div>
+              )}
+            </section>
+
+            {/* Add Custom Item */}
+            <section className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Custom Items</h2>
+                <button
+                  onClick={() => { setShowAddCustom(v => !v); setAddCustomForm(defaultAddCustomForm()); setAddCustomError('') }}
+                  className="text-sm text-indigo-400 hover:text-indigo-300"
+                >
+                  {showAddCustom ? 'Cancel' : '+ Add Custom Item'}
+                </button>
+              </div>
+
+              {showAddCustom && (
+                <div className="bg-gray-900 rounded-xl p-4 space-y-4">
+                  {/* Name */}
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Item Name *</label>
+                    <input
+                      className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                      placeholder="e.g. Sword of Flames"
+                      value={addCustomForm.name}
+                      onChange={e => setAddCustomForm(f => ({ ...f, name: e.target.value }))}
+                    />
+                  </div>
+
                   {/* Damage */}
                   <div className="space-y-2">
                     <label className="text-xs text-gray-400 block">Damage</label>
@@ -556,32 +567,32 @@ export default function GamePage() {
                       <input
                         className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
                         placeholder="e.g. 2d6+4"
-                        value={giveForm.damageOverride}
-                        onChange={e => setGiveForm(f => ({ ...f, damageOverride: e.target.value }))}
+                        value={addCustomForm.damage}
+                        onChange={e => setAddCustomForm(f => ({ ...f, damage: e.target.value }))}
                       />
                       <button
                         type="button"
-                        onClick={() => setGiveForm(f => ({ ...f, damageEntries: [...f.damageEntries, { dice: '', damageType: 'Fire' }] }))}
+                        onClick={() => setAddCustomForm(f => ({ ...f, damageEntries: [...f.damageEntries, { dice: '', damageType: 'Fire' }] }))}
                         className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-indigo-300 text-sm font-bold leading-none"
-                        title="Add extra damage"
+                        title="Add extra damage type"
                       >+</button>
                     </div>
-                    {giveForm.damageEntries.map((entry, i) => (
+                    {addCustomForm.damageEntries.map((entry, i) => (
                       <div key={i} className="flex gap-2 items-center">
                         <input
                           value={entry.dice}
-                          onChange={e => setGiveForm(f => { const d = [...f.damageEntries]; d[i] = { ...d[i], dice: e.target.value }; return { ...f, damageEntries: d } })}
+                          onChange={e => setAddCustomForm(f => { const d = [...f.damageEntries]; d[i] = { ...d[i], dice: e.target.value }; return { ...f, damageEntries: d } })}
                           className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
                           placeholder="e.g. 1d6"
                         />
                         <select
                           value={entry.damageType}
-                          onChange={e => setGiveForm(f => { const d = [...f.damageEntries]; d[i] = { ...d[i], damageType: e.target.value }; return { ...f, damageEntries: d } })}
+                          onChange={e => setAddCustomForm(f => { const d = [...f.damageEntries]; d[i] = { ...d[i], damageType: e.target.value }; return { ...f, damageEntries: d } })}
                           className="w-36 bg-gray-800 text-white rounded-lg px-2 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
                         >
                           {DAMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
-                        <button type="button" onClick={() => setGiveForm(f => ({ ...f, damageEntries: f.damageEntries.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-300 px-2 py-1 text-sm">✕</button>
+                        <button type="button" onClick={() => setAddCustomForm(f => ({ ...f, damageEntries: f.damageEntries.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-300 px-2 py-1 text-sm">✕</button>
                       </div>
                     ))}
                   </div>
@@ -597,8 +608,8 @@ export default function GamePage() {
                             type="number"
                             className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
                             placeholder="—"
-                            value={giveForm[field]}
-                            onChange={e => setGiveForm(f => ({ ...f, [field]: e.target.value }))}
+                            value={addCustomForm[field]}
+                            onChange={e => setAddCustomForm(f => ({ ...f, [field]: e.target.value }))}
                           />
                         </div>
                       ))}
@@ -607,207 +618,37 @@ export default function GamePage() {
 
                   {/* Notes */}
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">Notes</label>
+                    <label className="text-xs text-gray-400 block mb-1">Notes / Description</label>
                     <input
                       className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                      value={giveForm.notes}
-                      onChange={e => setGiveForm(f => ({ ...f, notes: e.target.value }))}
+                      value={addCustomForm.notes}
+                      onChange={e => setAddCustomForm(f => ({ ...f, notes: e.target.value }))}
                     />
                   </div>
 
-                  {giveError && <p className="text-red-400 text-sm">{giveError}</p>}
+                  {addCustomError && <p className="text-red-400 text-sm">{addCustomError}</p>}
                   <button
-                    disabled={giveItemMutation.isPending || !giveForm.name || !giveRecipientId}
-                    onClick={() => giveItemMutation.mutate({
-                      recipientCharacterId: giveRecipientId,
-                      itemSource: giveForm.itemSource,
-                      srdItemIndex: giveForm.srdItemIndex || undefined,
-                      customItemId: giveForm.customItemId || undefined,
-                      name: giveForm.name,
-                      quantity: giveForm.quantity,
-                      acBonus: giveForm.acBonusStr ? Number(giveForm.acBonusStr) : undefined,
-                      armorType: giveForm.armorType,
-                      damageOverride: giveForm.damageOverride || undefined,
-                      damageEntries: giveForm.damageEntries.length > 0 ? giveForm.damageEntries : undefined,
-                      strBonus: giveForm.strBonusStr ? Number(giveForm.strBonusStr) : undefined,
-                      conBonus: giveForm.conBonusStr ? Number(giveForm.conBonusStr) : undefined,
-                      dexBonus: giveForm.dexBonusStr ? Number(giveForm.dexBonusStr) : undefined,
-                      wisBonus: giveForm.wisBonusStr ? Number(giveForm.wisBonusStr) : undefined,
-                      intBonus: giveForm.intBonusStr ? Number(giveForm.intBonusStr) : undefined,
-                      chaBonus: giveForm.chaBonusStr ? Number(giveForm.chaBonusStr) : undefined,
-                      notes: giveForm.notes || undefined,
+                    disabled={addCustomItemMutation.isPending || !addCustomForm.name}
+                    onClick={() => addCustomItemMutation.mutate({
+                      name: addCustomForm.name,
+                      item_type: 'equipment',
+                      damage: addCustomForm.damage || undefined,
+                      damage_entries: addCustomForm.damageEntries.length > 0 ? addCustomForm.damageEntries : undefined,
+                      ac_bonus: addCustomForm.acBonusStr ? Number(addCustomForm.acBonusStr) : undefined,
+                      str_bonus: addCustomForm.strBonusStr ? Number(addCustomForm.strBonusStr) : undefined,
+                      con_bonus: addCustomForm.conBonusStr ? Number(addCustomForm.conBonusStr) : undefined,
+                      dex_bonus: addCustomForm.dexBonusStr ? Number(addCustomForm.dexBonusStr) : undefined,
+                      wis_bonus: addCustomForm.wisBonusStr ? Number(addCustomForm.wisBonusStr) : undefined,
+                      int_bonus: addCustomForm.intBonusStr ? Number(addCustomForm.intBonusStr) : undefined,
+                      cha_bonus: addCustomForm.chaBonusStr ? Number(addCustomForm.chaBonusStr) : undefined,
+                      description: addCustomForm.notes || undefined,
+                      requires_attunement: false,
+                      properties: [],
                     })}
-                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 py-2 rounded-lg text-sm"
+                    className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-4 py-2 rounded-lg text-sm"
                   >
-                    {giveItemMutation.isPending ? 'Giving…' : 'Give Item'}
+                    {addCustomItemMutation.isPending ? 'Saving…' : 'Save Custom Item'}
                   </button>
-                </div>
-              )}
-            </section>
-
-            {/* Loot Stash */}
-            <section className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">🎁 Loot Stash</h2>
-                <button
-                  onClick={() => { setShowLootStash(v => !v); setShowLootForm(false) }}
-                  className="text-sm text-indigo-400 hover:text-indigo-300"
-                >
-                  {showLootStash ? 'Hide' : 'Manage'}
-                </button>
-              </div>
-              {!showLootStash && (
-                <p className="text-xs text-gray-400">Pre-create items to quickly bestow loot to players.</p>
-              )}
-
-              {showLootStash && (
-                <div className="space-y-2">
-                  {/* Existing stash items */}
-                  {lootItems.length === 0 && !showLootForm && (
-                    <p className="text-sm text-gray-400 py-2">No items in stash yet.</p>
-                  )}
-                  {lootItems.map(item => (
-                    <div key={item.id} className="bg-gray-900 rounded-xl px-4 py-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <span className="font-medium text-sm">{item.name}</span>
-                          {item.quantity > 1 && (
-                            <span className="text-xs text-gray-400 ml-2">×{item.quantity}</span>
-                          )}
-                          {item.damageOverride && (
-                            <span className="text-xs text-gray-400 ml-2">{item.damageOverride}</span>
-                          )}
-                          {item.notes && (
-                            <p className="text-xs text-gray-400 mt-0.5 truncate">{item.notes}</p>
-                          )}
-                        </div>
-                        <div className="flex gap-2 shrink-0">
-                          <button
-                            onClick={() => { setGivingLootId(item.id); setLootRecipientId(''); setLootGiveError('') }}
-                            className="text-xs bg-indigo-600 hover:bg-indigo-500 px-2 py-1 rounded transition-colors"
-                          >
-                            Give
-                          </button>
-                          <button
-                            onClick={() => deleteLootMutation.mutate(item.id)}
-                            className="text-xs text-gray-500 hover:text-red-400 px-2 py-1 rounded transition-colors"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
-                      {/* Inline recipient picker */}
-                      {givingLootId === item.id && (
-                        <div className="mt-2 flex gap-2 items-center">
-                          <select
-                            className="flex-1 bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:outline-none text-sm"
-                            value={lootRecipientId}
-                            onChange={e => setLootRecipientId(e.target.value)}
-                          >
-                            <option value="">Select recipient…</option>
-                            {game.characters.map(c => (
-                              <option key={c.characterId} value={c.characterId}>
-                                {c.characterName} ({c.ownerUsername})
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            disabled={giveLootMutation.isPending || !lootRecipientId}
-                            onClick={() => giveLootMutation.mutate({ item, recipientCharacterId: lootRecipientId })}
-                            className="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-3 py-1.5 rounded transition-colors"
-                          >
-                            Send
-                          </button>
-                          <button
-                            onClick={() => { setGivingLootId(null); setLootGiveError('') }}
-                            className="text-xs text-gray-500 hover:text-white px-2 py-1.5"
-                          >✕</button>
-                        </div>
-                      )}
-                      {givingLootId === item.id && lootGiveError && (
-                        <p className="text-red-400 text-xs mt-1">{lootGiveError}</p>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* Create new stash item form */}
-                  {showLootForm ? (
-                    <div className="bg-gray-900 rounded-xl p-4 space-y-3">
-                      <p className="text-sm font-semibold">New Stash Item</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2">
-                          <label className="text-xs text-gray-400 block mb-1">Item Name *</label>
-                          <input
-                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                            placeholder="e.g. Sword of Flames"
-                            value={lootForm.name}
-                            onChange={e => setLootForm(f => ({ ...f, name: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-400 block mb-1">Quantity</label>
-                          <input
-                            type="number" min={1}
-                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                            value={lootForm.quantity}
-                            onChange={e => setLootForm(f => ({ ...f, quantity: Number(e.target.value) }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-400 block mb-1">Damage</label>
-                          <input
-                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                            placeholder="e.g. 1d8+3"
-                            value={lootForm.damageOverride ?? ''}
-                            onChange={e => setLootForm(f => ({ ...f, damageOverride: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-400 block mb-1">AC Bonus</label>
-                          <input
-                            type="number"
-                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                            placeholder="None"
-                            value={lootForm.acBonusStr}
-                            onChange={e => setLootForm(f => ({ ...f, acBonusStr: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-400 block mb-1">Notes</label>
-                          <input
-                            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                            value={lootForm.notes ?? ''}
-                            onChange={e => setLootForm(f => ({ ...f, notes: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => { setShowLootForm(false); setLootForm(defaultLootForm()) }}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded-lg text-sm"
-                        >Cancel</button>
-                        <button
-                          disabled={createLootMutation.isPending || !lootForm.name}
-                          onClick={() => createLootMutation.mutate({
-                            name: lootForm.name,
-                            itemSource: lootForm.itemSource,
-                            quantity: lootForm.quantity,
-                            acBonus: lootForm.acBonusStr ? Number(lootForm.acBonusStr) : undefined,
-                            damageOverride: lootForm.damageOverride || undefined,
-                            notes: lootForm.notes || undefined,
-                          })}
-                          className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 py-2 rounded-lg text-sm font-semibold"
-                        >Save to Stash</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setShowLootForm(true)}
-                      className="w-full bg-gray-800 hover:bg-gray-700 border border-dashed border-gray-600 rounded-xl py-2.5 text-sm text-gray-400 hover:text-white transition-colors"
-                    >
-                      + Add Item to Stash
-                    </button>
-                  )}
                 </div>
               )}
             </section>

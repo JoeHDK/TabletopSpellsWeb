@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -304,6 +305,34 @@ public class GamesController : ControllerBase
             .FirstOrDefaultAsync(c => c.Id == req.RecipientCharacterId && c.GameRoomId == id);
         if (recipientChar == null) return NotFound("Recipient character not found in this game.");
 
+        // Auto-copy properties from the custom item if one is referenced
+        int? acBonus = req.AcBonus;
+        string? damageOverride = req.DamageOverride;
+        string? damageEntriesJson = req.DamageEntries is { Count: > 0 }
+            ? System.Text.Json.JsonSerializer.Serialize(req.DamageEntries)
+            : null;
+        int? strBonus = req.StrBonus, conBonus = req.ConBonus, dexBonus = req.DexBonus;
+        int? wisBonus = req.WisBonus, intBonus = req.IntBonus, chaBonus = req.ChaBonus;
+        string? notes = req.Notes;
+
+        if (req.CustomItemId.HasValue)
+        {
+            var ci = await _db.CustomItems.FindAsync(req.CustomItemId.Value);
+            if (ci is not null)
+            {
+                acBonus ??= ci.AcBonus;
+                damageOverride ??= ci.Damage;
+                damageEntriesJson ??= ci.DamageEntriesJson;
+                strBonus ??= ci.StrBonus;
+                conBonus ??= ci.ConBonus;
+                dexBonus ??= ci.DexBonus;
+                wisBonus ??= ci.WisBonus;
+                intBonus ??= ci.IntBonus;
+                chaBonus ??= ci.ChaBonus;
+                notes ??= ci.Description;
+            }
+        }
+
         var item = new CharacterInventoryItemEntity
         {
             CharacterId = req.RecipientCharacterId,
@@ -312,19 +341,17 @@ public class GamesController : ControllerBase
             CustomItemId = req.CustomItemId,
             Name = req.Name,
             Quantity = req.Quantity,
-            AcBonus = req.AcBonus,
+            AcBonus = acBonus,
             ArmorType = req.ArmorType,
-            DamageOverride = req.DamageOverride,
-            DamageEntriesJson = req.DamageEntries is { Count: > 0 }
-                ? System.Text.Json.JsonSerializer.Serialize(req.DamageEntries)
-                : null,
-            StrBonus = req.StrBonus,
-            ConBonus = req.ConBonus,
-            DexBonus = req.DexBonus,
-            WisBonus = req.WisBonus,
-            IntBonus = req.IntBonus,
-            ChaBonus = req.ChaBonus,
-            Notes = req.Notes,
+            DamageOverride = damageOverride,
+            DamageEntriesJson = damageEntriesJson,
+            StrBonus = strBonus,
+            ConBonus = conBonus,
+            DexBonus = dexBonus,
+            WisBonus = wisBonus,
+            IntBonus = intBonus,
+            ChaBonus = chaBonus,
+            Notes = notes,
             GrantedByUserId = UserId,
         };
 

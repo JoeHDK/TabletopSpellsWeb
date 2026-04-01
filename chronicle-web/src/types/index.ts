@@ -186,6 +186,13 @@ export interface CustomItem {
   weight?: number
   damage?: string
   damage_entries?: DamageEntry[]
+  ac_bonus?: number
+  str_bonus?: number
+  con_bonus?: number
+  dex_bonus?: number
+  wis_bonus?: number
+  int_bonus?: number
+  cha_bonus?: number
   properties: string[]
   createdAt: string
 }
@@ -202,6 +209,13 @@ export interface SaveCustomItemRequest {
   weight?: number
   damage?: string
   damage_entries?: DamageEntry[]
+  ac_bonus?: number
+  str_bonus?: number
+  con_bonus?: number
+  dex_bonus?: number
+  wis_bonus?: number
+  int_bonus?: number
+  cha_bonus?: number
   properties: string[]
 }
 
