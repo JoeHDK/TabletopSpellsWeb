@@ -6,6 +6,10 @@ import { ExpirationPlugin } from 'workbox-expiration'
 
 declare const self: ServiceWorkerGlobalScope
 
+// Take control immediately when a new service worker is installed
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
+
 // Inject the Vite-generated precache manifest
 precacheAndRoute(self.__WB_MANIFEST)
 
