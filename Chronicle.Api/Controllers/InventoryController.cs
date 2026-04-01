@@ -74,6 +74,7 @@ public class InventoryController : ControllerBase
             AcBonus = req.AcBonus,
             ArmorType = req.ArmorType,
             DamageOverride = req.DamageOverride,
+            IsTwoHanded = req.IsTwoHanded,
             Notes = req.Notes,
         };
 
@@ -94,6 +95,17 @@ public class InventoryController : ControllerBase
         item.IsEquipped = req.IsEquipped;
         item.EquippedSlot = req.IsEquipped ? req.Slot : null;
         if (req.ArmorType.HasValue) item.ArmorType = req.ArmorType.Value;
+        if (req.IsEquipped && req.IsTwoHanded) item.IsTwoHanded = req.IsTwoHanded;
+
+        if (req.IsEquipped && (req.Slot == InventorySlot.Ring1 || req.Slot == InventorySlot.Ring2))
+        {
+            var equippedRings = await _db.InventoryItems
+                .Where(i => i.CharacterId == characterId && i.Id != itemId && i.IsEquipped &&
+                            (i.EquippedSlot == InventorySlot.Ring1 || i.EquippedSlot == InventorySlot.Ring2))
+                .CountAsync();
+            if (equippedRings >= 2) return BadRequest("Both ring slots are already occupied.");
+        }
+
         await _db.SaveChangesAsync();
         return Ok(ToDto(item));
     }
@@ -166,6 +178,7 @@ public class InventoryController : ControllerBase
         AcBonus = e.AcBonus,
         ArmorType = e.ArmorType?.ToString(),
         DamageOverride = e.DamageOverride,
+        IsTwoHanded = e.IsTwoHanded,
         Notes = e.Notes,
         GrantedByUsername = e.GrantedBy?.UserName,
         AcquiredAt = e.AcquiredAt,

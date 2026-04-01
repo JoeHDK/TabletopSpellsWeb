@@ -18,6 +18,7 @@ public class CustomItemEntity
     public double? Weight { get; set; }
     public string? Damage { get; set; }
     [Column(TypeName = "jsonb")] public string PropertiesJson { get; set; } = "[]";
+    public string? DamageEntriesJson { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [ForeignKey(nameof(UserId))] public AppUser? User { get; set; }

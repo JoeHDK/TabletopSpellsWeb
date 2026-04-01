@@ -17,6 +17,7 @@ public class InventoryItemDto
     public int? AcBonus { get; set; }
     public string? ArmorType { get; set; }
     public string? DamageOverride { get; set; }
+    public bool IsTwoHanded { get; set; }
     public string? Notes { get; set; }
     public string? GrantedByUsername { get; set; }
     public DateTime AcquiredAt { get; set; }
@@ -36,6 +37,7 @@ public class AddInventoryItemRequest
     public ArmorType? ArmorType { get; set; }
     [StringLength(50)]
     public string? DamageOverride { get; set; }
+    public bool IsTwoHanded { get; set; }
     [StringLength(500)]
     public string? Notes { get; set; }
 }
@@ -45,4 +47,5 @@ public class EquipItemRequest
     public bool IsEquipped { get; set; }
     public InventorySlot? Slot { get; set; }
     public ArmorType? ArmorType { get; set; }
+    public bool IsTwoHanded { get; set; }
 }

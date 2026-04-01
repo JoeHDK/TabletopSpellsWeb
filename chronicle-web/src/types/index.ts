@@ -168,6 +168,11 @@ export interface AuthResponse {
   isDm: boolean
 }
 
+export interface DamageEntry {
+  dice: string
+  damageType: string
+}
+
 export interface CustomItem {
   id: string
   name: string
@@ -180,6 +185,7 @@ export interface CustomItem {
   cost?: string
   weight?: number
   damage?: string
+  damage_entries?: DamageEntry[]
   properties: string[]
   createdAt: string
 }
@@ -195,6 +201,7 @@ export interface SaveCustomItemRequest {
   cost?: string
   weight?: number
   damage?: string
+  damage_entries?: DamageEntry[]
   properties: string[]
 }
 
@@ -252,7 +259,10 @@ export interface LinkCharacterRequest {
   characterId: string
 }
 
-export type InventorySlot = 'Armor' | 'Weapon' | 'Offhand' | 'Accessory'
+export type InventorySlot =
+  | 'Armor' | 'Weapon' | 'Offhand' | 'Accessory'
+  | 'Head' | 'Chest' | 'Legs' | 'Hands' | 'Feet'
+  | 'MainHand' | 'OffHand' | 'Neck' | 'Ring1' | 'Ring2'
 export type ItemSource = 'SRD' | 'Custom'
 export type ArmorType = 'None' | 'Light' | 'Medium' | 'Heavy'
 
@@ -268,6 +278,7 @@ export interface InventoryItem {
   acBonus?: number
   armorType?: ArmorType
   damageOverride?: string
+  isTwoHanded?: boolean
   notes?: string
   grantedByUsername?: string
   acquiredAt: string
@@ -282,6 +293,7 @@ export interface AddInventoryItemRequest {
   acBonus?: number
   armorType?: ArmorType
   damageOverride?: string
+  isTwoHanded?: boolean
   notes?: string
 }
 
@@ -289,6 +301,7 @@ export interface EquipItemRequest {
   isEquipped: boolean
   slot?: InventorySlot
   armorType?: ArmorType
+  isTwoHanded?: boolean
 }
 
 export interface PartyMember {
@@ -524,6 +537,43 @@ export interface Monster extends MonsterSummary {
   traits: MonsterTrait[]
   actions: MonsterTrait[]
   legendaryActions: MonsterTrait[]
+}
+
+export interface CustomMonster {
+  id: string
+  name: string
+  type: string
+  challengeRating: number
+  hitPoints: number
+  armorClass: number
+  speed: string
+  size: string
+  strength: number
+  dexterity: number
+  constitution: number
+  intelligence: number
+  wisdom: number
+  charisma: number
+  description?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SaveCustomMonsterRequest {
+  name: string
+  type: string
+  challengeRating: number
+  hitPoints: number
+  armorClass: number
+  speed: string
+  size: string
+  strength: number
+  dexterity: number
+  constitution: number
+  intelligence: number
+  wisdom: number
+  charisma: number
+  description?: string
 }
 
 // ── Encounters ────────────────────────────────────────────────────────────────

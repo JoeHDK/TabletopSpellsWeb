@@ -3,6 +3,7 @@ using System;
 using Chronicle.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Chronicle.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260401184444_AddInventoryEquipmentSlots")]
+    partial class AddInventoryEquipmentSlots
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -596,75 +599,6 @@ namespace Chronicle.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("CustomItems");
-                });
-
-            modelBuilder.Entity("Chronicle.Api.Data.Entities.CustomMonsterEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("ArmorClass")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("ChallengeRating")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("Charisma")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Constitution")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<int>("Dexterity")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("HitPoints")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Intelligence")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Size")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Speed")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Strength")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Wisdom")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("CustomMonsters");
                 });
 
             modelBuilder.Entity("Chronicle.Api.Data.Entities.EncounterCreatureEntity", b =>
@@ -1451,17 +1385,6 @@ namespace Chronicle.Api.Migrations
                 {
                     b.HasOne("Chronicle.Api.Data.Entities.AppUser", "User")
                         .WithMany("CustomItems")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Chronicle.Api.Data.Entities.CustomMonsterEntity", b =>
-                {
-                    b.HasOne("Chronicle.Api.Data.Entities.AppUser", "User")
-                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

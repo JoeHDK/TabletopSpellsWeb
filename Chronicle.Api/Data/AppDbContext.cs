@@ -32,6 +32,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<ClassResourceEntity> ClassResources => Set<ClassResourceEntity>();
     public DbSet<GameLootItemEntity> GameLootItems => Set<GameLootItemEntity>();
     public DbSet<PushSubscriptionEntity> PushSubscriptions => Set<PushSubscriptionEntity>();
+    public DbSet<CustomMonsterEntity> CustomMonsters => Set<CustomMonsterEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -268,5 +269,11 @@ public class AppDbContext : IdentityDbContext<AppUser>
         builder.Entity<PushSubscriptionEntity>()
             .HasIndex(p => new { p.UserId, p.Endpoint })
             .IsUnique();
+
+        builder.Entity<CustomMonsterEntity>()
+            .HasOne(m => m.User)
+            .WithMany()
+            .HasForeignKey(m => m.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

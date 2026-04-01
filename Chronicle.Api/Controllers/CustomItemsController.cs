@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Security.Claims;
+using System.Text.Json;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.Models;
@@ -50,6 +51,9 @@ public class CustomItemsController : ControllerBase
             Weight = req.Weight,
             Damage = req.Damage,
             PropertiesJson = JsonConvert.SerializeObject(req.Properties),
+            DamageEntriesJson = req.DamageEntries is not null
+                ? System.Text.Json.JsonSerializer.Serialize(req.DamageEntries)
+                : null,
         };
 
         _db.CustomItems.Add(entity);
@@ -75,6 +79,9 @@ public class CustomItemsController : ControllerBase
         entity.Weight = req.Weight;
         entity.Damage = req.Damage;
         entity.PropertiesJson = JsonConvert.SerializeObject(req.Properties);
+        entity.DamageEntriesJson = req.DamageEntries is not null
+            ? System.Text.Json.JsonSerializer.Serialize(req.DamageEntries)
+            : null;
 
         await _db.SaveChangesAsync();
         return Ok(ToDto(entity));
@@ -106,6 +113,9 @@ public class CustomItemsController : ControllerBase
         Weight = e.Weight,
         Damage = e.Damage,
         Properties = JsonConvert.DeserializeObject<List<string>>(e.PropertiesJson) ?? [],
+        DamageEntries = e.DamageEntriesJson is not null
+            ? System.Text.Json.JsonSerializer.Deserialize<List<DamageEntryDto>>(e.DamageEntriesJson)
+            : null,
         CreatedAt = e.CreatedAt,
     };
 }

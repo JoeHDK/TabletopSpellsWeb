@@ -1,6 +1,7 @@
 # ---------------------------------------------------------------
 # LAN / dev mode: uncomment the two lines below and set
-# SERVER_HOSTNAME to your LAN IP (e.g. 192.168.1.83,localhost).
+# SERVER_HOSTNAME to your LAN IP (e.g. 192.168.1.83 localhost).
+# Use SPACES (not commas) to separate multiple addresses.
 # Install caddy-root.crt on each device once (see DEVELOPER_SETUP.md).
 #
 # VPS / real domain mode (default): leave as-is.
@@ -13,9 +14,9 @@
 # }
 
 # Set SERVER_HOSTNAME in your .env file.
-# LAN example:  SERVER_HOSTNAME=192.168.1.83,localhost
+# LAN example:  SERVER_HOSTNAME=192.168.1.83 192.168.1.247 localhost
 # VPS example:  SERVER_HOSTNAME=192-121-119-125.sslip.io
-{$SERVER_HOSTNAME} {
+{$SERVER_HOSTNAME:localhost} {
 	# tls internal   # <-- uncomment for LAN / dev mode only
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"

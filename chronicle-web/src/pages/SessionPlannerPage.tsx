@@ -28,7 +28,7 @@ function AddCreatureInline({ onAdd }: AddCreatureInlineProps) {
   const [displayName, setDisplayName] = useState('')
   const [hp, setHp] = useState('')
   const [ac, setAc] = useState('')
-  const [count, setCount] = useState(1)
+  const [count, setCount] = useState<string>('1')
 
   const { data: monsters = [] } = useQuery<MonsterSummary[]>({
     queryKey: ['monsters-picker', search],
@@ -47,7 +47,7 @@ function AddCreatureInline({ onAdd }: AddCreatureInlineProps) {
     e.preventDefault()
     if (!displayName.trim() || !hp || !ac) return
     const baseName = displayName.trim()
-    const n = Math.max(1, count)
+    const n = Math.max(1, Number(count) || 1)
     for (let i = 1; i <= n; i++) {
       onAdd({
         displayName: n > 1 ? `${baseName} ${i}` : baseName,
@@ -56,7 +56,7 @@ function AddCreatureInline({ onAdd }: AddCreatureInlineProps) {
         armorClass: Number(ac),
       })
     }
-    setCount(1)
+    setCount('1')
   }
 
   return (
@@ -139,7 +139,7 @@ function AddCreatureInline({ onAdd }: AddCreatureInlineProps) {
           <input
             type="number"
             value={count}
-            onChange={(e) => setCount(Math.max(1, Number(e.target.value)))}
+            onChange={(e) => setCount(e.target.value)}
             min={1}
             max={20}
             title="Quantity"
@@ -173,6 +173,8 @@ function SessionsTab({ gameRoomId }: SessionsTabProps) {
   const [editing, setEditing] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
+  const [expandedSession, setExpandedSession] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   const { data: notes = [] } = useQuery<SessionNote[]>({
     queryKey: ['session-notes', gameRoomId],
@@ -222,7 +224,12 @@ function SessionsTab({ gameRoomId }: SessionsTabProps) {
         name: templateName,
         ...(sessionId ? { sessionId } : { unlinkSession: true }),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['encounter-templates', gameRoomId] }),
+    onSuccess: (updated) => {
+      qc.setQueryData<EncounterTemplate[]>(['encounter-templates', gameRoomId], (old) =>
+        old?.map((t) => (t.id === updated.id ? updated : t)) ?? [updated],
+      )
+      qc.invalidateQueries({ queryKey: ['encounter-templates', gameRoomId] })
+    },
   })
 
   const startEdit = (note: SessionNote) => {
@@ -242,6 +249,16 @@ function SessionsTab({ gameRoomId }: SessionsTabProps) {
           {showNew ? 'Cancel' : '+ New Session'}
         </button>
       </div>
+
+      {notes.length > 0 && (
+        <input
+          type="text"
+          placeholder="Search sessions…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+        />
+      )}
 
       {showNew && (
         <form
@@ -279,8 +296,12 @@ function SessionsTab({ gameRoomId }: SessionsTabProps) {
         <p className="text-center text-gray-500 py-10">No sessions yet. Add one to start planning.</p>
       )}
 
-      {notes.map((note) => {
+      {[...notes]
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .filter((note) => !search.trim() || note.title.toLowerCase().includes(search.trim().toLowerCase()))
+        .map((note) => {
         const linkedDrafts = templates.filter((t) => t.sessionId === note.id)
+        const isExpanded = expandedSession === note.id
         return (
           <div key={note.id} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
             {editing === note.id ? (
@@ -313,71 +334,91 @@ function SessionsTab({ gameRoomId }: SessionsTabProps) {
                 </div>
               </form>
             ) : (
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <h3 className="font-semibold text-white">{note.title}</h3>
-                  <div className="flex gap-2 shrink-0">
-                    <button onClick={() => startEdit(note)} className="text-xs text-gray-500 hover:text-indigo-400 transition-colors">Edit</button>
+              <>
+                {/* Collapsible header row */}
+                <button
+                  className="w-full flex items-center justify-between gap-2 p-4 text-left hover:bg-gray-800/50 transition-colors"
+                  onClick={() => setExpandedSession(isExpanded ? null : note.id)}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold text-white truncate">{note.title}</span>
+                    {linkedDrafts.length > 0 && (
+                      <span className="text-xs text-indigo-400 shrink-0">⚔ {linkedDrafts.length}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => { if (confirm(`Delete "${note.title}"?`)) deleteMutation.mutate(note.id) }}
+                      onClick={(e) => { e.stopPropagation(); startEdit(note) }}
+                      className="text-xs text-gray-500 hover:text-indigo-400 transition-colors"
+                    >Edit</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${note.title}"?`)) deleteMutation.mutate(note.id) }}
                       className="text-xs text-gray-500 hover:text-red-400 transition-colors"
-                    >
-                      Delete
-                    </button>
+                    >Delete</button>
+                    <span className={`text-gray-500 text-xs transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
+                  </div>
+                </button>
+
+                {/* Expandable content with animation */}
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-in-out"
+                  style={{ maxHeight: isExpanded ? '2000px' : '0px' }}
+                >
+                  <div className="px-4 pb-4 border-t border-gray-800 pt-3">
+                    {note.content && (
+                      <RichTextDisplay html={note.content} className="mb-3" />
+                    )}
+
+                    {linkedDrafts.length > 0 && (
+                      <div className="mb-3 space-y-1">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1.5">Linked encounter drafts</p>
+                        {linkedDrafts.map((d) => (
+                          <div key={d.id} className="flex items-center gap-2 py-1 px-2 bg-gray-800 rounded-lg">
+                            <span className="text-sm text-white flex-1">{d.name}</span>
+                            <span className="text-xs text-gray-500">{d.creatures.length} creature{d.creatures.length !== 1 ? 's' : ''}</span>
+                            <button
+                              onClick={() => linkDraftMutation.mutate({ templateId: d.id, templateName: d.name, sessionId: null })}
+                              disabled={linkDraftMutation.isPending}
+                              className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                              title="Unlink"
+                            >
+                              Unlink
+                            </button>
+                            <button
+                              onClick={() => launchMutation.mutate(d.id)}
+                              disabled={launchMutation.isPending}
+                              className="text-xs bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 text-white px-2 py-0.5 rounded transition-colors"
+                            >
+                              ⚔ Launch
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Link an unlinked draft to this session */}
+                    {templates.filter((t) => !t.sessionId).length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-500 shrink-0">Link a draft:</label>
+                        <select
+                          defaultValue=""
+                          onChange={(e) => {
+                            const tmpl = templates.find((t) => t.id === e.target.value)
+                            if (tmpl) linkDraftMutation.mutate({ templateId: tmpl.id, templateName: tmpl.name, sessionId: note.id })
+                            e.target.value = ''
+                          }}
+                          className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="">— choose draft —</option>
+                          {templates.filter((t) => !t.sessionId).map((t) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
-                {note.content && (
-                  <RichTextDisplay html={note.content} className="mt-1" />
-                )}
-
-                {linkedDrafts.length > 0 && (
-                  <div className="mt-3 border-t border-gray-800 pt-3 space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1.5">Linked encounter drafts</p>
-                    {linkedDrafts.map((d) => (
-                      <div key={d.id} className="flex items-center gap-2 py-1 px-2 bg-gray-800 rounded-lg">
-                        <span className="text-sm text-white flex-1">{d.name}</span>
-                        <span className="text-xs text-gray-500">{d.creatures.length} creature{d.creatures.length !== 1 ? 's' : ''}</span>
-                        <button
-                          onClick={() => linkDraftMutation.mutate({ templateId: d.id, templateName: d.name, sessionId: null })}
-                          disabled={linkDraftMutation.isPending}
-                          className="text-xs text-gray-500 hover:text-red-400 transition-colors"
-                          title="Unlink"
-                        >
-                          Unlink
-                        </button>
-                        <button
-                          onClick={() => launchMutation.mutate(d.id)}
-                          disabled={launchMutation.isPending}
-                          className="text-xs bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 text-white px-2 py-0.5 rounded transition-colors"
-                        >
-                          ⚔ Launch
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Link an unlinked draft to this session */}
-                {templates.filter((t) => !t.sessionId).length > 0 && (
-                  <div className="mt-3 border-t border-gray-800 pt-3 flex items-center gap-2">
-                    <label className="text-xs text-gray-500 shrink-0">Link a draft:</label>
-                    <select
-                      defaultValue=""
-                      onChange={(e) => {
-                        const tmpl = templates.find((t) => t.id === e.target.value)
-                        if (tmpl) linkDraftMutation.mutate({ templateId: tmpl.id, templateName: tmpl.name, sessionId: note.id })
-                        e.target.value = ''
-                      }}
-                      className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="">— choose draft —</option>
-                      {templates.filter((t) => !t.sessionId).map((t) => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
+              </>
             )}
           </div>
         )
@@ -440,10 +481,8 @@ function EncounterDraftsTab({ gameRoomId }: EncounterDraftsTabProps) {
   const addCreatureMutation = useMutation({
     mutationFn: ({ templateId, data }: { templateId: string; data: Parameters<typeof encounterTemplatesApi.addCreature>[2] }) =>
       encounterTemplatesApi.addCreature(gameRoomId, templateId, data),
-    onSuccess: (updated) => {
-      qc.setQueryData<EncounterTemplate[]>(['encounter-templates', gameRoomId], (old) =>
-        old?.map((t) => (t.id === updated.id ? updated : t)) ?? [updated],
-      )
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['encounter-templates', gameRoomId] })
     },
   })
 
@@ -454,6 +493,7 @@ function EncounterDraftsTab({ gameRoomId }: EncounterDraftsTabProps) {
       qc.setQueryData<EncounterTemplate[]>(['encounter-templates', gameRoomId], (old) =>
         old?.map((t) => (t.id === updated.id ? updated : t)) ?? [updated],
       )
+      qc.invalidateQueries({ queryKey: ['encounter-templates', gameRoomId] })
       setEditingCreature(null)
     },
   })
@@ -465,6 +505,7 @@ function EncounterDraftsTab({ gameRoomId }: EncounterDraftsTabProps) {
       qc.setQueryData<EncounterTemplate[]>(['encounter-templates', gameRoomId], (old) =>
         old?.map((t) => (t.id === updated.id ? updated : t)) ?? [],
       )
+      qc.invalidateQueries({ queryKey: ['encounter-templates', gameRoomId] })
     },
   })
 
@@ -569,7 +610,7 @@ function EncounterDraftsTab({ gameRoomId }: EncounterDraftsTabProps) {
                   disabled={launchMutation.isPending}
                   className="text-xs bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 text-white px-3 py-1 rounded-lg transition-colors font-medium"
                 >
-                  ⚔ Launch
+                  {launchMutation.isPending ? '⏳ Launching…' : '⚔ Launch'}
                 </button>
               </div>
             </div>

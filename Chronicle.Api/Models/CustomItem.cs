@@ -2,6 +2,12 @@ using Newtonsoft.Json;
 
 namespace Chronicle.Api.Models;
 
+public class DamageEntryDto
+{
+    [JsonProperty("dice")] public string Dice { get; set; } = "";
+    [JsonProperty("damageType")] public string DamageType { get; set; } = "";
+}
+
 public class CustomItemDto
 {
     [JsonProperty("id")] public Guid Id { get; set; }
@@ -16,6 +22,7 @@ public class CustomItemDto
     [JsonProperty("weight")] public double? Weight { get; set; }
     [JsonProperty("damage")] public string? Damage { get; set; }
     [JsonProperty("properties")] public List<string> Properties { get; set; } = [];
+    [JsonProperty("damage_entries")] public List<DamageEntryDto>? DamageEntries { get; set; }
     [JsonProperty("createdAt")] public DateTime CreatedAt { get; set; }
 }
 
@@ -32,4 +39,5 @@ public class SaveCustomItemRequest
     [JsonProperty("weight")] public double? Weight { get; set; }
     [JsonProperty("damage")] public string? Damage { get; set; }
     [JsonProperty("properties")] public List<string> Properties { get; set; } = [];
+    [JsonProperty("damage_entries")] public List<DamageEntryDto>? DamageEntries { get; set; }
 }

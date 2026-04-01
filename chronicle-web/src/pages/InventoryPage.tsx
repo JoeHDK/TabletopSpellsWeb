@@ -12,7 +12,17 @@ import type {
   Item, CustomItem, SaveCustomItemRequest,
 } from '../types'
 
-const SLOTS: InventorySlot[] = ['Armor', 'Weapon', 'Offhand', 'Accessory']
+const SLOTS: InventorySlot[] = [
+  'Head', 'Chest', 'Legs', 'Hands', 'Feet',
+  'MainHand', 'OffHand', 'Neck', 'Ring1', 'Ring2',
+  // Legacy slots kept for backwards-compat items
+  'Armor', 'Weapon', 'Offhand', 'Accessory',
+]
+
+const EQUIPPED_PANEL_SLOTS: InventorySlot[] = [
+  'Head', 'Chest', 'Legs', 'Hands', 'Feet',
+  'MainHand', 'OffHand', 'Neck', 'Ring1', 'Ring2',
+]
 const RARITIES = ['Common', 'Uncommon', 'Rare', 'Very Rare', 'Legendary', 'Artifact', 'Varies']
 const ARMOR_TYPES: ArmorType[] = ['None', 'Light', 'Medium', 'Heavy']
 
@@ -24,13 +34,35 @@ const ARMOR_TYPE_LABEL: Record<ArmorType, string> = {
 }
 
 const SLOT_ICON: Record<InventorySlot, string> = {
+  Head: '🪖',
+  Chest: '🥋',
+  Legs: '👖',
+  Hands: '🧤',
+  Feet: '👟',
+  MainHand: '⚔️',
+  OffHand: '🗡',
+  Neck: '📿',
+  Ring1: '💍',
+  Ring2: '💍',
+  // Legacy
   Armor: '🛡',
   Weapon: '⚔️',
   Offhand: '🗡',
-  Accessory: '💍',
+  Accessory: '✨',
 }
 
 const SLOT_LABEL: Record<InventorySlot, string> = {
+  Head: 'Head',
+  Chest: 'Chest',
+  Legs: 'Legs',
+  Hands: 'Hands',
+  Feet: 'Feet',
+  MainHand: 'Main Hand',
+  OffHand: 'Off-Hand',
+  Neck: 'Neck',
+  Ring1: 'Ring 1',
+  Ring2: 'Ring 2',
+  // Legacy
   Armor: 'Armor',
   Weapon: 'Main Hand',
   Offhand: 'Offhand',
@@ -39,20 +71,25 @@ const SLOT_LABEL: Record<InventorySlot, string> = {
 
 function guessSlot(item: InventoryItem): InventorySlot {
   if (item.equippedSlot) return item.equippedSlot
-  if (item.acBonus != null) return 'Armor'
-  if (item.damageOverride) return 'Weapon'
+  if (item.acBonus != null) return 'Chest'
+  if (item.damageOverride) return 'MainHand'
   const name = item.name.toLowerCase()
-  if (/armor|mail|plate|breastplate|hide|leather|studded|splint|scale|shield/.test(name)) return 'Armor'
-  if (/sword|axe|bow|dagger|hammer|mace|spear|staff|wand|flail|scimitar|rapier|lance|pike|halberd|glaive|crossbow|sling|trident|whip|quarterstaff|shortsword|longsword|greatsword|handaxe|battleaxe|greataxe/.test(name)) return 'Weapon'
+  if (/helmet|helm|hat|hood|crown|cap/.test(name)) return 'Head'
+  if (/armor|mail|plate|breastplate|hide|leather|studded|splint|scale|robe|coat/.test(name)) return 'Chest'
+  if (/boots|shoes|greaves|sabatons|slippers/.test(name)) return 'Feet'
+  if (/gauntlet|gloves|bracers|vambraces/.test(name)) return 'Hands'
+  if (/leggings|breeches|trousers|pants/.test(name)) return 'Legs'
+  if (/shield/.test(name)) return 'OffHand'
+  if (/sword|axe|bow|dagger|hammer|mace|spear|staff|wand|flail|scimitar|rapier|lance|pike|halberd|glaive|crossbow|sling|trident|whip|quarterstaff|shortsword|longsword|greatsword|handaxe|battleaxe|greataxe/.test(name)) return 'MainHand'
+  if (/necklace|amulet|pendant|collar/.test(name)) return 'Neck'
+  if (/ring/.test(name)) return 'Ring1'
   return 'Accessory'
 }
 
+import { lookupArmor } from '../utils/armorTable'
+
 function guessArmorType(name: string): ArmorType {
-  const n = name.toLowerCase()
-  if (/padded|leather|studded leather/.test(n)) return 'Light'
-  if (/hide|chain shirt|scale mail|breastplate|half plate/.test(n)) return 'Medium'
-  if (/ring mail|chain mail|splint|plate/.test(n)) return 'Heavy'
-  return 'None'
+  return lookupArmor(name)?.type ?? 'None'
 }
 
 function InventoryItemModal({ item, onClose }: { item: InventoryItem; onClose: () => void }) {
@@ -175,6 +212,7 @@ const defaultForm = (): AddInventoryItemRequest & { acBonusStr: string; slot: In
   acBonusStr: '',
   slot: 'Accessory',
   armorType: undefined,
+  isTwoHanded: false,
 })
 
 export default function InventoryPage({ embedded }: { embedded?: boolean } = {}) {
@@ -234,8 +272,13 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
 
   // Derived
   const equippedItems = items.filter(i => i.isEquipped)
-  const armorItem = equippedItems.find(i => i.equippedSlot === 'Armor' && i.armorType && i.armorType !== 'None')
-  const shieldBonus = equippedItems.filter(i => i.equippedSlot !== 'Armor' && i.acBonus != null).reduce((s, i) => s + (i.acBonus ?? 0), 0)
+  // Check both new 'Chest' slot and legacy 'Armor' slot for armor items
+  const armorItem = equippedItems.find(i =>
+    (i.equippedSlot === 'Chest' || i.equippedSlot === 'Armor') && i.armorType && i.armorType !== 'None'
+  )
+  const shieldBonus = equippedItems
+    .filter(i => i.equippedSlot !== 'Armor' && i.equippedSlot !== 'Chest' && i.acBonus != null)
+    .reduce((s, i) => s + (i.acBonus ?? 0), 0)
   const dexMod = character?.abilityScores ? Math.floor(((character.abilityScores['Dexterity'] ?? 10) - 10) / 2) : 0
   const displayAC = armorItem?.armorType && armorItem.armorType !== 'None'
     ? (armorItem.acBonus ?? 0) + (armorItem.armorType === 'Light' ? dexMod : armorItem.armorType === 'Medium' ? Math.min(dexMod, 2) : 0) + shieldBonus + (character?.baseArmorClass ?? 0)
@@ -270,6 +313,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
     mutationFn: (req: AddInventoryItemRequest) => inventoryApi.add(id!, req),
     onSuccess: (newItem) => {
       qc.setQueryData<InventoryItem[]>(['inventory', id], old => [...(old ?? []), newItem])
+      qc.invalidateQueries({ queryKey: ['inventory', id] })
       setShowAdd(false)
       setForm(defaultForm())
       setAddingItem(null)
@@ -279,16 +323,22 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
   const equipMutation = useMutation({
     mutationFn: ({ itemId, req }: { itemId: string; req: EquipItemRequest }) =>
       inventoryApi.equip(id!, itemId, req),
-    onSuccess: (updatedItem) => qc.setQueryData<InventoryItem[]>(['inventory', id], old =>
-      old?.map(i => i.id === updatedItem.id ? updatedItem : i) ?? []
-    ),
+    onSuccess: (updatedItem) => {
+      qc.setQueryData<InventoryItem[]>(['inventory', id], old =>
+        old?.map(i => i.id === updatedItem.id ? updatedItem : i) ?? []
+      )
+      qc.invalidateQueries({ queryKey: ['inventory', id] })
+    },
   })
 
   const removeMutation = useMutation({
     mutationFn: (itemId: string) => inventoryApi.remove(id!, itemId),
-    onSuccess: (_void, itemId) => qc.setQueryData<InventoryItem[]>(['inventory', id], old =>
-      old?.filter(i => i.id !== itemId) ?? []
-    ),
+    onSuccess: (_void, itemId) => {
+      qc.setQueryData<InventoryItem[]>(['inventory', id], old =>
+        old?.filter(i => i.id !== itemId) ?? []
+      )
+      qc.invalidateQueries({ queryKey: ['inventory', id] })
+    },
   })
 
   const sendMutation = useMutation({
@@ -407,7 +457,17 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                       <input
                         className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
                         value={form.name}
-                        onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                        onChange={e => {
+                          const name = e.target.value
+                          const armorEntry = lookupArmor(name)
+                          setForm(f => ({
+                            ...f,
+                            name,
+                            // Auto-fill AC and armor type from lookup table if not already set manually
+                            acBonusStr: f.acBonusStr || (armorEntry ? String(armorEntry.ac) : ''),
+                            armorType: f.armorType ?? armorEntry?.type,
+                          }))
+                        }}
                       />
                     </div>
                     <div>
@@ -584,7 +644,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
 
                       {item.isEquipped && (
                         <div className="flex gap-1.5 flex-wrap">
-                          {SLOTS.map(s => (
+                          {EQUIPPED_PANEL_SLOTS.map(s => (
                             <button
                               key={s}
                               onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: s, armorType: item.armorType } })}
@@ -597,13 +657,13 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                               {SLOT_LABEL[s]}
                             </button>
                           ))}
-                          {item.equippedSlot === 'Armor' && (
+                          {(item.equippedSlot === 'Chest' || item.equippedSlot === 'Armor') && (
                             <>
                               <span className="text-xs text-gray-400 self-center">|</span>
                               {ARMOR_TYPES.map(t => (
                                 <button
                                   key={t}
-                                  onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: 'Armor', armorType: t } })}
+                                  onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: item.equippedSlot ?? 'Chest', armorType: t } })}
                                   className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
                                     item.armorType === t
                                       ? 'bg-yellow-700 text-white'
@@ -613,6 +673,19 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                                   {t}
                                 </button>
                               ))}
+                            </>
+                          )}
+                          {item.equippedSlot === 'MainHand' && (
+                            <>
+                              <span className="text-xs text-gray-400 self-center">|</span>
+                              <button
+                                onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: 'MainHand', isTwoHanded: !item.isTwoHanded } })}
+                                className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
+                                  item.isTwoHanded ? 'bg-yellow-700 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                }`}
+                              >
+                                2-Handed
+                              </button>
                             </>
                           )}
                         </div>
@@ -651,8 +724,8 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
       {mainTab === 'equipped' && (
         <div className="flex-1 overflow-y-auto p-4">
           <div className="max-w-2xl mx-auto space-y-3">
-            {SLOTS.map(slot => {
-              const slotItems = equippedBySlot[slot]
+            {EQUIPPED_PANEL_SLOTS.map(slot => {
+              const slotItems = equippedBySlot[slot] ?? []
               const unequipped = items.filter(i => !i.isEquipped)
               return (
                 <div key={slot} className="bg-gray-900 rounded-xl p-4">
@@ -679,6 +752,9 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                               onClick={() => setSelectedInvItem(item)}
                             >
                               {item.name}
+                              {item.isTwoHanded && (
+                                <span className="ml-2 text-xs text-yellow-400 font-normal">2H</span>
+                              )}
                             </button>
                             <div className="flex gap-2 flex-wrap mt-0.5">
                               {item.acBonus != null && <span className="text-xs text-green-400">AC +{item.acBonus}</span>}
@@ -697,6 +773,33 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                       ))}
                     </div>
                   )}
+                </div>
+              )
+            })}
+            {/* Legacy slots — only show if something is equipped in them */}
+            {(['Armor', 'Weapon', 'Offhand', 'Accessory'] as InventorySlot[]).map(slot => {
+              const slotItems = equippedBySlot[slot] ?? []
+              if (slotItems.length === 0) return null
+              return (
+                <div key={slot} className="bg-gray-900 rounded-xl p-4">
+                  <p className="text-sm font-semibold mb-2 text-gray-400">{SLOT_ICON[slot]} {SLOT_LABEL[slot]} <span className="text-xs">(legacy)</span></p>
+                  <div className="space-y-2">
+                    {slotItems.map(item => (
+                      <div key={item.id} className="flex items-center gap-3 bg-gray-800 rounded-lg px-3 py-2.5">
+                        <div className="flex-1 min-w-0">
+                          <button className="font-medium truncate hover:text-indigo-300 text-left w-full" onClick={() => setSelectedInvItem(item)}>
+                            {item.name}
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: false, slot: item.equippedSlot } })}
+                          className="text-xs text-gray-500 hover:text-red-400 px-2 py-1 rounded transition-colors shrink-0"
+                        >
+                          Unequip
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )
             })}

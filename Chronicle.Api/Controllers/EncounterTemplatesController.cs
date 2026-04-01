@@ -176,14 +176,15 @@ public class EncounterTemplatesController(AppDbContext db) : ControllerBase
             existing.UpdatedAt = DateTime.UtcNow;
         }
 
-        // Create new encounter from template
+        // Create new encounter from template — pre-generate Id so creatures can reference it
+        // without a separate SaveChangesAsync round-trip
         var encounter = new EncounterEntity
         {
+            Id = Guid.NewGuid(),
             GameRoomId = gameRoomId,
             Name = template.Name,
         };
         db.Encounters.Add(encounter);
-        await db.SaveChangesAsync(); // get encounter.Id
 
         var creatures = template.Creatures.OrderBy(c => c.SortOrder).Select((c, idx) => new EncounterCreatureEntity
         {

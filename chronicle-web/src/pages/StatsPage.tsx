@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
@@ -268,17 +268,14 @@ function calculateAC(
   if (armorItem?.armorType && armorItem.armorType !== 'None') {
     const base = armorItem.acBonus ?? 0
     let dexContrib = 0
-    let armorLabel = ''
+    let armorLabel = armorItem.name || armorItem.armorType
     if (armorItem.armorType === 'Light') {
       dexContrib = dexMod
-      armorLabel = 'Light'
     } else if (armorItem.armorType === 'Medium') {
       dexContrib = Math.min(dexMod, medArmorMaxDex)
-      armorLabel = medArmorMaxDex > 2 ? 'Medium (+3 DEX)' : 'Medium'
-    } else {
-      dexContrib = 0
-      armorLabel = 'Heavy'
+      if (medArmorMaxDex > 2) armorLabel += ' (+3 DEX cap)'
     }
+    // no dex for Heavy
     const total = base + dexContrib + shieldBonus + baseArmorClass + featAcBonus
     const parts: string[] = [`${base} (${armorLabel})`]
     if (dexContrib !== 0) parts.push(`${dexContrib >= 0 ? '+' : ''}${dexContrib} DEX`)
@@ -301,9 +298,10 @@ function calculateAC(
       if (characterClass === 'Barbarian') { unarmoredBase += conMod; classNote = ` +${conMod} CON` }
       else if (characterClass === 'Monk') { unarmoredBase += wisMod; classNote = ` +${wisMod} WIS` }
     }
-    const unarmoredLabel = classFeatureAcBase ? `Draconic (${unarmoredBase})` : `unarmored${classNote}`
+    const unarmoredLabel = classFeatureAcBase ? `Draconic (${unarmoredBase})` : null
     const total = unarmoredBase + dexMod + baseArmorClass + featAcBonus
-    const parts: string[] = [`${unarmoredBase} (${unarmoredLabel})`, `${dexMod >= 0 ? '+' : ''}${dexMod} DEX`]
+    const baseDisplay = unarmoredLabel ? `${unarmoredBase} (${unarmoredLabel})` : `${unarmoredBase}${classNote}`
+    const parts: string[] = [baseDisplay, `${dexMod >= 0 ? '+' : ''}${dexMod} DEX`]
     if (baseArmorClass !== 0) parts.push(`${baseArmorClass >= 0 ? '+' : ''}${baseArmorClass} bonus`)
     if (featAcBonus !== 0) parts.push(`${featAcBonus >= 0 ? '+' : ''}${featAcBonus} feats`)
     return { total, breakdown: parts.join(' '), isAutoCalc: true }
@@ -439,18 +437,27 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
   const updateMutation = useMutation({
     mutationFn: (req: UpdateCharacterRequest) => charactersApi.update(id!, req),
-    onSuccess: (updated) => qc.setQueryData<Character>(['character', id], updated),
+    onSuccess: (updated) => {
+      qc.setQueryData<Character>(['character', id], updated)
+      qc.invalidateQueries({ queryKey: ['character', id] })
+    },
   })
 
   const hpMutation = useMutation({
     mutationFn: ({ currentHp, maxHp }: { currentHp: number; maxHp?: number }) =>
       charactersApi.updateHp(id!, currentHp, maxHp),
-    onSuccess: (updated) => qc.setQueryData<Character>(['character', id], updated),
+    onSuccess: (updated) => {
+      qc.setQueryData<Character>(['character', id], updated)
+      qc.invalidateQueries({ queryKey: ['character', id] })
+    },
   })
 
   const avatarMutation = useMutation({
     mutationFn: (file: File) => charactersApi.uploadAvatar(id!, file),
-    onSuccess: (updated) => qc.setQueryData<Character>(['character', id], updated),
+    onSuccess: (updated) => {
+      qc.setQueryData<Character>(['character', id], updated)
+      qc.invalidateQueries({ queryKey: ['character', id] })
+    },
   })
 
   // ── Wild Shape state ──────────────────────────────────────────
@@ -459,7 +466,10 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const wildShapeMutation = useMutation({
     mutationFn: (req: Parameters<typeof beastsApi.updateWildShape>[1]) =>
       beastsApi.updateWildShape(id!, req),
-    onSuccess: (updated) => qc.setQueryData<Character>(['character', id], updated),
+    onSuccess: (updated) => {
+      qc.setQueryData<Character>(['character', id], updated)
+      qc.invalidateQueries({ queryKey: ['character', id] })
+    },
   })
 
   // ── Attack form state ──────────────────────────────────────────
@@ -476,6 +486,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     mutationFn: (req: AddAttackRequest) => attacksApi.add(id!, req),
     onSuccess: (newAttack) => {
       qc.setQueryData<CharacterAttack[]>(['attacks', id], old => [...(old ?? []), newAttack])
+      qc.invalidateQueries({ queryKey: ['attacks', id] })
       setShowAttackForm(false)
       setAttackForm(BLANK_ATTACK)
     },
@@ -485,13 +496,17 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       attacksApi.update(id!, attackId, req),
     onSuccess: (updated) => {
       qc.setQueryData<CharacterAttack[]>(['attacks', id], old => old?.map(a => a.id === updated.id ? updated : a) ?? [])
+      qc.invalidateQueries({ queryKey: ['attacks', id] })
       setEditingAttack(null)
       setAttackForm(BLANK_ATTACK)
     },
   })
   const deleteAttackMutation = useMutation({
     mutationFn: (attackId: string) => attacksApi.remove(id!, attackId),
-    onSuccess: (_void, attackId) => qc.setQueryData<CharacterAttack[]>(['attacks', id], old => old?.filter(a => a.id !== attackId) ?? []),
+    onSuccess: (_void, attackId) => {
+      qc.setQueryData<CharacterAttack[]>(['attacks', id], old => old?.filter(a => a.id !== attackId) ?? [])
+      qc.invalidateQueries({ queryKey: ['attacks', id] })
+    },
   })
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -540,7 +555,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
   const patch = (fields: Partial<typeof d>) => setDraft(prev => ({ ...prev, ...fields }))
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!draft) return
     const { currentHp, maxHp, ...charUpdate } = draft
     const tasks: Promise<unknown>[] = []
@@ -558,7 +573,14 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     } catch {
       // Errors are surfaced via updateMutation.isError / hpMutation.isError; draft kept for retry
     }
-  }
+  }, [draft, character, updateMutation, hpMutation]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save 1.5 s after the last edit
+  useEffect(() => {
+    if (!isDirty) return
+    const timer = setTimeout(() => { handleSave() }, 1500)
+    return () => clearTimeout(timer)
+  }, [draft]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const abilityMod = (key: string) => Math.floor((totalAbilityScore(key) - 10) / 2)
   const featInitBonus = getFeatModifier(charFeats, 'initiative')
@@ -643,7 +665,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                 disabled={updateMutation.isPending || hpMutation.isPending}
                 className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
               >
-                {updateMutation.isPending ? 'Saving…' : 'Save'}
+                {updateMutation.isPending || hpMutation.isPending ? 'Saving…' : 'Save now'}
               </button>
             </div>
           )}
@@ -662,7 +684,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
             disabled={updateMutation.isPending || hpMutation.isPending}
             className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
           >
-            {updateMutation.isPending ? 'Saving…' : 'Save'}
+            {updateMutation.isPending || hpMutation.isPending ? 'Saving…' : 'Save now'}
           </button>
         </div>
       )}
