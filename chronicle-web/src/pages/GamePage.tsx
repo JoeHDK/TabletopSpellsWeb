@@ -121,6 +121,8 @@ export default function GamePage() {
     const q = itemSearch.toLowerCase()
     return combinedItems.filter(i => i.name.toLowerCase().includes(q)).slice(0, 50)
   }, [combinedItems, itemSearch])
+
+  const { data: lootItems = [] } = useQuery({
     queryKey: ['game-loot', id],
     queryFn: () => gamesApi.getLoot(id!),
     enabled: !!id && showLootStash,
