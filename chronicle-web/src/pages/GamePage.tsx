@@ -1,18 +1,54 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { gamesApi } from '../api/games'
 import { charactersApi } from '../api/characters'
+import { itemsApi } from '../api/items'
+import { customItemsApi } from '../api/customItems'
 import { useAuthStore } from '../store/authStore'
-import type { AddMemberRequest, GiveItemRequest, CreateLootItemRequest, LootItem, ItemSource } from '../types'
+import { lookupArmor } from '../utils/armorTable'
+import type { AddMemberRequest, GiveItemRequest, CreateLootItemRequest, LootItem, ItemSource, DamageEntry, ArmorType } from '../types'
 
-const defaultGiveForm = (): Omit<GiveItemRequest, 'recipientCharacterId'> & { acBonusStr: string } => ({
+const DAMAGE_TYPES = [
+  'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
+  'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder',
+]
+
+type GiveFormState = {
+  name: string
+  itemSource: ItemSource
+  srdItemIndex: string
+  customItemId: string
+  quantity: number
+  acBonusStr: string
+  armorType: ArmorType | undefined
+  damageOverride: string
+  damageEntries: DamageEntry[]
+  strBonusStr: string
+  conBonusStr: string
+  dexBonusStr: string
+  wisBonusStr: string
+  intBonusStr: string
+  chaBonusStr: string
+  notes: string
+}
+
+const defaultGiveForm = (): GiveFormState => ({
   name: '',
   itemSource: 'SRD' as ItemSource,
   srdItemIndex: '',
+  customItemId: '',
   quantity: 1,
   acBonusStr: '',
+  armorType: undefined,
   damageOverride: '',
+  damageEntries: [],
+  strBonusStr: '',
+  conBonusStr: '',
+  dexBonusStr: '',
+  wisBonusStr: '',
+  intBonusStr: '',
+  chaBonusStr: '',
   notes: '',
 })
 
@@ -39,6 +75,8 @@ export default function GamePage() {
   const [giveForm, setGiveForm] = useState(defaultGiveForm())
   const [giveRecipientId, setGiveRecipientId] = useState('')
   const [giveError, setGiveError] = useState('')
+  const [itemSearch, setItemSearch] = useState('')
+  const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null)
 
   // Loot stash state
   const [showLootStash, setShowLootStash] = useState(false)
@@ -59,7 +97,30 @@ export default function GamePage() {
     queryFn: charactersApi.getAll,
   })
 
-  const { data: lootItems = [] } = useQuery({
+  const { data: srdItems = [] } = useQuery({
+    queryKey: ['srd-items-all'],
+    queryFn: () => itemsApi.getAll(),
+    enabled: showGiveItem,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: customItems = [] } = useQuery({
+    queryKey: ['custom-items'],
+    queryFn: () => customItemsApi.getAll(),
+    enabled: showGiveItem,
+  })
+
+  const combinedItems = useMemo(() => {
+    const srd = srdItems.map(i => ({ key: `srd:${i.index}`, name: i.name, damage: i.damage, source: 'SRD' as ItemSource, srdIndex: i.index, customId: undefined as string | undefined }))
+    const custom = customItems.map(i => ({ key: `custom:${i.id}`, name: i.name, damage: i.damage, source: 'Custom' as ItemSource, srdIndex: undefined as string | undefined, customId: i.id }))
+    return [...srd, ...custom]
+  }, [srdItems, customItems])
+
+  const filteredItems = useMemo(() => {
+    if (!itemSearch.trim()) return combinedItems.slice(0, 50)
+    const q = itemSearch.toLowerCase()
+    return combinedItems.filter(i => i.name.toLowerCase().includes(q)).slice(0, 50)
+  }, [combinedItems, itemSearch])
     queryKey: ['game-loot', id],
     queryFn: () => gamesApi.getLoot(id!),
     enabled: !!id && showLootStash,
@@ -107,9 +168,9 @@ export default function GamePage() {
   const giveItemMutation = useMutation({
     mutationFn: (req: GiveItemRequest) => gamesApi.giveItem(id!, req),
     onSuccess: () => {
-      setShowGiveItem(false)
       setGiveForm(defaultGiveForm())
-      setGiveRecipientId('')
+      setItemSearch('')
+      setSelectedItemKey(null)
       setGiveError('')
     },
     onError: () => setGiveError('Failed to give item. Check the recipient character.'),
@@ -377,7 +438,7 @@ export default function GamePage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Give Item</h2>
                 <button
-                  onClick={() => setShowGiveItem(v => !v)}
+                  onClick={() => { setShowGiveItem(v => !v); setGiveForm(defaultGiveForm()); setItemSearch(''); setSelectedItemKey(null); setGiveError('') }}
                   className="text-sm text-indigo-400 hover:text-indigo-300"
                 >
                   {showGiveItem ? 'Cancel' : '+ Give Item'}
@@ -385,7 +446,8 @@ export default function GamePage() {
               </div>
 
               {showGiveItem && (
-                <div className="bg-gray-900 rounded-xl p-4 space-y-3">
+                <div className="bg-gray-900 rounded-xl p-4 space-y-4">
+                  {/* Recipient */}
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Recipient Character</label>
                     <select
@@ -401,79 +463,181 @@ export default function GamePage() {
                       ))}
                     </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Item Name *</label>
+
+                  {/* Item search */}
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Item</label>
+                    {selectedItemKey ? (
+                      <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2 border border-indigo-600">
+                        <span className="flex-1 text-sm text-white">{giveForm.name}</span>
+                        <span className="text-xs text-gray-400 px-2 py-0.5 bg-gray-700 rounded">{giveForm.itemSource}</span>
+                        <button onClick={() => { setSelectedItemKey(null); setGiveForm(f => ({ ...f, name: '', srdItemIndex: '', customItemId: '', damageOverride: '', acBonusStr: '', armorType: undefined })); setItemSearch('') }} className="text-gray-400 hover:text-white text-xs">✕</button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <input
+                          value={itemSearch}
+                          onChange={e => setItemSearch(e.target.value)}
+                          placeholder="Search SRD or custom items…"
+                          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                        />
+                        {itemSearch.trim() && (
+                          <div className="bg-gray-800 border border-gray-700 rounded-lg max-h-48 overflow-y-auto">
+                            {filteredItems.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-gray-400">No items found</div>
+                            ) : filteredItems.map(item => (
+                              <button
+                                key={item.key}
+                                type="button"
+                                onClick={() => {
+                                  const armor = lookupArmor(item.name)
+                                  setSelectedItemKey(item.key)
+                                  setGiveForm(f => ({
+                                    ...f,
+                                    name: item.name,
+                                    itemSource: item.source,
+                                    srdItemIndex: item.srdIndex ?? '',
+                                    customItemId: item.customId ?? '',
+                                    damageOverride: item.damage ?? '',
+                                    acBonusStr: armor ? String(armor.ac) : f.acBonusStr,
+                                    armorType: armor?.type ?? f.armorType,
+                                  }))
+                                  setItemSearch('')
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-700 transition-colors border-b border-gray-700 last:border-0"
+                              >
+                                <span className="text-sm text-white">{item.name}</span>
+                                <span className="ml-2 text-xs text-gray-400">{item.source}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {!itemSearch.trim() && (
+                          <div>
+                            <label className="text-xs text-gray-400 block mb-1 mt-1">Or enter name manually</label>
+                            <input
+                              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                              value={giveForm.name}
+                              onChange={e => {
+                                const name = e.target.value
+                                const armor = lookupArmor(name)
+                                setGiveForm(f => ({
+                                  ...f,
+                                  name,
+                                  acBonusStr: f.acBonusStr || (armor ? String(armor.ac) : ''),
+                                  armorType: f.armorType ?? armor?.type,
+                                }))
+                              }}
+                              placeholder="Item name…"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quantity */}
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Quantity</label>
+                    <input
+                      type="number" min={1}
+                      className="w-32 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                      value={giveForm.quantity}
+                      onChange={e => setGiveForm(f => ({ ...f, quantity: Number(e.target.value) }))}
+                    />
+                  </div>
+
+                  {/* Damage */}
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-400 block">Damage</label>
+                    <div className="flex gap-2">
                       <input
-                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                        value={giveForm.name}
-                        onChange={e => setGiveForm(f => ({ ...f, name: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Source</label>
-                      <select
-                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:outline-none text-sm"
-                        value={giveForm.itemSource}
-                        onChange={e => setGiveForm(f => ({ ...f, itemSource: e.target.value as ItemSource }))}
-                      >
-                        <option value="SRD">SRD Item</option>
-                        <option value="Custom">Custom Item</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Quantity</label>
-                      <input
-                        type="number" min={1}
-                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                        value={giveForm.quantity}
-                        onChange={e => setGiveForm(f => ({ ...f, quantity: Number(e.target.value) }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">AC Bonus</label>
-                      <input
-                        type="number"
-                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                        placeholder="Leave blank if none"
-                        value={giveForm.acBonusStr}
-                        onChange={e => setGiveForm(f => ({ ...f, acBonusStr: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Damage</label>
-                      <input
-                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                        placeholder="e.g. 1d8+3"
-                        value={giveForm.damageOverride ?? ''}
+                        className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                        placeholder="e.g. 2d6+4"
+                        value={giveForm.damageOverride}
                         onChange={e => setGiveForm(f => ({ ...f, damageOverride: e.target.value }))}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setGiveForm(f => ({ ...f, damageEntries: [...f.damageEntries, { dice: '', damageType: 'Fire' }] }))}
+                        className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-indigo-300 text-sm font-bold leading-none"
+                        title="Add extra damage"
+                      >+</button>
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Notes</label>
-                      <input
-                        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                        value={giveForm.notes ?? ''}
-                        onChange={e => setGiveForm(f => ({ ...f, notes: e.target.value }))}
-                      />
+                    {giveForm.damageEntries.map((entry, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input
+                          value={entry.dice}
+                          onChange={e => setGiveForm(f => { const d = [...f.damageEntries]; d[i] = { ...d[i], dice: e.target.value }; return { ...f, damageEntries: d } })}
+                          className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                          placeholder="e.g. 1d6"
+                        />
+                        <select
+                          value={entry.damageType}
+                          onChange={e => setGiveForm(f => { const d = [...f.damageEntries]; d[i] = { ...d[i], damageType: e.target.value }; return { ...f, damageEntries: d } })}
+                          className="w-36 bg-gray-800 text-white rounded-lg px-2 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                        >
+                          {DAMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <button type="button" onClick={() => setGiveForm(f => ({ ...f, damageEntries: f.damageEntries.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-300 px-2 py-1 text-sm">✕</button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Bonuses */}
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-2">Bonuses</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {([['AC', 'acBonusStr'], ['STR', 'strBonusStr'], ['CON', 'conBonusStr'], ['DEX', 'dexBonusStr'], ['WIS', 'wisBonusStr'], ['INT', 'intBonusStr'], ['CHA', 'chaBonusStr']] as const).map(([label, field]) => (
+                        <div key={field}>
+                          <label className="text-xs text-gray-500 block mb-0.5">{label}</label>
+                          <input
+                            type="number"
+                            className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                            placeholder="—"
+                            value={giveForm[field]}
+                            onChange={e => setGiveForm(f => ({ ...f, [field]: e.target.value }))}
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Notes</label>
+                    <input
+                      className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                      value={giveForm.notes}
+                      onChange={e => setGiveForm(f => ({ ...f, notes: e.target.value }))}
+                    />
+                  </div>
+
                   {giveError && <p className="text-red-400 text-sm">{giveError}</p>}
                   <button
                     disabled={giveItemMutation.isPending || !giveForm.name || !giveRecipientId}
                     onClick={() => giveItemMutation.mutate({
                       recipientCharacterId: giveRecipientId,
                       itemSource: giveForm.itemSource,
-                      srdItemIndex: giveForm.srdItemIndex,
+                      srdItemIndex: giveForm.srdItemIndex || undefined,
+                      customItemId: giveForm.customItemId || undefined,
                       name: giveForm.name,
                       quantity: giveForm.quantity,
                       acBonus: giveForm.acBonusStr ? Number(giveForm.acBonusStr) : undefined,
-                      damageOverride: giveForm.damageOverride,
-                      notes: giveForm.notes,
+                      armorType: giveForm.armorType,
+                      damageOverride: giveForm.damageOverride || undefined,
+                      damageEntries: giveForm.damageEntries.length > 0 ? giveForm.damageEntries : undefined,
+                      strBonus: giveForm.strBonusStr ? Number(giveForm.strBonusStr) : undefined,
+                      conBonus: giveForm.conBonusStr ? Number(giveForm.conBonusStr) : undefined,
+                      dexBonus: giveForm.dexBonusStr ? Number(giveForm.dexBonusStr) : undefined,
+                      wisBonus: giveForm.wisBonusStr ? Number(giveForm.wisBonusStr) : undefined,
+                      intBonus: giveForm.intBonusStr ? Number(giveForm.intBonusStr) : undefined,
+                      chaBonus: giveForm.chaBonusStr ? Number(giveForm.chaBonusStr) : undefined,
+                      notes: giveForm.notes || undefined,
                     })}
                     className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 py-2 rounded-lg text-sm"
                   >
-                    Give Item
+                    {giveItemMutation.isPending ? 'Giving…' : 'Give Item'}
                   </button>
                 </div>
               )}

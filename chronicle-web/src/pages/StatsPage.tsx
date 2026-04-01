@@ -253,9 +253,9 @@ function calculateAC(
   const wisMod = Math.floor(((abilityScores['Wisdom'] ?? 10) - 10) / 2)
 
   const equipped = inventory.filter(i => i.isEquipped)
-  const armorItem = equipped.find(i => i.equippedSlot === 'Armor' && i.armorType && i.armorType !== 'None')
+  const armorItem = equipped.find(i => (i.equippedSlot === 'Chest' || i.equippedSlot === 'Armor') && i.armorType && i.armorType !== 'None')
   const shieldBonus = equipped
-    .filter(i => i.equippedSlot !== 'Armor' && i.acBonus != null)
+    .filter(i => i.equippedSlot !== 'Chest' && i.equippedSlot !== 'Armor' && i.acBonus != null)
     .reduce((s, i) => s + (i.acBonus ?? 0), 0)
 
   // Medium Armor Master feat raises the DEX cap on medium armor from +2 to +3

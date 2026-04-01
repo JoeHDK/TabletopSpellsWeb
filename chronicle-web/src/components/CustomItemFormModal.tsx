@@ -154,58 +154,45 @@ export default function CustomItemFormModal({ item, onSave, onClose, isSaving }:
           {/* Damage section */}
           <div className="space-y-2">
             <label className="block text-xs text-gray-400">Damage</label>
-            {/* Base damage row */}
+            {/* Base damage row: free-text dice + inline + button */}
             <div className="flex gap-2">
               <input
                 value={form.damage ?? ''}
                 onChange={(e) => set('damage', e.target.value || undefined)}
                 className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                placeholder="e.g. 2d6"
+                placeholder="e.g. 2d6+4"
               />
-              <select
-                value={(form.damage_entries ?? [])[0]?.damageType ?? 'Slashing'}
-                onChange={(e) => {
-                  const entries = [...(form.damage_entries ?? [])]
-                  if (entries.length === 0) entries.push({ dice: form.damage ?? '', damageType: e.target.value })
-                  else entries[0] = { ...entries[0], damageType: e.target.value }
-                  setForm(f => ({ ...f, damage_entries: entries }))
-                }}
-                className="w-36 bg-gray-800 text-white rounded-lg px-2 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-              >
-                {DAMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <button
+                type="button"
+                onClick={addDamageEntry}
+                className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-indigo-300 text-sm font-bold leading-none transition-colors"
+                title="Add extra damage"
+              >+</button>
             </div>
-            {/* Additional damage entries */}
-            {(form.damage_entries ?? []).slice(1).map((entry, i) => (
-              <div key={i + 1} className="flex gap-2 items-center">
+            {/* Additional typed damage entries */}
+            {(form.damage_entries ?? []).map((entry, i) => (
+              <div key={i} className="flex gap-2 items-center">
                 <input
                   value={entry.dice}
-                  onChange={(e) => updateDamageEntry(i + 1, 'dice', e.target.value)}
+                  onChange={(e) => updateDamageEntry(i, 'dice', e.target.value)}
                   className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
                   placeholder="e.g. 1d6"
                 />
                 <select
                   value={entry.damageType}
-                  onChange={(e) => updateDamageEntry(i + 1, 'damageType', e.target.value)}
+                  onChange={(e) => updateDamageEntry(i, 'damageType', e.target.value)}
                   className="w-36 bg-gray-800 text-white rounded-lg px-2 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
                 >
                   {DAMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
                 <button
                   type="button"
-                  onClick={() => removeDamageEntry(i + 1)}
+                  onClick={() => removeDamageEntry(i)}
                   className="text-red-400 hover:text-red-300 px-2 py-1 text-sm"
                   title="Remove"
                 >✕</button>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={addDamageEntry}
-              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-            >
-              + Add damage
-            </button>
           </div>
 
           {/* Cost + Weight row */}

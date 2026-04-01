@@ -313,7 +313,17 @@ public class GamesController : ControllerBase
             Name = req.Name,
             Quantity = req.Quantity,
             AcBonus = req.AcBonus,
+            ArmorType = req.ArmorType,
             DamageOverride = req.DamageOverride,
+            DamageEntriesJson = req.DamageEntries is { Count: > 0 }
+                ? System.Text.Json.JsonSerializer.Serialize(req.DamageEntries)
+                : null,
+            StrBonus = req.StrBonus,
+            ConBonus = req.ConBonus,
+            DexBonus = req.DexBonus,
+            WisBonus = req.WisBonus,
+            IntBonus = req.IntBonus,
+            ChaBonus = req.ChaBonus,
             Notes = req.Notes,
             GrantedByUserId = UserId,
         };

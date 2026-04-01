@@ -41,7 +41,14 @@ public class CharacterInventoryItemEntity
     public int? AcBonus { get; set; }
     public ArmorType? ArmorType { get; set; }
     public string? DamageOverride { get; set; }
+    public string? DamageEntriesJson { get; set; }
     public bool IsTwoHanded { get; set; }
+    public int? StrBonus { get; set; }
+    public int? ConBonus { get; set; }
+    public int? DexBonus { get; set; }
+    public int? WisBonus { get; set; }
+    public int? IntBonus { get; set; }
+    public int? ChaBonus { get; set; }
     public string? Notes { get; set; }
     public string? GrantedByUserId { get; set; }
     public DateTime AcquiredAt { get; set; } = DateTime.UtcNow;

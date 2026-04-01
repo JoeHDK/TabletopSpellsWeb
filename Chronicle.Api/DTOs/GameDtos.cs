@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Chronicle.Api.Data.Entities;
+using Chronicle.Api.Models;
 using Chronicle.Api.Models.Enums;
 
 namespace Chronicle.Api.DTOs;
@@ -80,8 +81,16 @@ public class GiveItemRequest
     public int Quantity { get; set; } = 1;
     [Range(0, 99)]
     public int? AcBonus { get; set; }
+    public ArmorType? ArmorType { get; set; }
     [StringLength(100)]
     public string? DamageOverride { get; set; }
+    public List<DamageEntryDto>? DamageEntries { get; set; }
+    public int? StrBonus { get; set; }
+    public int? ConBonus { get; set; }
+    public int? DexBonus { get; set; }
+    public int? WisBonus { get; set; }
+    public int? IntBonus { get; set; }
+    public int? ChaBonus { get; set; }
     [StringLength(500)]
     public string? Notes { get; set; }
 }
