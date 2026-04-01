@@ -81,6 +81,7 @@ builder.Services.AddSingleton<MonsterService>();
 builder.Services.AddSingleton<FeatService>();
 builder.Services.AddSingleton<ClassFeatureService>();
 builder.Services.AddSingleton<RaceService>();
+builder.Services.AddSingleton<Chronicle.Api.Services.BackgroundService>();
 builder.Services.AddSingleton<EncryptionService>();
 builder.Services.AddSingleton<ClassResourceSeedService>();
 

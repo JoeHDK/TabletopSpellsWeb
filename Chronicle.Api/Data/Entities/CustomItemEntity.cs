@@ -19,6 +19,13 @@ public class CustomItemEntity
     public string? Damage { get; set; }
     [Column(TypeName = "jsonb")] public string PropertiesJson { get; set; } = "[]";
     public string? DamageEntriesJson { get; set; }
+    public int? AcBonus { get; set; }
+    public int? StrBonus { get; set; }
+    public int? ConBonus { get; set; }
+    public int? DexBonus { get; set; }
+    public int? WisBonus { get; set; }
+    public int? IntBonus { get; set; }
+    public int? ChaBonus { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [ForeignKey(nameof(UserId))] public AppUser? User { get; set; }

@@ -54,6 +54,13 @@ public class CustomItemsController : ControllerBase
             DamageEntriesJson = req.DamageEntries is not null
                 ? System.Text.Json.JsonSerializer.Serialize(req.DamageEntries)
                 : null,
+            AcBonus = req.AcBonus,
+            StrBonus = req.StrBonus,
+            ConBonus = req.ConBonus,
+            DexBonus = req.DexBonus,
+            WisBonus = req.WisBonus,
+            IntBonus = req.IntBonus,
+            ChaBonus = req.ChaBonus,
         };
 
         _db.CustomItems.Add(entity);
@@ -82,6 +89,13 @@ public class CustomItemsController : ControllerBase
         entity.DamageEntriesJson = req.DamageEntries is not null
             ? System.Text.Json.JsonSerializer.Serialize(req.DamageEntries)
             : null;
+        entity.AcBonus = req.AcBonus;
+        entity.StrBonus = req.StrBonus;
+        entity.ConBonus = req.ConBonus;
+        entity.DexBonus = req.DexBonus;
+        entity.WisBonus = req.WisBonus;
+        entity.IntBonus = req.IntBonus;
+        entity.ChaBonus = req.ChaBonus;
 
         await _db.SaveChangesAsync();
         return Ok(ToDto(entity));
@@ -116,6 +130,13 @@ public class CustomItemsController : ControllerBase
         DamageEntries = e.DamageEntriesJson is not null
             ? System.Text.Json.JsonSerializer.Deserialize<List<DamageEntryDto>>(e.DamageEntriesJson)
             : null,
+        AcBonus = e.AcBonus,
+        StrBonus = e.StrBonus,
+        ConBonus = e.ConBonus,
+        DexBonus = e.DexBonus,
+        WisBonus = e.WisBonus,
+        IntBonus = e.IntBonus,
+        ChaBonus = e.ChaBonus,
         CreatedAt = e.CreatedAt,
     };
 }

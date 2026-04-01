@@ -23,6 +23,13 @@ public class CustomItemDto
     [JsonProperty("damage")] public string? Damage { get; set; }
     [JsonProperty("properties")] public List<string> Properties { get; set; } = [];
     [JsonProperty("damage_entries")] public List<DamageEntryDto>? DamageEntries { get; set; }
+    [JsonProperty("ac_bonus")] public int? AcBonus { get; set; }
+    [JsonProperty("str_bonus")] public int? StrBonus { get; set; }
+    [JsonProperty("con_bonus")] public int? ConBonus { get; set; }
+    [JsonProperty("dex_bonus")] public int? DexBonus { get; set; }
+    [JsonProperty("wis_bonus")] public int? WisBonus { get; set; }
+    [JsonProperty("int_bonus")] public int? IntBonus { get; set; }
+    [JsonProperty("cha_bonus")] public int? ChaBonus { get; set; }
     [JsonProperty("createdAt")] public DateTime CreatedAt { get; set; }
 }
 
@@ -40,4 +47,11 @@ public class SaveCustomItemRequest
     [JsonProperty("damage")] public string? Damage { get; set; }
     [JsonProperty("properties")] public List<string> Properties { get; set; } = [];
     [JsonProperty("damage_entries")] public List<DamageEntryDto>? DamageEntries { get; set; }
+    [JsonProperty("ac_bonus")] public int? AcBonus { get; set; }
+    [JsonProperty("str_bonus")] public int? StrBonus { get; set; }
+    [JsonProperty("con_bonus")] public int? ConBonus { get; set; }
+    [JsonProperty("dex_bonus")] public int? DexBonus { get; set; }
+    [JsonProperty("wis_bonus")] public int? WisBonus { get; set; }
+    [JsonProperty("int_bonus")] public int? IntBonus { get; set; }
+    [JsonProperty("cha_bonus")] public int? ChaBonus { get; set; }
 }
