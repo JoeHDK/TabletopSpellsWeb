@@ -1,0 +1,14 @@
+# Ignore everything by default, then whitelist what the Dockerfile needs
+**
+
+# .NET API source
+!Chronicle.Api/**
+Chronicle.Api/bin/
+Chronicle.Api/obj/
+Chronicle.Api/.idea/
+
+# React frontend source
+!chronicle-web/**
+chronicle-web/node_modules/
+chronicle-web/dist/
+chronicle-web/.idea/

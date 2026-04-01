@@ -3,23 +3,24 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: tabletopspells
+      POSTGRES_DB: chronicle
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Port intentionally not exposed here — postgres is internal-only on VPS.
+    # For local DB client access (pgAdmin/DBeaver), docker-compose.override.yml
+    # re-adds the port mapping automatically.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tabletopspells"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chronicle"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   api:
     build:
-      context: ./TabletopSpells.Api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Chronicle.Api/Dockerfile
     restart: unless-stopped
     depends_on:
       postgres:
@@ -27,20 +28,34 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=tabletopspells;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=chronicle;Username=postgres;Password=${POSTGRES_PASSWORD}"
       Jwt__Key: ${JWT_KEY}
-      Jwt__Issuer: TabletopSpellsApi
-      Jwt__Audience: TabletopSpellsWeb
+      Jwt__Issuer: ChronicleApi
+      Jwt__Audience: ChronicleWeb
+      Chat__MasterKey: ${CHAT_MASTER_KEY}
+      Vapid__Subject: ${VAPID_SUBJECT}
+      Vapid__PublicKey: ${VAPID_PUBLIC_KEY}
+      Vapid__PrivateKey: ${VAPID_PRIVATE_KEY}
+    # No ports exposed directly — Caddy is the only entry point
 
-  web:
-    build:
-      context: ./tabletopspells-web
-      dockerfile: Dockerfile
+  caddy:
+    image: caddy:alpine
     restart: unless-stopped
     depends_on:
       - api
+    environment:
+      SERVER_HOSTNAME: ${SERVER_HOSTNAME}
     ports:
-      - "3000:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # persists TLS certs across restarts
+      - caddy_config:/config
+    networks:
+      - default
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

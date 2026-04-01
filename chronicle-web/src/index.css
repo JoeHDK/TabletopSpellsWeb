@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/* Remove browser spinner arrows from all number inputs */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Light mode overrides — dark is the default; .light on <html> switches to light */
+html.light .bg-gray-950 { background-color: #e2e8f0; }
+html.light .bg-gray-900 { background-color: #ffffff; }
+html.light .bg-gray-800 { background-color: #f1f5f9; }
+html.light .bg-gray-700 { background-color: #e2e8f0; }
+
+html.light .hover\:bg-gray-900:hover { background-color: #f1f5f9; }
+html.light .hover\:bg-gray-800:hover { background-color: #eef2f7; }
+html.light .hover\:bg-gray-700:hover { background-color: #e2e8f0; }
+
+html.light .text-white  { color: #0f172a; }
+html.light .text-gray-300 { color: #475569; }
+html.light .text-gray-400 { color: #64748b; }
+html.light .text-gray-500 { color: #64748b; }
+
+html.light .border-gray-800 { border-color: #e2e8f0; }
+html.light .border-gray-700 { border-color: #cbd5e1; }
+html.light .border-gray-600 { border-color: #94a3b8; }
+
+html.light .placeholder\:text-gray-400::placeholder { color: #94a3b8; }
+
