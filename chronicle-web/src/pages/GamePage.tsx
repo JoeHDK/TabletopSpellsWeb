@@ -401,36 +401,6 @@ export default function GamePage() {
               </Link>
             </section>
 
-            {/* Campaign Log link */}
-            <section>
-              <Link
-                to={`/games/${id}/log`}
-                className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
-              >
-                <span className="text-2xl">📖</span>
-                <div>
-                  <p className="font-medium">Campaign Log</p>
-                  <p className="text-xs text-gray-400">Searchable notes and session records</p>
-                </div>
-                <span className="ml-auto text-gray-500">→</span>
-              </Link>
-            </section>
-
-            {/* Image Library link */}
-            <section>
-              <Link
-                to={`/games/${id}/images`}
-                className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
-              >
-                <span className="text-2xl">🖼️</span>
-                <div>
-                  <p className="font-medium">Image Library</p>
-                  <p className="text-xs text-gray-400">Handouts, maps, and campaign images</p>
-                </div>
-                <span className="ml-auto text-gray-500">→</span>
-              </Link>
-            </section>
-
             {/* Give Item */}
             <section className="space-y-2">
               <div className="flex items-center justify-between">
@@ -684,6 +654,35 @@ export default function GamePage() {
             </section>
           </>
         )}
+
+        {/* All Members — Campaign Log & Handouts */}
+        <section>
+          <Link
+            to={`/games/${id}/log`}
+            className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
+          >
+            <span className="text-2xl">📖</span>
+            <div>
+              <p className="font-medium">Campaign Log</p>
+              <p className="text-xs text-gray-400">Searchable notes and session records</p>
+            </div>
+            <span className="ml-auto text-gray-500">→</span>
+          </Link>
+        </section>
+
+        <section>
+          <Link
+            to={`/games/${id}/images`}
+            className="flex items-center gap-3 bg-gray-900 hover:bg-gray-800 rounded-xl px-4 py-3 transition-colors"
+          >
+            <span className="text-2xl">🖼️</span>
+            <div>
+              <p className="font-medium">{isDM ? 'Image Library' : 'Handouts'}</p>
+              <p className="text-xs text-gray-400">{isDM ? 'Handouts, maps, and campaign images' : 'Images shared by your DM'}</p>
+            </div>
+            <span className="ml-auto text-gray-500">→</span>
+          </Link>
+        </section>
       </div>
     </div>
   )

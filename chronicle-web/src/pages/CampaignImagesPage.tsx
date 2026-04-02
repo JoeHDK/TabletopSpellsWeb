@@ -203,7 +203,7 @@ export default function CampaignImagesPage() {
           className="text-gray-400 hover:text-white text-xl leading-none"
         >←</button>
         <div className="flex-1 min-w-0">
-          <h1 className="font-bold truncate">Image Library</h1>
+          <h1 className="font-bold truncate">{isDm ? 'Image Library' : 'Handouts'}</h1>
           {game && <p className="text-xs text-gray-500 truncate">{game.name}</p>}
         </div>
       </div>

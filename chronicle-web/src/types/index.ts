@@ -179,6 +179,24 @@ export interface DamageEntry {
   damageType: string
 }
 
+export interface CustomItemAbility {
+  name: string
+  spellIndex?: string
+  maxUses: number
+  resetOn: 'short_rest' | 'long_rest'
+}
+
+export interface EquipmentResource {
+  id: string
+  inventoryItemId: string
+  itemName: string
+  abilityName: string
+  spellIndex?: string
+  maxUses: number
+  usesRemaining: number
+  resetOn: 'short_rest' | 'long_rest'
+}
+
 export interface CustomItem {
   id: string
   name: string
@@ -192,6 +210,7 @@ export interface CustomItem {
   weight?: number
   damage?: string
   damage_entries?: DamageEntry[]
+  abilities?: CustomItemAbility[]
   ac_bonus?: number
   str_bonus?: number
   con_bonus?: number
@@ -216,6 +235,7 @@ export interface SaveCustomItemRequest {
   weight?: number
   damage?: string
   damage_entries?: DamageEntry[]
+  abilities?: CustomItemAbility[]
   ac_bonus?: number
   str_bonus?: number
   con_bonus?: number

@@ -54,6 +54,9 @@ public class CustomItemsController : ControllerBase
             DamageEntriesJson = req.DamageEntries is not null
                 ? System.Text.Json.JsonSerializer.Serialize(req.DamageEntries)
                 : null,
+            AbilitiesJson = req.Abilities.Count > 0
+                ? System.Text.Json.JsonSerializer.Serialize(req.Abilities)
+                : null,
             AcBonus = req.AcBonus,
             StrBonus = req.StrBonus,
             ConBonus = req.ConBonus,
@@ -89,6 +92,9 @@ public class CustomItemsController : ControllerBase
         entity.PropertiesJson = JsonConvert.SerializeObject(req.Properties);
         entity.DamageEntriesJson = req.DamageEntries is not null
             ? System.Text.Json.JsonSerializer.Serialize(req.DamageEntries)
+            : null;
+        entity.AbilitiesJson = req.Abilities.Count > 0
+            ? System.Text.Json.JsonSerializer.Serialize(req.Abilities)
             : null;
         entity.AcBonus = req.AcBonus;
         entity.StrBonus = req.StrBonus;
@@ -132,6 +138,9 @@ public class CustomItemsController : ControllerBase
         DamageEntries = e.DamageEntriesJson is not null
             ? System.Text.Json.JsonSerializer.Deserialize<List<DamageEntryDto>>(e.DamageEntriesJson)
             : null,
+        Abilities = e.AbilitiesJson is not null
+            ? System.Text.Json.JsonSerializer.Deserialize<List<CustomItemAbilityDto>>(e.AbilitiesJson) ?? []
+            : [],
         AcBonus = e.AcBonus,
         StrBonus = e.StrBonus,
         ConBonus = e.ConBonus,

@@ -19,6 +19,7 @@ public class CustomItemEntity
     public string? Damage { get; set; }
     [Column(TypeName = "jsonb")] public string PropertiesJson { get; set; } = "[]";
     public string? DamageEntriesJson { get; set; }
+    public string? AbilitiesJson { get; set; }
     public int? AcBonus { get; set; }
     public int? StrBonus { get; set; }
     public int? ConBonus { get; set; }

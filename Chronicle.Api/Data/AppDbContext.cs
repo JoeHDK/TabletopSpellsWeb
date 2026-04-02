@@ -35,6 +35,7 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<CustomMonsterEntity> CustomMonsters => Set<CustomMonsterEntity>();
     public DbSet<CampaignLogEntryEntity> CampaignLogEntries => Set<CampaignLogEntryEntity>();
     public DbSet<CampaignImageEntity> CampaignImages => Set<CampaignImageEntity>();
+    public DbSet<EquipmentAbilityUsageEntity> EquipmentAbilityUsages => Set<EquipmentAbilityUsageEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import type { CustomItem, SaveCustomItemRequest, DamageEntry } from '../types'
+import { useState, useEffect, useRef } from 'react'
+import type { CustomItem, SaveCustomItemRequest, DamageEntry, CustomItemAbility } from '../types'
+import { spellsApi } from '../api/spells'
 
 const RARITIES = ['Common', 'Uncommon', 'Rare', 'Very Rare', 'Legendary', 'Artifact', 'Varies']
 const DAMAGE_TYPES = [
@@ -26,12 +27,28 @@ const emptyForm = (): SaveCustomItemRequest => ({
   weight: undefined,
   damage: '',
   damage_entries: [],
+  abilities: [],
   properties: [],
 })
 
 export default function CustomItemFormModal({ item, onSave, onClose, isSaving }: Props) {
   const [form, setForm] = useState<SaveCustomItemRequest>(emptyForm)
   const [propertiesInput, setPropertiesInput] = useState('')
+  const [spellSearch, setSpellSearch] = useState<Record<number, string>>({})
+  const [spellResults, setSpellResults] = useState<Record<number, { index: string; name: string }[]>>({})
+  const spellSearchTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
+
+  const searchSpells = (idx: number, query: string) => {
+    setSpellSearch(s => ({ ...s, [idx]: query }))
+    clearTimeout(spellSearchTimers.current[idx])
+    if (!query.trim()) { setSpellResults(r => ({ ...r, [idx]: [] })); return }
+    spellSearchTimers.current[idx] = setTimeout(async () => {
+      try {
+        const results = await spellsApi.getAll('dnd5e' as any, { search: query })
+        setSpellResults(r => ({ ...r, [idx]: results.slice(0, 8).map(s => ({ index: s.id, name: s.name })) }))
+      } catch { /* ignore */ }
+    }, 300)
+  }
 
   useEffect(() => {
     if (item) {
@@ -47,6 +64,7 @@ export default function CustomItemFormModal({ item, onSave, onClose, isSaving }:
         weight: item.weight,
         damage: item.damage ?? '',
         damage_entries: item.damage_entries ?? [],
+        abilities: item.abilities ?? [],
         properties: item.properties,
         ac_bonus: item.ac_bonus,
         saving_throw_bonus: item.saving_throw_bonus,
@@ -81,6 +99,30 @@ export default function CustomItemFormModal({ item, onSave, onClose, isSaving }:
       ...f,
       damage_entries: (f.damage_entries ?? []).filter((_, i) => i !== index),
     }))
+  }
+
+  const addAbility = () => {
+    setForm(f => ({
+      ...f,
+      abilities: [...(f.abilities ?? []), { name: '', maxUses: 1, resetOn: 'long_rest' }],
+    }))
+  }
+
+  const updateAbility = (index: number, patch: Partial<CustomItemAbility>) => {
+    setForm(f => {
+      const abilities = [...(f.abilities ?? [])]
+      abilities[index] = { ...abilities[index], ...patch }
+      return { ...f, abilities }
+    })
+  }
+
+  const removeAbility = (index: number) => {
+    setForm(f => ({
+      ...f,
+      abilities: (f.abilities ?? []).filter((_, i) => i !== index),
+    }))
+    setSpellSearch(s => { const n = { ...s }; delete n[index]; return n })
+    setSpellResults(r => { const n = { ...r }; delete n[index]; return n })
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -276,6 +318,79 @@ export default function CustomItemFormModal({ item, onSave, onClose, isSaving }:
                 placeholder="+1, +2…"
               />
             </div>
+          </div>
+
+          {/* Abilities */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Abilities</label>
+              <button
+                type="button"
+                onClick={addAbility}
+                className="text-xs text-indigo-400 hover:text-indigo-300"
+              >＋ Add Ability</button>
+            </div>
+            {(form.abilities ?? []).map((ability, idx) => (
+              <div key={idx} className="bg-gray-800 rounded-lg p-3 space-y-2 border border-gray-700">
+                {/* Spell search / name */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={spellSearch[idx] ?? ability.name}
+                    onChange={e => {
+                      searchSpells(idx, e.target.value)
+                      updateAbility(idx, { name: e.target.value, spellIndex: undefined })
+                    }}
+                    placeholder="Ability name or search spell…"
+                    className="w-full bg-gray-900 text-white rounded-lg px-3 py-2 border border-gray-600 focus:border-indigo-500 focus:outline-none text-sm pr-8"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeAbility(idx)}
+                    className="absolute right-2 top-2 text-gray-500 hover:text-red-400 text-sm leading-none"
+                  >✕</button>
+                  {(spellResults[idx]?.length ?? 0) > 0 && (
+                    <div className="absolute z-10 left-0 right-0 bg-gray-800 border border-gray-600 rounded-lg mt-1 overflow-hidden shadow-xl">
+                      {spellResults[idx].map(spell => (
+                        <button
+                          key={spell.index}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-700 text-white"
+                          onClick={() => {
+                            updateAbility(idx, { name: spell.name, spellIndex: spell.index })
+                            setSpellSearch(s => ({ ...s, [idx]: '' }))
+                            setSpellResults(r => ({ ...r, [idx]: [] }))
+                          }}
+                        >{spell.name}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Max Uses</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={ability.maxUses}
+                      onChange={e => updateAbility(idx, { maxUses: Math.max(1, Number(e.target.value)) })}
+                      className="w-full bg-gray-900 text-white rounded-lg px-3 py-1.5 border border-gray-600 focus:border-indigo-500 focus:outline-none text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Resets On</label>
+                    <select
+                      value={ability.resetOn}
+                      onChange={e => updateAbility(idx, { resetOn: e.target.value as 'short_rest' | 'long_rest' })}
+                      className="w-full bg-gray-900 text-white rounded-lg px-3 py-1.5 border border-gray-600 focus:border-indigo-500 focus:outline-none text-sm"
+                    >
+                      <option value="short_rest">Short Rest</option>
+                      <option value="long_rest">Long Rest</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Description */}

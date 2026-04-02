@@ -8,6 +8,14 @@ public class DamageEntryDto
     [JsonProperty("damageType")] public string DamageType { get; set; } = "";
 }
 
+public class CustomItemAbilityDto
+{
+    [JsonProperty("name")] public required string Name { get; set; }
+    [JsonProperty("spellIndex")] public string? SpellIndex { get; set; }
+    [JsonProperty("maxUses")] public int MaxUses { get; set; } = 1;
+    [JsonProperty("resetOn")] public string ResetOn { get; set; } = "long_rest";
+}
+
 public class CustomItemDto
 {
     [JsonProperty("id")] public Guid Id { get; set; }
@@ -23,6 +31,7 @@ public class CustomItemDto
     [JsonProperty("damage")] public string? Damage { get; set; }
     [JsonProperty("properties")] public List<string> Properties { get; set; } = [];
     [JsonProperty("damage_entries")] public List<DamageEntryDto>? DamageEntries { get; set; }
+    [JsonProperty("abilities")] public List<CustomItemAbilityDto> Abilities { get; set; } = [];
     [JsonProperty("ac_bonus")] public int? AcBonus { get; set; }
     [JsonProperty("str_bonus")] public int? StrBonus { get; set; }
     [JsonProperty("con_bonus")] public int? ConBonus { get; set; }
@@ -48,6 +57,7 @@ public class SaveCustomItemRequest
     [JsonProperty("damage")] public string? Damage { get; set; }
     [JsonProperty("properties")] public List<string> Properties { get; set; } = [];
     [JsonProperty("damage_entries")] public List<DamageEntryDto>? DamageEntries { get; set; }
+    [JsonProperty("abilities")] public List<CustomItemAbilityDto> Abilities { get; set; } = [];
     [JsonProperty("ac_bonus")] public int? AcBonus { get; set; }
     [JsonProperty("str_bonus")] public int? StrBonus { get; set; }
     [JsonProperty("con_bonus")] public int? ConBonus { get; set; }
@@ -57,3 +67,4 @@ public class SaveCustomItemRequest
     [JsonProperty("cha_bonus")] public int? ChaBonus { get; set; }
     [JsonProperty("saving_throw_bonus")] public int? SavingThrowBonus { get; set; }
 }
+

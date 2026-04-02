@@ -34,10 +34,6 @@ public class CampaignLogController(AppDbContext db) : ControllerBase
         IQueryable<CampaignLogEntryEntity> query = db.CampaignLogEntries
             .Where(e => e.GameRoomId == gameRoomId);
 
-        // DM sees all entries; players see only their own entries
-        if (!isDm)
-            query = query.Where(e => e.AuthorUserId == UserId);
-
         var entries = await query
             .OrderByDescending(e => e.CreatedAt)
             .Select(e => ToDto(e))

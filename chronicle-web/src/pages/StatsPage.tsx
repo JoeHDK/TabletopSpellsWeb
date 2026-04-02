@@ -8,6 +8,7 @@ import { beastsApi } from '../api/beasts'
 import { characterFeatsApi } from '../api/characterFeats'
 import { classFeaturesApi } from '../api/classFeatures'
 import { classResourcesApi } from '../api/classResources'
+import { equipmentResourcesApi } from '../api/equipmentResources'
 import { racesApi } from '../api/races'
 import { backgroundsApi } from '../api/backgrounds'
 import EditableNumber from '../components/EditableNumber'
@@ -15,7 +16,7 @@ import BeastPickerModal from '../components/BeastPickerModal'
 import { resizeImage } from '../utils/resizeImage'
 import { resolveClassName } from '../utils/spellUtils'
 import { lookupArmor } from '../utils/armorTable'
-import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey, Beast, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race } from '../types'
+import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey, Beast, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race, EquipmentResource } from '../types'
 
 const ABILITY_KEYS = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']
 const ABILITY_SHORT: Record<string, string> = {
@@ -604,6 +605,22 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       }))
       .catch(() => {/* endpoint not yet available */})
   }, [id, character?.characterClass, character?.level]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { data: equipmentResources = [] } = useQuery<EquipmentResource[]>({
+    queryKey: ['equipment-resources', id],
+    queryFn: () => equipmentResourcesApi.getAll(id!),
+    enabled: !!id,
+  })
+
+  const equipResMutation = useMutation({
+    mutationFn: ({ action, usageId }: { action: 'use' | 'restore' | 'rest-short' | 'rest-long', usageId?: string }) => {
+      if (action === 'use') return equipmentResourcesApi.use(id!, usageId!)
+      if (action === 'restore') return equipmentResourcesApi.restore(id!, usageId!)
+      if (action === 'rest-short') return equipmentResourcesApi.rest(id!, 'short')
+      return equipmentResourcesApi.rest(id!, 'long')
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['equipment-resources', id] }),
+  })
 
   // Local draft state — only set when something is dirty
   const [draft, setDraft] = useState<UpdateCharacterRequest & { currentHp?: number; maxHp?: number } | null>(null)
@@ -1214,8 +1231,77 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
           </section>
         )}
 
-        {/* Resource description modal */}
-        {resourceInfoKey && RESOURCE_DESCRIPTIONS[resourceInfoKey] && (
+        {/* Equipment Resources */}
+        {equipmentResources.length > 0 && (
+          <section className="bg-gray-900 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Equipment Resources</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => equipResMutation.mutate({ action: 'rest-short' })}
+                  disabled={equipResMutation.isPending}
+                  className="text-xs px-2 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 disabled:opacity-40 transition-colors"
+                  title="Short Rest — restores short-rest abilities"
+                >⏱ Short Rest</button>
+                <button
+                  onClick={() => equipResMutation.mutate({ action: 'rest-long' })}
+                  disabled={equipResMutation.isPending}
+                  className="text-xs px-2 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 disabled:opacity-40 transition-colors"
+                  title="Long Rest — restores all abilities"
+                >🌙 Long Rest</button>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {equipmentResources.map(res => {
+                const dots = Array.from({ length: res.maxUses }, (_, i) => i < res.usesRemaining)
+                return (
+                  <div key={res.id} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-gray-400 truncate">{res.itemName}</p>
+                        <p className="text-sm font-medium truncate">{res.abilityName}</p>
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        res.resetOn === 'short_rest'
+                          ? 'bg-amber-900/50 text-amber-300'
+                          : 'bg-indigo-900/50 text-indigo-300'
+                      }`}>
+                        {res.resetOn === 'short_rest' ? 'Short' : 'Long'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => equipResMutation.mutate({ action: 'use', usageId: res.id })}
+                        disabled={res.usesRemaining === 0 || equipResMutation.isPending}
+                        className="text-xs px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-30 transition-colors"
+                      >Use</button>
+                      <div className="flex gap-1 flex-wrap">
+                        {dots.map((filled, i) => (
+                          <span
+                            key={i}
+                            className={`w-3 h-3 rounded-full border transition-colors ${
+                              filled ? 'bg-indigo-500 border-indigo-400' : 'bg-transparent border-gray-600'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs text-gray-500 ml-auto">{res.usesRemaining}/{res.maxUses}</span>
+                      {res.usesRemaining < res.maxUses && (
+                        <button
+                          onClick={() => equipResMutation.mutate({ action: 'restore', usageId: res.id })}
+                          disabled={equipResMutation.isPending}
+                          className="text-xs px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-30 transition-colors"
+                        >+1</button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Resource description modal */}        {resourceInfoKey && RESOURCE_DESCRIPTIONS[resourceInfoKey] && (
           <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setResourceInfoKey(null)}>
             <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-5 space-y-3" onClick={e => e.stopPropagation()}>
               <div className="flex items-start justify-between gap-2">
