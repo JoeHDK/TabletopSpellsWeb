@@ -65,6 +65,22 @@ public class InventoryController : ControllerBase
     {
         if (!await OwnsCharacter(characterId)) return Forbid();
 
+        // Auto-populate bonuses from custom item if referenced
+        int? acBonus = req.AcBonus;
+        string? damageOverride = req.DamageOverride;
+        int? savingThrowBonus = null;
+
+        if (req.CustomItemId.HasValue)
+        {
+            var ci = await _db.CustomItems.FindAsync(req.CustomItemId.Value);
+            if (ci is not null)
+            {
+                acBonus ??= ci.AcBonus;
+                damageOverride ??= ci.Damage;
+                savingThrowBonus = ci.SavingThrowBonus;
+            }
+        }
+
         var item = new CharacterInventoryItemEntity
         {
             CharacterId = characterId,
@@ -73,11 +89,12 @@ public class InventoryController : ControllerBase
             CustomItemId = req.CustomItemId,
             Name = req.Name,
             Quantity = req.Quantity,
-            AcBonus = req.AcBonus,
+            AcBonus = acBonus,
             ArmorType = req.ArmorType,
-            DamageOverride = req.DamageOverride,
+            DamageOverride = damageOverride,
             IsTwoHanded = req.IsTwoHanded,
             Notes = req.Notes,
+            SavingThrowBonus = savingThrowBonus,
         };
 
         _db.InventoryItems.Add(item);
@@ -191,6 +208,7 @@ public class InventoryController : ControllerBase
         WisBonus = e.WisBonus,
         IntBonus = e.IntBonus,
         ChaBonus = e.ChaBonus,
+        SavingThrowBonus = e.SavingThrowBonus,
         Notes = e.Notes,
         GrantedByUsername = e.GrantedBy?.UserName,
         AcquiredAt = e.AcquiredAt,

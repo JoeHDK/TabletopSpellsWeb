@@ -22,6 +22,7 @@ public enum InventorySlot
     Neck = 11,
     Ring1 = 12,
     Ring2 = 13,
+    Back = 14,
 }
 public enum ItemSource { SRD, Custom }
 
@@ -49,6 +50,7 @@ public class CharacterInventoryItemEntity
     public int? WisBonus { get; set; }
     public int? IntBonus { get; set; }
     public int? ChaBonus { get; set; }
+    public int? SavingThrowBonus { get; set; }
     public string? Notes { get; set; }
     public string? GrantedByUserId { get; set; }
     public DateTime AcquiredAt { get; set; } = DateTime.UtcNow;

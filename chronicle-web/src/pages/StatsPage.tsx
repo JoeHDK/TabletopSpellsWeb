@@ -267,6 +267,15 @@ function crLabel(cr: number): string {
   return String(cr)
 }
 
+function crToProfBonus(cr: number): number {
+  if (cr <= 4) return 2
+  if (cr <= 8) return 3
+  if (cr <= 12) return 4
+  if (cr <= 16) return 5
+  if (cr <= 20) return 6
+  return 7
+}
+
 function getWildShapeLimits(level: number, subclass: string): { maxCr: number; allowFly: boolean; allowSwim: boolean } {
   const isMoon = subclass === 'DruidCircleOfTheMoon'
   let maxCr: number
@@ -769,6 +778,9 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const movementBonus = getMovementBonus(classFeatures)
   const charismaModifier = abilityMod('Charisma')
   const savingThrowChaBonus = getFeatModifier(classFeatures, 'saving_throw_cha_mod') * charismaModifier
+  const equippedSavingThrowBonus = inventory
+    .filter(i => i.isEquipped)
+    .reduce((s, i) => s + (i.savingThrowBonus ?? 0), 0)
   const passivePerception = 10 + abilityMod('Wisdom') + featPassivePercBonus
   const initiative = abilityMod('Dexterity') + featInitBonus
   const profBonusNum = Math.floor((d.level - 1) / 4) + 2
@@ -1367,12 +1379,21 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                           <div>
                             <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Attacks</p>
                             <div className="space-y-1">
-                              {activeBeast.attacks.map((atk, i) => (
-                                <div key={i} className="flex justify-between text-sm bg-gray-800 rounded-lg px-3 py-1.5">
-                                  <span className="font-medium">{atk.name}</span>
-                                  <span className="text-red-400">{atk.dice} <span className="text-gray-400 text-xs">{atk.type}</span></span>
-                                </div>
-                              ))}
+                              {activeBeast.attacks.map((atk, i) => {
+                                const score = atk.stat === 'dex' ? activeBeast.dex : activeBeast.str
+                                const statMod = Math.floor((score - 10) / 2)
+                                const toHit = statMod + crToProfBonus(activeBeast.cr)
+                                const dmgStr = `${atk.dice}${statMod !== 0 ? fmtMod(statMod) : ''} ${atk.type}`
+                                return (
+                                  <div key={i} className="flex justify-between items-center text-sm bg-gray-800 rounded-lg px-3 py-1.5">
+                                    <span className="font-medium">{atk.name}</span>
+                                    <div className="text-right">
+                                      <span className="text-indigo-300 font-bold">{fmtMod(toHit)}</span>
+                                      <span className="text-gray-400 text-xs ml-2">{dmgStr}</span>
+                                    </div>
+                                  </div>
+                                )
+                              })}
                             </div>
                           </div>
                         )}
@@ -1401,7 +1422,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
             const beastAttacks = activeBeast.attacks.map((atk, i) => {
               const score = atk.stat === 'dex' ? activeBeast.dex : activeBeast.str
               const statMod = Math.floor((score - 10) / 2)
-              const toHit = statMod + profBonusNum
+              const toHit = statMod + crToProfBonus(activeBeast.cr)
               const dmgStr = `${atk.dice}${statMod !== 0 ? fmtMod(statMod) : ''} ${atk.type}`
               return { id: `beast-${i}`, name: atk.name, toHit, dmgStr }
             })
@@ -1699,6 +1720,9 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                   {savingThrowChaBonus !== 0 && (
                     <span className="ml-1 text-indigo-400 normal-case">+{savingThrowChaBonus} CHA (aura)</span>
                   )}
+                  {equippedSavingThrowBonus !== 0 && (
+                    <span className="ml-1 text-blue-400 normal-case">{equippedSavingThrowBonus > 0 ? `+${equippedSavingThrowBonus}` : equippedSavingThrowBonus} (equipment)</span>
+                  )}
                 </h2>
                 {character.gameType === 'dnd5e' && CLASS_SAVING_THROWS[character.characterClass] && (
                   <button
@@ -1712,7 +1736,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                 {saveList.map(({ name, ability }) => {
                   const isProficient = d.savingThrowProficiencies.includes(name)
                   const isClassSave = character.gameType === 'dnd5e' && (CLASS_SAVING_THROWS[character.characterClass] ?? []).includes(name)
-                  const total = abilityMod(ability) + (isProficient ? profBonusNum : 0) + savingThrowChaBonus
+                  const total = abilityMod(ability) + (isProficient ? profBonusNum : 0) + savingThrowChaBonus + equippedSavingThrowBonus
                   return (
                     <button
                       key={name}

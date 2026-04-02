@@ -30,6 +30,7 @@ public class CustomItemDto
     [JsonProperty("wis_bonus")] public int? WisBonus { get; set; }
     [JsonProperty("int_bonus")] public int? IntBonus { get; set; }
     [JsonProperty("cha_bonus")] public int? ChaBonus { get; set; }
+    [JsonProperty("saving_throw_bonus")] public int? SavingThrowBonus { get; set; }
     [JsonProperty("createdAt")] public DateTime CreatedAt { get; set; }
 }
 
@@ -54,4 +55,5 @@ public class SaveCustomItemRequest
     [JsonProperty("wis_bonus")] public int? WisBonus { get; set; }
     [JsonProperty("int_bonus")] public int? IntBonus { get; set; }
     [JsonProperty("cha_bonus")] public int? ChaBonus { get; set; }
+    [JsonProperty("saving_throw_bonus")] public int? SavingThrowBonus { get; set; }
 }

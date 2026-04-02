@@ -26,6 +26,7 @@ public class CustomItemEntity
     public int? WisBonus { get; set; }
     public int? IntBonus { get; set; }
     public int? ChaBonus { get; set; }
+    public int? SavingThrowBonus { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [ForeignKey(nameof(UserId))] public AppUser? User { get; set; }

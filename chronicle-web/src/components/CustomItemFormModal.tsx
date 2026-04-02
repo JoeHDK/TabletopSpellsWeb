@@ -48,6 +48,8 @@ export default function CustomItemFormModal({ item, onSave, onClose, isSaving }:
         damage: item.damage ?? '',
         damage_entries: item.damage_entries ?? [],
         properties: item.properties,
+        ac_bonus: item.ac_bonus,
+        saving_throw_bonus: item.saving_throw_bonus,
       })
       setPropertiesInput(item.properties.join(', '))
     } else {
@@ -250,6 +252,30 @@ export default function CustomItemFormModal({ item, onSave, onClose, isSaving }:
               className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none"
               placeholder="e.g. Finesse, Light, Thrown"
             />
+          </div>
+
+          {/* Bonuses */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">AC Bonus</label>
+              <input
+                type="number"
+                value={form.ac_bonus ?? ''}
+                onChange={(e) => set('ac_bonus', e.target.value ? Number(e.target.value) : undefined)}
+                className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                placeholder="+1, +2…"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Save Bonus (all saves)</label>
+              <input
+                type="number"
+                value={form.saving_throw_bonus ?? ''}
+                onChange={(e) => set('saving_throw_bonus', e.target.value ? Number(e.target.value) : undefined)}
+                className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+                placeholder="+1, +2…"
+              />
+            </div>
           </div>
 
           {/* Description */}

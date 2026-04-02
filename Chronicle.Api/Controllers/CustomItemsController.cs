@@ -61,6 +61,7 @@ public class CustomItemsController : ControllerBase
             WisBonus = req.WisBonus,
             IntBonus = req.IntBonus,
             ChaBonus = req.ChaBonus,
+            SavingThrowBonus = req.SavingThrowBonus,
         };
 
         _db.CustomItems.Add(entity);
@@ -96,6 +97,7 @@ public class CustomItemsController : ControllerBase
         entity.WisBonus = req.WisBonus;
         entity.IntBonus = req.IntBonus;
         entity.ChaBonus = req.ChaBonus;
+        entity.SavingThrowBonus = req.SavingThrowBonus;
 
         await _db.SaveChangesAsync();
         return Ok(ToDto(entity));
@@ -137,6 +139,7 @@ public class CustomItemsController : ControllerBase
         WisBonus = e.WisBonus,
         IntBonus = e.IntBonus,
         ChaBonus = e.ChaBonus,
+        SavingThrowBonus = e.SavingThrowBonus,
         CreatedAt = e.CreatedAt,
     };
 }

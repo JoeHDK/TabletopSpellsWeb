@@ -26,6 +26,7 @@ public class InventoryItemDto
     public int? WisBonus { get; set; }
     public int? IntBonus { get; set; }
     public int? ChaBonus { get; set; }
+    public int? SavingThrowBonus { get; set; }
     public string? Notes { get; set; }
     public string? GrantedByUsername { get; set; }
     public DateTime AcquiredAt { get; set; }
@@ -53,6 +54,7 @@ public class AddInventoryItemRequest
     public int? WisBonus { get; set; }
     public int? IntBonus { get; set; }
     public int? ChaBonus { get; set; }
+    public int? SavingThrowBonus { get; set; }
     [StringLength(500)]
     public string? Notes { get; set; }
 }

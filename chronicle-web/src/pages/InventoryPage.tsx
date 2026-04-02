@@ -14,14 +14,14 @@ import type {
 
 const SLOTS: InventorySlot[] = [
   'Head', 'Chest', 'Legs', 'Hands', 'Feet',
-  'MainHand', 'OffHand', 'Neck', 'Ring1', 'Ring2',
+  'MainHand', 'OffHand', 'Neck', 'Ring1', 'Ring2', 'Back',
   // Legacy slots kept for backwards-compat items
   'Armor', 'Weapon', 'Offhand', 'Accessory',
 ]
 
 const EQUIPPED_PANEL_SLOTS: InventorySlot[] = [
   'Head', 'Chest', 'Legs', 'Hands', 'Feet',
-  'MainHand', 'OffHand', 'Neck', 'Ring1', 'Ring2',
+  'MainHand', 'OffHand', 'Neck', 'Ring1', 'Ring2', 'Back',
 ]
 const RARITIES = ['Common', 'Uncommon', 'Rare', 'Very Rare', 'Legendary', 'Artifact', 'Varies']
 const ARMOR_TYPES: ArmorType[] = ['None', 'Light', 'Medium', 'Heavy']
@@ -44,6 +44,7 @@ const SLOT_ICON: Record<InventorySlot, string> = {
   Neck: '📿',
   Ring1: '💍',
   Ring2: '💍',
+  Back: '🧣',
   // Legacy
   Armor: '🛡',
   Weapon: '⚔️',
@@ -62,6 +63,7 @@ const SLOT_LABEL: Record<InventorySlot, string> = {
   Neck: 'Neck',
   Ring1: 'Ring 1',
   Ring2: 'Ring 2',
+  Back: 'Back',
   // Legacy
   Armor: 'Armor',
   Weapon: 'Main Hand',
@@ -83,6 +85,7 @@ function guessSlot(item: InventoryItem): InventorySlot {
   if (/sword|axe|bow|dagger|hammer|mace|spear|staff|wand|flail|scimitar|rapier|lance|pike|halberd|glaive|crossbow|sling|trident|whip|quarterstaff|shortsword|longsword|greatsword|handaxe|battleaxe|greataxe/.test(name)) return 'MainHand'
   if (/necklace|amulet|pendant|collar/.test(name)) return 'Neck'
   if (/ring/.test(name)) return 'Ring1'
+  if (/cloak|cape|mantle|shroud/.test(name)) return 'Back'
   return 'Accessory'
 }
 
@@ -116,6 +119,12 @@ function InventoryItemModal({ item, onClose }: { item: InventoryItem; onClose: (
             <div className="flex justify-between">
               <span className="text-gray-400">{(item.armorType && item.armorType !== 'None') || lookupArmor(item.name) ? 'Base AC' : 'AC Bonus'}</span>
               <span className="text-green-400 font-medium">{(item.armorType && item.armorType !== 'None') || lookupArmor(item.name) ? item.acBonus : `+${item.acBonus}`}</span>
+            </div>
+          )}
+          {item.savingThrowBonus != null && item.savingThrowBonus !== 0 && (
+            <div className="flex justify-between">
+              <span className="text-gray-400">Saving Throw Bonus</span>
+              <span className="text-blue-400 font-medium">{item.savingThrowBonus > 0 ? `+${item.savingThrowBonus}` : item.savingThrowBonus} to all saves</span>
             </div>
           )}
           {item.armorType && item.armorType !== 'None' && (

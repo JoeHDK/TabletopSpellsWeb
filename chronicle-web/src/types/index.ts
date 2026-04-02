@@ -199,6 +199,7 @@ export interface CustomItem {
   wis_bonus?: number
   int_bonus?: number
   cha_bonus?: number
+  saving_throw_bonus?: number
   properties: string[]
   createdAt: string
 }
@@ -222,6 +223,7 @@ export interface SaveCustomItemRequest {
   wis_bonus?: number
   int_bonus?: number
   cha_bonus?: number
+  saving_throw_bonus?: number
   properties: string[]
 }
 
@@ -282,7 +284,7 @@ export interface LinkCharacterRequest {
 export type InventorySlot =
   | 'Armor' | 'Weapon' | 'Offhand' | 'Accessory'
   | 'Head' | 'Chest' | 'Legs' | 'Hands' | 'Feet'
-  | 'MainHand' | 'OffHand' | 'Neck' | 'Ring1' | 'Ring2'
+  | 'MainHand' | 'OffHand' | 'Neck' | 'Ring1' | 'Ring2' | 'Back'
 export type ItemSource = 'SRD' | 'Custom'
 export type ArmorType = 'None' | 'Light' | 'Medium' | 'Heavy'
 
@@ -306,6 +308,7 @@ export interface InventoryItem {
   wisBonus?: number
   intBonus?: number
   chaBonus?: number
+  savingThrowBonus?: number
   notes?: string
   grantedByUsername?: string
   acquiredAt: string
@@ -364,6 +367,7 @@ export interface GiveItemRequest {
   wisBonus?: number
   intBonus?: number
   chaBonus?: number
+  savingThrowBonus?: number
   notes?: string
 }
 

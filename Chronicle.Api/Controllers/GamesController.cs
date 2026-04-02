@@ -313,6 +313,7 @@ public class GamesController : ControllerBase
             : null;
         int? strBonus = req.StrBonus, conBonus = req.ConBonus, dexBonus = req.DexBonus;
         int? wisBonus = req.WisBonus, intBonus = req.IntBonus, chaBonus = req.ChaBonus;
+        int? savingThrowBonus = req.SavingThrowBonus;
         string? notes = req.Notes;
 
         if (req.CustomItemId.HasValue)
@@ -329,6 +330,7 @@ public class GamesController : ControllerBase
                 wisBonus ??= ci.WisBonus;
                 intBonus ??= ci.IntBonus;
                 chaBonus ??= ci.ChaBonus;
+                savingThrowBonus ??= ci.SavingThrowBonus;
                 notes ??= ci.Description;
             }
         }
@@ -351,6 +353,7 @@ public class GamesController : ControllerBase
             WisBonus = wisBonus,
             IntBonus = intBonus,
             ChaBonus = chaBonus,
+            SavingThrowBonus = savingThrowBonus,
             Notes = notes,
             GrantedByUserId = UserId,
         };
