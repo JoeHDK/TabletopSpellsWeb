@@ -185,6 +185,14 @@ function ItemDetailModal({ item, onClose }: { item: Item; onClose: () => void })
             </span>
           )}
           {item.damage && <span className="px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">⚔ {item.damage}</span>}
+          {item.acBonus != null && (
+            <span className="px-2 py-0.5 rounded-full bg-green-900/50 text-green-300">
+              🛡 AC {item.acBonus}{item.armorType === 'Shield' ? ' bonus' : ''}
+            </span>
+          )}
+          {item.armorType && item.armorType !== 'Shield' && (
+            <span className="px-2 py-0.5 rounded-full bg-yellow-900/50 text-yellow-300">{item.armorType} Armor</span>
+          )}
           {item.cost && <span className="px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">💰 {item.cost}</span>}
           {item.weight != null && <span className="px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">⚖ {item.weight} lb</span>}
         </div>
@@ -272,17 +280,25 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
 
   // Derived
   const equippedItems = items.filter(i => i.isEquipped)
-  // Check both new 'Chest' slot and legacy 'Armor' slot for armor items
+  // Check both new 'Chest' slot and legacy 'Armor' slot — also accept items where lookupArmor matches (legacy items without armorType set in DB)
   const armorItem = equippedItems.find(i =>
-    (i.equippedSlot === 'Chest' || i.equippedSlot === 'Armor') && i.armorType && i.armorType !== 'None'
+    (i.equippedSlot === 'Chest' || i.equippedSlot === 'Armor') &&
+    ((i.armorType && i.armorType !== 'None') || lookupArmor(i.name) !== undefined)
   )
   const shieldBonus = equippedItems
     .filter(i => i.equippedSlot !== 'Armor' && i.equippedSlot !== 'Chest' && i.acBonus != null)
     .reduce((s, i) => s + (i.acBonus ?? 0), 0)
   const dexMod = character?.abilityScores ? Math.floor(((character.abilityScores['Dexterity'] ?? 10) - 10) / 2) : 0
-  const displayAC = armorItem?.armorType && armorItem.armorType !== 'None'
-    ? (armorItem.acBonus ?? 0) + (armorItem.armorType === 'Light' ? dexMod : armorItem.armorType === 'Medium' ? Math.min(dexMod, 2) : 0) + shieldBonus + (character?.baseArmorClass ?? 0)
-    : (character?.baseArmorClass ?? 0) + equippedItems.filter(i => i.acBonus != null).reduce((s, i) => s + (i.acBonus ?? 0), 0)
+  const displayAC = (() => {
+    if (!armorItem) {
+      return (character?.baseArmorClass ?? 0) + equippedItems.filter(i => i.acBonus != null).reduce((s, i) => s + (i.acBonus ?? 0), 0) + dexMod
+    }
+    const armorLookup = lookupArmor(armorItem.name)
+    const resolvedType = (armorItem.armorType && armorItem.armorType !== 'None') ? armorItem.armorType : armorLookup?.type
+    const base = armorItem.acBonus ?? armorLookup?.ac ?? 0
+    const dexContrib = resolvedType === 'Light' ? dexMod : resolvedType === 'Medium' ? Math.min(dexMod, 2) : 0
+    return base + dexContrib + shieldBonus + (character?.baseArmorClass ?? 0)
+  })()
 
   const filteredItems = useMemo(() => {
     if (!invSearch.trim()) return items
@@ -377,7 +393,10 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
   }
 
   const handleAddFromBrowse = (item: Item, isCustom: boolean) => {
-    const armorEntry = lookupArmor(item.name)
+    // Prefer explicit acBonus/armorType from JSON; fall back to ARMOR_TABLE lookup for custom items
+    const armorEntry = (item.acBonus != null && item.armorType) ? null : lookupArmor(item.name)
+    const resolvedAcBonus = item.acBonus ?? armorEntry?.ac
+    const resolvedArmorType = item.armorType ?? armorEntry?.type
     addMutation.mutate({
       itemSource: isCustom ? 'Custom' : 'SRD',
       srdItemIndex: !isCustom ? item.index : undefined,
@@ -385,8 +404,8 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
       name: item.name,
       quantity: addQty,
       damageOverride: item.damage ?? undefined,
-      acBonus: armorEntry ? armorEntry.ac : undefined,
-      armorType: armorEntry ? armorEntry.type : undefined,
+      acBonus: resolvedAcBonus,
+      armorType: resolvedArmorType as import('../types').ArmorType | undefined,
     })
   }
 
@@ -943,6 +962,8 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                           <span className="text-xs text-indigo-400">{item.category}</span>
                           <span className={`text-xs px-1.5 py-0.5 rounded-full ${rarityColor(item.rarity)}`}>{item.rarity}</span>
                           {item.damage && <span className="text-xs text-gray-400">{item.damage}</span>}
+                          {item.acBonus != null && <span className="text-xs text-green-400">AC {item.acBonus}{item.armorType === 'Shield' ? ' bonus' : ''}</span>}
+                          {item.armorType && item.armorType !== 'Shield' && <span className="text-xs text-yellow-500">{item.armorType}</span>}
                         </div>
                       </button>
                       <button
@@ -1002,6 +1023,8 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                             {item.category && <span className="text-xs text-indigo-400">{item.category}</span>}
                             {item.rarity && <span className={`text-xs px-1.5 py-0.5 rounded-full ${rarityColor(item.rarity)}`}>{item.rarity}</span>}
                             {item.damage && <span className="text-xs text-gray-400">{item.damage}</span>}
+                            {item.acBonus != null && <span className="text-xs text-green-400">AC {item.acBonus}{item.armorType === 'Shield' ? ' bonus' : ''}</span>}
+                            {item.armorType && item.armorType !== 'Shield' && <span className="text-xs text-yellow-500">{item.armorType}</span>}
                           </div>
                         </button>
                         <button
@@ -1053,4 +1076,5 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
     </div>
   )
 }
+
 

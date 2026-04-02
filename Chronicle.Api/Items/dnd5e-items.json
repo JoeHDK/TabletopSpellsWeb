@@ -5995,14 +5995,16 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 14 + DEX modifier (max +2). Medium Armor. A fitted metal chest piece with light, flexible protection for the rest of the body.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "400 gp",
     "weight": 20,
     "damage": null,
     "properties": [],
-    "source": "SRD"
+    "source": "SRD",
+    "acBonus": 14,
+    "armorType": "Medium"
   },
   {
     "index": "brewers-supplies",
@@ -6235,14 +6237,19 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 16. Heavy Armor. Made of interlocking metal rings. Requires STR 13 or more to wear. Imposes disadvantage on Stealth checks.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "75 gp",
     "weight": 55,
     "damage": null,
-    "properties": [],
-    "source": "SRD"
+    "properties": [
+      "Stealth Disadvantage",
+      "Requires STR 13"
+    ],
+    "source": "SRD",
+    "acBonus": 16,
+    "armorType": "Heavy"
   },
   {
     "index": "chain-shirt",
@@ -6250,14 +6257,16 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 13 + DEX modifier (max +2). Medium Armor. Made of interlocking metal rings, a chain shirt is worn between layers of clothing or leather.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "50 gp",
     "weight": 20,
     "damage": null,
     "properties": [],
-    "source": "SRD"
+    "source": "SRD",
+    "acBonus": 13,
+    "armorType": "Medium"
   },
   {
     "index": "chalk-1-piece",
@@ -6965,14 +6974,18 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 15 + DEX modifier (max +2). Medium Armor. Half plate consists of shaped metal plates that cover most of the wearer's body. Imposes disadvantage on Stealth checks.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "750 gp",
     "weight": 40,
     "damage": null,
-    "properties": [],
-    "source": "SRD"
+    "properties": [
+      "Stealth Disadvantage"
+    ],
+    "source": "SRD",
+    "acBonus": 15,
+    "armorType": "Medium"
   },
   {
     "index": "hammer",
@@ -7059,14 +7072,16 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 12 + DEX modifier (max +2). Medium Armor. This crude armor consists of thick furs and pelts.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "10 gp",
     "weight": 12,
     "damage": null,
     "properties": [],
-    "source": "SRD"
+    "source": "SRD",
+    "acBonus": 12,
+    "armorType": "Medium"
   },
   {
     "index": "holy-water-flask",
@@ -7335,14 +7350,16 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 11. Light Armor. The breastplate and shoulder protectors of this armor are made of leather that has been stiffened by being boiled in oil.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "10 gp",
     "weight": 10,
     "damage": null,
     "properties": [],
-    "source": "SRD"
+    "source": "SRD",
+    "acBonus": 11,
+    "armorType": "Light"
   },
   {
     "index": "leatherworkers-tools",
@@ -7713,14 +7730,18 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 11. Light Armor. Quilted layers of cloth and batting. Imposes disadvantage on Stealth checks.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "5 gp",
     "weight": 8,
     "damage": null,
-    "properties": [],
-    "source": "SRD"
+    "properties": [
+      "Stealth Disadvantage"
+    ],
+    "source": "SRD",
+    "acBonus": 11,
+    "armorType": "Light"
   },
   {
     "index": "painters-supplies",
@@ -7852,14 +7873,19 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 18. Heavy Armor. Plate consists of shaped, interlocking metal plates covering the entire body. Requires STR 15 or more to wear. Imposes disadvantage on Stealth checks.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "1500 gp",
     "weight": 65,
     "damage": null,
-    "properties": [],
-    "source": "SRD"
+    "properties": [
+      "Stealth Disadvantage",
+      "Requires STR 15"
+    ],
+    "source": "SRD",
+    "acBonus": 18,
+    "armorType": "Heavy"
   },
   {
     "index": "playing-card-set",
@@ -8097,14 +8123,18 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 14. Heavy Armor. This armor is leather armor with heavy rings sewn into it. Imposes disadvantage on Stealth checks.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "30 gp",
     "weight": 40,
     "damage": null,
-    "properties": [],
-    "source": "SRD"
+    "properties": [
+      "Stealth Disadvantage"
+    ],
+    "source": "SRD",
+    "acBonus": 14,
+    "armorType": "Heavy"
   },
   {
     "index": "robes",
@@ -8292,14 +8322,18 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 14 + DEX modifier (max +2). Medium Armor. This armor consists of a coat and leggings of leather covered with overlapping pieces of metal. Imposes disadvantage on Stealth checks.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "50 gp",
     "weight": 45,
     "damage": null,
-    "properties": [],
-    "source": "SRD"
+    "properties": [
+      "Stealth Disadvantage"
+    ],
+    "source": "SRD",
+    "acBonus": 14,
+    "armorType": "Medium"
   },
   {
     "index": "scale-merchants",
@@ -8385,14 +8419,16 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC +2. While wielding this shield, you gain a +2 bonus to Armor Class.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "10 gp",
     "weight": 6,
     "damage": null,
     "properties": [],
-    "source": "SRD"
+    "source": "SRD",
+    "acBonus": 2,
+    "armorType": "Shield"
   },
   {
     "index": "shortbow",
@@ -8641,14 +8677,19 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 17. Heavy Armor. This armor is made of narrow vertical strips of metal riveted to a backing of leather. Requires STR 15 or more to wear. Imposes disadvantage on Stealth checks.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "200 gp",
     "weight": 60,
     "damage": null,
-    "properties": [],
-    "source": "SRD"
+    "properties": [
+      "Stealth Disadvantage",
+      "Requires STR 15"
+    ],
+    "source": "SRD",
+    "acBonus": 17,
+    "armorType": "Heavy"
   },
   {
     "index": "sprig-of-mistletoe",
@@ -8731,14 +8772,16 @@
     "item_type": "equipment",
     "category": "Armor",
     "rarity": "Common",
-    "description": "",
+    "description": "AC 12. Light Armor. Made from tough but flexible leather, studded leather is reinforced with close-set rivets or spikes.",
     "requires_attunement": false,
     "attunement_note": "",
     "cost": "45 gp",
     "weight": 13,
     "damage": null,
     "properties": [],
-    "source": "SRD"
+    "source": "SRD",
+    "acBonus": 12,
+    "armorType": "Light"
   },
   {
     "index": "tent-two-person",

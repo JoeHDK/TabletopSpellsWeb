@@ -161,6 +161,8 @@ export interface Item {
   damage?: string
   properties: string[]
   source: string
+  acBonus?: number
+  armorType?: string
 }
 
 export interface AuthResponse {
