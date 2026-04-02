@@ -21,8 +21,12 @@ export function RichTextDisplay({ html, className }: RichTextDisplayProps) {
   } else if (!trimmed.startsWith('<')) {
     raw = looksLikeMarkdown(trimmed) ? (marked.parse(trimmed) as string) : `<p>${trimmed}</p>`
   } else {
-    // HTML content: strip tags and check text nodes for embedded markdown patterns
-    const textOnly = trimmed.replace(/<[^>]+>/g, '')
+    // HTML content: preserve newlines at block boundaries before stripping tags
+    const textOnly = trimmed
+      .replace(/<\/(p|h[1-6]|li|blockquote|div|tr|td)>/gi, '\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .trim()
     raw = looksLikeMarkdown(textOnly) ? (marked.parse(textOnly) as string) : trimmed
   }
   const safe = DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } })
