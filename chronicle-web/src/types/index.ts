@@ -324,6 +324,7 @@ export interface AddInventoryItemRequest {
   armorType?: ArmorType
   damageOverride?: string
   isTwoHanded?: boolean
+  savingThrowBonus?: number
   notes?: string
 }
 
@@ -333,6 +334,7 @@ export interface EquipItemRequest {
   armorType?: ArmorType
   acBonus?: number
   isTwoHanded?: boolean
+  savingThrowBonus?: number
 }
 
 export interface PartyMember {

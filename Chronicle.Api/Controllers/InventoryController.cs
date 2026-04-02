@@ -115,6 +115,7 @@ public class InventoryController : ControllerBase
         item.EquippedSlot = req.IsEquipped ? req.Slot : null;
         if (req.ArmorType.HasValue) item.ArmorType = req.ArmorType.Value;
         if (req.AcBonus.HasValue) item.AcBonus = req.AcBonus.Value;
+        if (req.SavingThrowBonus.HasValue) item.SavingThrowBonus = req.SavingThrowBonus.Value;
         if (req.IsEquipped && req.IsTwoHanded) item.IsTwoHanded = req.IsTwoHanded;
 
         if (req.IsEquipped && (req.Slot == InventorySlot.Ring1 || req.Slot == InventorySlot.Ring2))

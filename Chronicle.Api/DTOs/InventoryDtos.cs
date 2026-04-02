@@ -66,4 +66,5 @@ public class EquipItemRequest
     public ArmorType? ArmorType { get; set; }
     public int? AcBonus { get; set; }
     public bool IsTwoHanded { get; set; }
+    public int? SavingThrowBonus { get; set; }
 }

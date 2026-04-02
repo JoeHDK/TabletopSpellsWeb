@@ -90,6 +90,7 @@ function guessSlot(item: InventoryItem): InventorySlot {
 }
 
 import { lookupArmor } from '../utils/armorTable'
+import { lookupProtection } from '../utils/protectionTable'
 
 function guessArmorType(name: string): ArmorType {
   return lookupArmor(name)?.type ?? 'None'
@@ -406,6 +407,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
     const armorEntry = (item.acBonus != null && item.armorType) ? null : lookupArmor(item.name)
     const resolvedAcBonus = item.acBonus ?? armorEntry?.ac
     const resolvedArmorType = item.armorType ?? armorEntry?.type
+    const protEntry = lookupProtection(item.name)
     addMutation.mutate({
       itemSource: isCustom ? 'Custom' : 'SRD',
       srdItemIndex: !isCustom ? item.index : undefined,
@@ -413,8 +415,9 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
       name: item.name,
       quantity: addQty,
       damageOverride: item.damage ?? undefined,
-      acBonus: resolvedAcBonus,
+      acBonus: resolvedAcBonus ?? protEntry?.acBonus,
       armorType: resolvedArmorType as import('../types').ArmorType | undefined,
+      savingThrowBonus: protEntry?.savingThrowBonus,
     })
   }
 
@@ -861,13 +864,15 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                     onClick={() => {
                       const armorEntry = (selectingSlot === 'Chest' || selectingSlot === 'Armor')
                         ? lookupArmor(item.name) : undefined
+                      const protEntry = lookupProtection(item.name)
                       equipMutation.mutate({
                         itemId: item.id,
                         req: {
                           isEquipped: true,
                           slot: selectingSlot,
                           armorType: armorEntry ? armorEntry.type : item.armorType,
-                          acBonus: armorEntry && item.acBonus == null ? armorEntry.ac : item.acBonus,
+                          acBonus: armorEntry && item.acBonus == null ? armorEntry.ac : (item.acBonus ?? protEntry?.acBonus),
+                          savingThrowBonus: item.savingThrowBonus ?? protEntry?.savingThrowBonus,
                         }
                       })
                       setSelectingSlot(null)
