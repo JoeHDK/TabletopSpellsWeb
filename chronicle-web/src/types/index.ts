@@ -652,6 +652,29 @@ export interface SessionNote {
   updatedAt: string
 }
 
+export interface CampaignLogEntry {
+  id: string
+  gameRoomId: string
+  authorUserId: string
+  authorUsername: string
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CampaignImage {
+  id: string
+  gameRoomId: string
+  uploaderUserId: string
+  fileName: string
+  contentType: string
+  fileSizeBytes: number
+  caption: string | null
+  isPublished: boolean
+  publishedToUserIds: string[] | null
+  createdAt: string
+}
+
 export interface EncounterTemplateCreature {
   id: string
   displayName: string

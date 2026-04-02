@@ -33,6 +33,8 @@ public class AppDbContext : IdentityDbContext<AppUser>
     public DbSet<GameLootItemEntity> GameLootItems => Set<GameLootItemEntity>();
     public DbSet<PushSubscriptionEntity> PushSubscriptions => Set<PushSubscriptionEntity>();
     public DbSet<CustomMonsterEntity> CustomMonsters => Set<CustomMonsterEntity>();
+    public DbSet<CampaignLogEntryEntity> CampaignLogEntries => Set<CampaignLogEntryEntity>();
+    public DbSet<CampaignImageEntity> CampaignImages => Set<CampaignImageEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -275,5 +277,35 @@ public class AppDbContext : IdentityDbContext<AppUser>
             .WithMany()
             .HasForeignKey(m => m.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<CampaignLogEntryEntity>()
+            .HasOne(e => e.GameRoom)
+            .WithMany()
+            .HasForeignKey(e => e.GameRoomId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<CampaignLogEntryEntity>()
+            .HasOne(e => e.Author)
+            .WithMany()
+            .HasForeignKey(e => e.AuthorUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<CampaignLogEntryEntity>()
+            .HasIndex(e => e.GameRoomId);
+
+        builder.Entity<CampaignImageEntity>()
+            .HasOne(i => i.GameRoom)
+            .WithMany()
+            .HasForeignKey(i => i.GameRoomId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<CampaignImageEntity>()
+            .HasOne(i => i.Uploader)
+            .WithMany()
+            .HasForeignKey(i => i.UploaderUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<CampaignImageEntity>()
+            .HasIndex(i => i.GameRoomId);
     }
 }

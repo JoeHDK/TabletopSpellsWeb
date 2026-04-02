@@ -37,6 +37,8 @@ services:
       Vapid__PublicKey: ${VAPID_PUBLIC_KEY}
       Vapid__PrivateKey: ${VAPID_PRIVATE_KEY}
     # No ports exposed directly — Caddy is the only entry point
+    volumes:
+      - uploads_data:/app/uploads
 
   caddy:
     image: caddy:alpine
@@ -59,3 +61,4 @@ volumes:
   postgres_data:
   caddy_data:
   caddy_config:
+  uploads_data:

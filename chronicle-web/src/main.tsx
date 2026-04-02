@@ -28,6 +28,8 @@ import FriendsPage from './pages/FriendsPage'
 import CreatureLibraryPage from './pages/CreatureLibraryPage'
 import CombatTrackerPage from './pages/CombatTrackerPage'
 import SessionPlannerPage from './pages/SessionPlannerPage'
+import CampaignLogPage from './pages/CampaignLogPage'
+import CampaignImagesPage from './pages/CampaignImagesPage'
 import FeatsPage from './pages/FeatsPage'
 import FeaturesPage from './pages/FeaturesPage'
 import SettingsPage from './pages/SettingsPage'
@@ -64,6 +66,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/creatures" element={<ProtectedRoute><CreatureLibraryPage /></ProtectedRoute>} />
           <Route path="/games/:id/combat" element={<ProtectedRoute><CombatTrackerPage /></ProtectedRoute>} />
           <Route path="/games/:id/planner" element={<ProtectedRoute><SessionPlannerPage /></ProtectedRoute>} />
+          <Route path="/games/:id/log" element={<ProtectedRoute><CampaignLogPage /></ProtectedRoute>} />
+          <Route path="/games/:id/images" element={<ProtectedRoute><CampaignImagesPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
