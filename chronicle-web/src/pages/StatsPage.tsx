@@ -203,13 +203,6 @@ const PF1E_SAVES = [
   { name: 'Will', ability: 'Wisdom' },
 ]
 
-// D&D 5e: fixed skill proficiency count at character creation
-const DND5E_SKILL_LIMIT: Record<string, number> = {
-  Barbarian: 2, Bard: 3, Cleric: 2, Druid: 2, Fighter: 2,
-  Monk: 2, Paladin: 2, Ranger: 3, Rogue: 4, Sorcerer: 2,
-  Warlock: 2, Wizard: 2, Artificer: 2,
-}
-
 // Pathfinder 1e: base skill ranks per level (add INT mod × level for total)
 const PF1E_SKILL_RANKS_PER_LEVEL: Record<string, number> = {
   Alchemist: 4, Barbarian: 4, Bard: 6, Cleric: 2, Druid: 4,

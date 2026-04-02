@@ -1033,8 +1033,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                             {item.category && <span className="text-xs text-indigo-400">{item.category}</span>}
                             {item.rarity && <span className={`text-xs px-1.5 py-0.5 rounded-full ${rarityColor(item.rarity)}`}>{item.rarity}</span>}
                             {item.damage && <span className="text-xs text-gray-400">{item.damage}</span>}
-                            {item.acBonus != null && <span className="text-xs text-green-400">AC {item.acBonus}{item.armorType === 'Shield' ? ' bonus' : ''}</span>}
-                            {item.armorType && item.armorType !== 'Shield' && <span className="text-xs text-yellow-500">{item.armorType}</span>}
+                            {item.ac_bonus != null && <span className="text-xs text-green-400">AC {item.ac_bonus}</span>}
                           </div>
                         </button>
                         <button
