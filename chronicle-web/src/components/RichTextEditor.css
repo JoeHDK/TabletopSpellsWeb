@@ -40,6 +40,15 @@
   margin-bottom: 0.15rem;
 }
 
+.tiptap h1,
+.tiptap-prose h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f9fafb;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
 .tiptap h2,
 .tiptap-prose h2 {
   font-size: 1.15rem;

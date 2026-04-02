@@ -14,7 +14,13 @@ interface RichTextDisplayProps {
 }
 
 export function RichTextDisplay({ html, className }: RichTextDisplayProps) {
-  const raw = html.trim().startsWith('<') ? html : `<p>${html}</p>`
+  let raw: string
+  if (!html.trim().startsWith('<') && looksLikeMarkdown(html)) {
+    // Plain markdown text — convert to HTML for display
+    raw = marked.parse(html) as string
+  } else {
+    raw = html.trim().startsWith('<') ? html : `<p>${html}</p>`
+  }
   const safe = DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } })
   return (
     <div
