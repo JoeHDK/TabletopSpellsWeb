@@ -519,6 +519,8 @@ function ClassSkillsSelector({ characterId, characterClass, classSkillProficienc
     </div>
   )
 }
+
+export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
