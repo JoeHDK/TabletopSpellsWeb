@@ -683,6 +683,7 @@ export interface CampaignLogEntry {
   gameRoomId: string
   authorUserId: string
   authorUsername: string
+  title?: string
   content: string
   createdAt: string
   updatedAt: string

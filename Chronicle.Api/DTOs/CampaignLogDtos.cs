@@ -8,6 +8,7 @@ public class CampaignLogEntryDto
     public Guid GameRoomId { get; set; }
     public string AuthorUserId { get; set; } = "";
     public string AuthorUsername { get; set; } = "";
+    public string? Title { get; set; }
     public string Content { get; set; } = "";
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -15,12 +16,18 @@ public class CampaignLogEntryDto
 
 public class CreateCampaignLogEntryRequest
 {
+    [MaxLength(200)]
+    public string? Title { get; set; }
+
     [Required, MaxLength(50_000)]
     public required string Content { get; set; }
 }
 
 public class UpdateCampaignLogEntryRequest
 {
+    [MaxLength(200)]
+    public string? Title { get; set; }
+
     [Required, MaxLength(50_000)]
     public required string Content { get; set; }
 }

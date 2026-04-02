@@ -53,6 +53,7 @@ public class CampaignLogController(AppDbContext db) : ControllerBase
             GameRoomId = gameRoomId,
             AuthorUserId = UserId,
             AuthorUsername = Username,
+            Title = request.Title,
             Content = request.Content,
         };
         db.CampaignLogEntries.Add(entry);
@@ -72,6 +73,7 @@ public class CampaignLogController(AppDbContext db) : ControllerBase
         var isDm = await IsDm(gameRoomId);
         if (entry.AuthorUserId != UserId && !isDm) return Forbid();
 
+        entry.Title = request.Title;
         entry.Content = request.Content;
         entry.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
@@ -100,6 +102,7 @@ public class CampaignLogController(AppDbContext db) : ControllerBase
         GameRoomId = e.GameRoomId,
         AuthorUserId = e.AuthorUserId,
         AuthorUsername = e.AuthorUsername,
+        Title = e.Title,
         Content = e.Content,
         CreatedAt = e.CreatedAt,
         UpdatedAt = e.UpdatedAt,

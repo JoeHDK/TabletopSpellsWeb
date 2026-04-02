@@ -16,6 +16,8 @@ public class CampaignLogEntryEntity
 
     [MaxLength(50_000)] public string Content { get; set; } = "";
 
+    [MaxLength(200)] public string? Title { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

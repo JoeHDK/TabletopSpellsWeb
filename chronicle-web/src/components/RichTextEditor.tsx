@@ -2,6 +2,8 @@ import DOMPurify from 'dompurify'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import { DOMParser as ProseMirrorDOMParser } from 'prosemirror-model'
+import { marked } from 'marked'
 import './RichTextEditor.css'
 
 // ── Shared display component ───────────────────────────────────────────────────
@@ -37,6 +39,11 @@ function btn(active: boolean) {
   }`
 }
 
+// Returns true if text contains common markdown patterns
+function looksLikeMarkdown(text: string): boolean {
+  return /^#{1,6}\s|^\s*[-*+]\s|\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|^\s*>\s|^\s*\d+\.\s|\[.+\]\(.+\)/m.test(text)
+}
+
 export function RichTextEditor({ content, onChange, placeholder, minRows = 6 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -45,6 +52,20 @@ export function RichTextEditor({ content, onChange, placeholder, minRows = 6 }: 
     ],
     content,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    editorProps: {
+      handlePaste(view, event) {
+        const text = event.clipboardData?.getData('text/plain') ?? ''
+        if (!text || !looksLikeMarkdown(text)) return false
+        event.preventDefault()
+        const htmlStr = DOMPurify.sanitize(marked.parse(text) as string, { USE_PROFILES: { html: true } })
+        const wrapper = document.createElement('div')
+        wrapper.innerHTML = htmlStr
+        const parser = ProseMirrorDOMParser.fromSchema(view.state.schema)
+        const slice = parser.parseSlice(wrapper)
+        view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView())
+        return true
+      },
+    },
   })
 
   if (!editor) return null
