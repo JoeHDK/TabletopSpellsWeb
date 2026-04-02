@@ -6,6 +6,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createIDBPersister } from './lib/queryPersister'
 import OfflineBanner from './components/OfflineBanner'
 import InstallPromptBanner from './components/InstallPromptBanner'
+import SplashScreen from './components/SplashScreen'
 import './index.css'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
@@ -37,6 +38,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
       <BrowserRouter>
+        <SplashScreen />
         <OfflineBanner />
         <InstallPromptBanner />
         <Routes>
