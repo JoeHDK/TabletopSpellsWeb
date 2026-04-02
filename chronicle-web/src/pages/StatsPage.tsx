@@ -352,33 +352,24 @@ function calculateAC(
     return { total, breakdown: parts.join(' '), isAutoCalc: true }
   }
 
-  // Fallback: no armorType set — use legacy formula (baseArmorClass + equipment AC + DEX for unarmored)
-  const legacyEquipBonus = equipped.filter(i => i.acBonus != null).reduce((s, i) => s + (i.acBonus ?? 0), 0)
-  if (legacyEquipBonus === 0) {
-    // Pure unarmored — check for class feature AC override (e.g. Draconic Resilience = 13+DEX)
-    const classFeatureAcBase = classFeatures.flatMap(f => f.modifiers)
-      .find(m => m.type === 'unarmored_ac_base')?.value ?? null
+  // No armor equipped — unarmored calculation (base 10 + DEX + any non-armor AC bonuses)
+  const classFeatureAcBase = classFeatures.flatMap(f => f.modifiers)
+    .find(m => m.type === 'unarmored_ac_base')?.value ?? null
 
-    let unarmoredBase = classFeatureAcBase ?? 10
-    let classNote = ''
-    if (!classFeatureAcBase) {
-      if (characterClass === 'Barbarian') { unarmoredBase += conMod; classNote = ` +${conMod} CON` }
-      else if (characterClass === 'Monk') { unarmoredBase += wisMod; classNote = ` +${wisMod} WIS` }
-    }
-    const unarmoredLabel = classFeatureAcBase ? `Draconic (${unarmoredBase})` : null
-    const total = unarmoredBase + dexMod + baseArmorClass + featAcBonus
-    const baseDisplay = unarmoredLabel ? `${unarmoredBase} (${unarmoredLabel})` : `${unarmoredBase}${classNote}`
-    const parts: string[] = [baseDisplay, `${dexMod >= 0 ? '+' : ''}${dexMod} DEX`]
-    if (baseArmorClass !== 0) parts.push(`${baseArmorClass >= 0 ? '+' : ''}${baseArmorClass} bonus`)
-    if (featAcBonus !== 0) parts.push(`${featAcBonus >= 0 ? '+' : ''}${featAcBonus} feats`)
-    return { total, breakdown: parts.join(' '), isAutoCalc: true }
+  let unarmoredBase = classFeatureAcBase ?? 10
+  let classNote = ''
+  if (!classFeatureAcBase) {
+    if (characterClass === 'Barbarian') { unarmoredBase += conMod; classNote = ` +${conMod} CON` }
+    else if (characterClass === 'Monk') { unarmoredBase += wisMod; classNote = ` +${wisMod} WIS` }
   }
-  // Has old-style equipment bonus — show as-is, suggest upgrade
-  return {
-    total: baseArmorClass + legacyEquipBonus + featAcBonus,
-    breakdown: `${baseArmorClass} base + ${legacyEquipBonus} gear${featAcBonus ? ` +${featAcBonus} feats` : ''}`,
-    isAutoCalc: false,
-  }
+  const unarmoredLabel = classFeatureAcBase ? `Draconic (${unarmoredBase})` : null
+  const total = unarmoredBase + dexMod + shieldBonus + baseArmorClass + featAcBonus
+  const baseDisplay = unarmoredLabel ? `${unarmoredBase} (${unarmoredLabel})` : `${unarmoredBase}${classNote}`
+  const parts: string[] = [baseDisplay, `${dexMod >= 0 ? '+' : ''}${dexMod} DEX`]
+  if (shieldBonus > 0) parts.push(`+${shieldBonus} bonus`)
+  if (baseArmorClass !== 0) parts.push(`${baseArmorClass >= 0 ? '+' : ''}${baseArmorClass} bonus`)
+  if (featAcBonus !== 0) parts.push(`${featAcBonus >= 0 ? '+' : ''}${featAcBonus} feats`)
+  return { total, breakdown: parts.join(' '), isAutoCalc: true }
 }
 
 function RaceSelector({ characterId, currentRace }: { characterId: string; currentRace?: string }) {
