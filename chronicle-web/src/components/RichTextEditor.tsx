@@ -14,12 +14,16 @@ interface RichTextDisplayProps {
 }
 
 export function RichTextDisplay({ html, className }: RichTextDisplayProps) {
+  const trimmed = html.trim()
   let raw: string
-  if (!html.trim().startsWith('<') && looksLikeMarkdown(html)) {
-    // Plain markdown text — convert to HTML for display
-    raw = marked.parse(html) as string
+  if (!trimmed) {
+    raw = ''
+  } else if (!trimmed.startsWith('<')) {
+    raw = looksLikeMarkdown(trimmed) ? (marked.parse(trimmed) as string) : `<p>${trimmed}</p>`
   } else {
-    raw = html.trim().startsWith('<') ? html : `<p>${html}</p>`
+    // HTML content: strip tags and check text nodes for embedded markdown patterns
+    const textOnly = trimmed.replace(/<[^>]+>/g, '')
+    raw = looksLikeMarkdown(textOnly) ? (marked.parse(textOnly) as string) : trimmed
   }
   const safe = DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } })
   return (
