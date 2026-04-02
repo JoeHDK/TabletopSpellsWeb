@@ -14,6 +14,7 @@ import EditableNumber from '../components/EditableNumber'
 import BeastPickerModal from '../components/BeastPickerModal'
 import { resizeImage } from '../utils/resizeImage'
 import { resolveClassName } from '../utils/spellUtils'
+import { lookupArmor } from '../utils/armorTable'
 import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, AbilityModKey, Beast, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race } from '../types'
 
 const ABILITY_KEYS = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma']
@@ -292,7 +293,11 @@ function calculateAC(
   const wisMod = Math.floor(((abilityScores['Wisdom'] ?? 10) - 10) / 2)
 
   const equipped = inventory.filter(i => i.isEquipped)
-  const armorItem = equipped.find(i => (i.equippedSlot === 'Chest' || i.equippedSlot === 'Armor') && i.armorType && i.armorType !== 'None')
+  // Find the chest/armor slot item — also accept items where lookupArmor matches (legacy items without armorType set)
+  const armorItem = equipped.find(i =>
+    (i.equippedSlot === 'Chest' || i.equippedSlot === 'Armor') &&
+    ((i.armorType && i.armorType !== 'None') || lookupArmor(i.name) !== undefined)
+  )
   const shieldBonus = equipped
     .filter(i => i.equippedSlot !== 'Chest' && i.equippedSlot !== 'Armor' && i.acBonus != null)
     .reduce((s, i) => s + (i.acBonus ?? 0), 0)
@@ -304,13 +309,16 @@ function calculateAC(
   // Flat AC bonuses from feats
   const featAcBonus = getFeatModifier(feats, 'ac')
 
-  if (armorItem?.armorType && armorItem.armorType !== 'None') {
-    const base = armorItem.acBonus ?? 0
+  if (armorItem) {
+    // Resolve AC base and armor type — prefer stored values, fall back to ARMOR_TABLE lookup
+    const armorLookup = lookupArmor(armorItem.name)
+    const resolvedType = (armorItem.armorType && armorItem.armorType !== 'None') ? armorItem.armorType : armorLookup?.type
+    const base = armorItem.acBonus ?? armorLookup?.ac ?? 0
     let dexContrib = 0
-    let armorLabel = armorItem.name || armorItem.armorType
-    if (armorItem.armorType === 'Light') {
+    let armorLabel = armorItem.name || resolvedType
+    if (resolvedType === 'Light') {
       dexContrib = dexMod
-    } else if (armorItem.armorType === 'Medium') {
+    } else if (resolvedType === 'Medium') {
       dexContrib = Math.min(dexMod, medArmorMaxDex)
       if (medArmorMaxDex > 2) armorLabel += ' (+3 DEX cap)'
     }

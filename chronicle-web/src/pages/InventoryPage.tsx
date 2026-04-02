@@ -377,6 +377,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
   }
 
   const handleAddFromBrowse = (item: Item, isCustom: boolean) => {
+    const armorEntry = lookupArmor(item.name)
     addMutation.mutate({
       itemSource: isCustom ? 'Custom' : 'SRD',
       srdItemIndex: !isCustom ? item.index : undefined,
@@ -384,6 +385,8 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
       name: item.name,
       quantity: addQty,
       damageOverride: item.damage ?? undefined,
+      acBonus: armorEntry ? armorEntry.ac : undefined,
+      armorType: armorEntry ? armorEntry.type : undefined,
     })
   }
 
