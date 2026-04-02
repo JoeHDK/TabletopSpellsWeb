@@ -1,5 +1,23 @@
 namespace Chronicle.Api.DTOs;
 
+public class MonsterAttackDto
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Name { get; set; } = string.Empty;
+    public int? AttackBonus { get; set; }
+    public string? Range { get; set; }
+    public string? HitDamage { get; set; }
+    public string? DamageType { get; set; }
+    public string? Description { get; set; }
+}
+
+public class MonsterSpellDto
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string Name { get; set; } = string.Empty;
+    public string? UsageNote { get; set; }
+}
+
 public class CustomMonsterDto
 {
     public Guid Id { get; set; }
@@ -17,6 +35,8 @@ public class CustomMonsterDto
     public int Wisdom { get; set; } = 10;
     public int Charisma { get; set; } = 10;
     public string? Description { get; set; }
+    public List<MonsterAttackDto> Attacks { get; set; } = [];
+    public List<MonsterSpellDto> Spells { get; set; } = [];
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -37,4 +57,6 @@ public class SaveCustomMonsterRequest
     public int Wisdom { get; set; } = 10;
     public int Charisma { get; set; } = 10;
     public string? Description { get; set; }
+    public List<MonsterAttackDto> Attacks { get; set; } = [];
+    public List<MonsterSpellDto> Spells { get; set; } = [];
 }

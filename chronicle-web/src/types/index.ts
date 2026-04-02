@@ -563,6 +563,22 @@ export interface MonsterTrait {
   description: string
 }
 
+export interface MonsterAttack {
+  id: string
+  name: string
+  attackBonus?: number
+  range?: string
+  hitDamage?: string
+  damageType?: string
+  description?: string
+}
+
+export interface MonsterSpell {
+  id: string
+  name: string
+  usageNote?: string
+}
+
 export interface MonsterSummary {
   name: string
   type: string
@@ -617,6 +633,8 @@ export interface CustomMonster {
   wisdom: number
   charisma: number
   description?: string
+  attacks: MonsterAttack[]
+  spells: MonsterSpell[]
   createdAt: string
   updatedAt: string
 }
@@ -636,6 +654,8 @@ export interface SaveCustomMonsterRequest {
   wisdom: number
   charisma: number
   description?: string
+  attacks: MonsterAttack[]
+  spells: MonsterSpell[]
 }
 
 // ── Encounters ────────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore'
 import { useEncounterConnection } from '../hooks/useEncounterConnection'
 import type { Encounter, EncounterCreature } from '../types'
 import AddCreatureModal from '../components/AddCreatureModal'
+import CombatCreatureStatBlockModal from '../components/CombatCreatureStatBlockModal'
 
 export default function CombatTrackerPage() {
   const { id } = useParams<{ id: string }>()
@@ -20,6 +21,7 @@ export default function CombatTrackerPage() {
   const [editingHp, setEditingHp] = useState<string | null>(null)
   const [hpDelta, setHpDelta] = useState('')
   const [rollingInitiative, setRollingInitiative] = useState(false)
+  const [statBlockCreature, setStatBlockCreature] = useState<EncounterCreature | null>(null)
 
   useEncounterConnection(id!)
 
@@ -273,7 +275,13 @@ export default function CombatTrackerPage() {
                         {isActive && <span className="text-indigo-400 text-xs font-bold shrink-0">▶</span>}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-white truncate">{c.displayName}</span>
+                            <button
+                              onClick={() => setStatBlockCreature(c)}
+                              className="font-semibold text-white hover:text-indigo-300 transition-colors truncate text-left"
+                              title="View stat block"
+                            >
+                              {c.displayName}
+                            </button>
                             {c.isPlayerCharacter && (
                               <span className="text-[10px] font-bold bg-indigo-700 text-indigo-200 px-1.5 py-0.5 rounded shrink-0">PC</span>
                             )}
@@ -360,6 +368,14 @@ export default function CombatTrackerPage() {
           gameRoomId={id}
           onClose={() => setShowAddCreature(false)}
           onAdd={(data) => addCreatureMutation.mutate(data)}
+        />
+      )}
+
+      {statBlockCreature && (
+        <CombatCreatureStatBlockModal
+          monsterName={statBlockCreature.monsterName}
+          displayName={statBlockCreature.displayName}
+          onClose={() => setStatBlockCreature(null)}
         />
       )}
     </div>

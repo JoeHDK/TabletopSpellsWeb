@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { monstersApi, customMonstersApi } from '../api/monsters'
-import type { MonsterSummary, Monster, CustomMonster, SaveCustomMonsterRequest } from '../types'
+import type { MonsterSummary, Monster, CustomMonster, SaveCustomMonsterRequest, MonsterAttack, MonsterSpell } from '../types'
 import CreatureStatBlockModal from '../components/CreatureStatBlockModal'
 
 function crDisplay(cr: number): string {
@@ -17,12 +17,26 @@ const CREATURE_TYPES = [
   'fey', 'fiend', 'giant', 'humanoid', 'monstrosity', 'ooze', 'plant', 'undead',
 ]
 
+const DAMAGE_TYPES = [
+  'slashing', 'piercing', 'bludgeoning', 'fire', 'cold', 'lightning',
+  'thunder', 'acid', 'poison', 'necrotic', 'radiant', 'force', 'psychic',
+]
+
+function newAttack(): MonsterAttack {
+  return { id: crypto.randomUUID(), name: '', attackBonus: undefined, range: '5 ft.', hitDamage: '', damageType: 'slashing', description: '' }
+}
+function newSpell(): MonsterSpell {
+  return { id: crypto.randomUUID(), name: '', usageNote: '' }
+}
+
 const emptyMonsterForm = (): SaveCustomMonsterRequest => ({
   name: '', type: 'humanoid', challengeRating: 0, hitPoints: 10, armorClass: 10,
   speed: '30 ft.', size: 'Medium',
   strength: 10, dexterity: 10, constitution: 10,
   intelligence: 10, wisdom: 10, charisma: 10,
   description: '',
+  attacks: [],
+  spells: [],
 })
 
 function CustomMonsterModal({
@@ -42,6 +56,8 @@ function CustomMonsterModal({
           strength: monster.strength, dexterity: monster.dexterity, constitution: monster.constitution,
           intelligence: monster.intelligence, wisdom: monster.wisdom, charisma: monster.charisma,
           description: monster.description ?? '',
+          attacks: monster.attacks ?? [],
+          spells: monster.spells ?? [],
         }
       : emptyMonsterForm()
   )
@@ -52,6 +68,14 @@ function CustomMonsterModal({
     const mod = Math.floor((score - 10) / 2)
     return mod >= 0 ? `+${mod}` : String(mod)
   }
+
+  const updateAttack = (id: string, patch: Partial<MonsterAttack>) =>
+    set('attacks', form.attacks.map(a => a.id === id ? { ...a, ...patch } : a))
+  const removeAttack = (id: string) => set('attacks', form.attacks.filter(a => a.id !== id))
+
+  const updateSpell = (id: string, patch: Partial<MonsterSpell>) =>
+    set('spells', form.spells.map(s => s.id === id ? { ...s, ...patch } : s))
+  const removeSpell = (id: string) => set('spells', form.spells.filter(s => s.id !== id))
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4" onClick={onClose}>
@@ -106,6 +130,7 @@ function CustomMonsterModal({
           </div>
         </div>
 
+        {/* Ability scores */}
         <div>
           <label className="block text-xs text-gray-400 mb-2">Ability Scores</label>
           <div className="grid grid-cols-6 gap-2">
@@ -124,6 +149,98 @@ function CustomMonsterModal({
           </div>
         </div>
 
+        {/* Attacks */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs text-gray-400 font-medium">Attacks</label>
+            <button type="button" onClick={() => set('attacks', [...form.attacks, newAttack()])}
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+              + Add Attack
+            </button>
+          </div>
+          {form.attacks.length === 0 ? (
+            <p className="text-xs text-gray-600 italic">No attacks defined.</p>
+          ) : (
+            <div className="space-y-3">
+              {form.attacks.map(atk => (
+                <div key={atk.id} className="bg-gray-800 rounded-lg p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input value={atk.name} onChange={e => updateAttack(atk.id, { name: e.target.value })}
+                      placeholder="Attack name (e.g. Longsword)"
+                      className="flex-1 bg-gray-700 text-white text-sm rounded px-2 py-1.5 border border-gray-600 focus:border-indigo-500 focus:outline-none" />
+                    <button type="button" onClick={() => removeAttack(atk.id)}
+                      className="text-gray-500 hover:text-red-400 text-xs transition-colors px-1">✕</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Attack Bonus</label>
+                      <input type="number" value={atk.attackBonus ?? ''} onChange={e => updateAttack(atk.id, { attackBonus: e.target.value === '' ? undefined : Number(e.target.value) })}
+                        placeholder="+5"
+                        className="w-full bg-gray-700 text-white text-sm rounded px-2 py-1 border border-gray-600 focus:border-indigo-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Range / Reach</label>
+                      <input value={atk.range ?? ''} onChange={e => updateAttack(atk.id, { range: e.target.value })}
+                        placeholder="5 ft."
+                        className="w-full bg-gray-700 text-white text-sm rounded px-2 py-1 border border-gray-600 focus:border-indigo-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Damage Dice</label>
+                      <input value={atk.hitDamage ?? ''} onChange={e => updateAttack(atk.id, { hitDamage: e.target.value })}
+                        placeholder="1d8+3"
+                        className="w-full bg-gray-700 text-white text-sm rounded px-2 py-1 border border-gray-600 focus:border-indigo-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-0.5">Damage Type</label>
+                      <select value={atk.damageType ?? ''} onChange={e => updateAttack(atk.id, { damageType: e.target.value })}
+                        className="w-full bg-gray-700 text-white text-sm rounded px-2 py-1 border border-gray-600 focus:outline-none">
+                        <option value="">—</option>
+                        {DAMAGE_TYPES.map(dt => <option key={dt} value={dt}>{dt.charAt(0).toUpperCase() + dt.slice(1)}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-0.5">Additional Effect / Description</label>
+                    <input value={atk.description ?? ''} onChange={e => updateAttack(atk.id, { description: e.target.value })}
+                      placeholder="On hit: target is grappled…"
+                      className="w-full bg-gray-700 text-white text-sm rounded px-2 py-1 border border-gray-600 focus:border-indigo-500 focus:outline-none" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Spells */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs text-gray-400 font-medium">Spells</label>
+            <button type="button" onClick={() => set('spells', [...form.spells, newSpell()])}
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+              + Add Spell
+            </button>
+          </div>
+          {form.spells.length === 0 ? (
+            <p className="text-xs text-gray-600 italic">No spells defined.</p>
+          ) : (
+            <div className="space-y-2">
+              {form.spells.map(sp => (
+                <div key={sp.id} className="flex gap-2 items-center bg-gray-800 rounded-lg px-3 py-2">
+                  <input value={sp.name} onChange={e => updateSpell(sp.id, { name: e.target.value })}
+                    placeholder="Spell name (e.g. Fireball)"
+                    className="flex-1 bg-gray-700 text-white text-sm rounded px-2 py-1 border border-gray-600 focus:border-indigo-500 focus:outline-none" />
+                  <input value={sp.usageNote ?? ''} onChange={e => updateSpell(sp.id, { usageNote: e.target.value })}
+                    placeholder="3/day"
+                    className="w-24 bg-gray-700 text-white text-sm rounded px-2 py-1 border border-gray-600 focus:border-indigo-500 focus:outline-none" />
+                  <button type="button" onClick={() => removeSpell(sp.id)}
+                    className="text-gray-500 hover:text-red-400 text-xs transition-colors">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Description */}
         <div>
           <label className="block text-xs text-gray-400 mb-1">Description / Notes</label>
           <textarea rows={3} value={form.description ?? ''} onChange={e => set('description', e.target.value || undefined)}

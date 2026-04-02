@@ -21,6 +21,8 @@ public class CustomMonsterEntity
     public int Wisdom { get; set; } = 10;
     public int Charisma { get; set; } = 10;
     public string? Description { get; set; }
+    public string AttacksJson { get; set; } = "[]";
+    public string SpellsJson { get; set; } = "[]";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

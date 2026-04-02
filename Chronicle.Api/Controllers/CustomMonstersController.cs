@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text.Json;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
@@ -49,6 +50,8 @@ public class CustomMonstersController : ControllerBase
             Wisdom = req.Wisdom,
             Charisma = req.Charisma,
             Description = req.Description,
+            AttacksJson = JsonSerializer.Serialize(req.Attacks),
+            SpellsJson = JsonSerializer.Serialize(req.Spells),
         };
 
         _db.CustomMonsters.Add(entity);
@@ -76,6 +79,8 @@ public class CustomMonstersController : ControllerBase
         entity.Wisdom = req.Wisdom;
         entity.Charisma = req.Charisma;
         entity.Description = req.Description;
+        entity.AttacksJson = JsonSerializer.Serialize(req.Attacks);
+        entity.SpellsJson = JsonSerializer.Serialize(req.Spells);
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -110,6 +115,8 @@ public class CustomMonstersController : ControllerBase
         Wisdom = e.Wisdom,
         Charisma = e.Charisma,
         Description = e.Description,
+        Attacks = JsonSerializer.Deserialize<List<MonsterAttackDto>>(e.AttacksJson) ?? [],
+        Spells = JsonSerializer.Deserialize<List<MonsterSpellDto>>(e.SpellsJson) ?? [],
         CreatedAt = e.CreatedAt,
         UpdatedAt = e.UpdatedAt,
     };
