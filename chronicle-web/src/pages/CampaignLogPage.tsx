@@ -85,7 +85,7 @@ function LogEntryCard({
       {/* Collapsible body */}
       <div
         className="transition-all duration-300 ease-in-out overflow-hidden"
-        style={{ maxHeight: open ? '2000px' : '0px', opacity: open ? 1 : 0 }}
+        style={{ maxHeight: open ? '100000px' : '0px', opacity: open ? 1 : 0 }}
       >
         <div className="px-4 pb-4 pt-1">
           {isEditing ? (

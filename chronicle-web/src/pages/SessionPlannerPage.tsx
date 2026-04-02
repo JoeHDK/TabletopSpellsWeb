@@ -362,7 +362,7 @@ function SessionsTab({ gameRoomId }: SessionsTabProps) {
                 {/* Expandable content with animation */}
                 <div
                   className="overflow-hidden transition-all duration-300 ease-in-out"
-                  style={{ maxHeight: isExpanded ? '2000px' : '0px' }}
+                  style={{ maxHeight: isExpanded ? '100000px' : '0px' }}
                 >
                   <div className="px-4 pb-4 border-t border-gray-800 pt-3">
                     {note.content && (
