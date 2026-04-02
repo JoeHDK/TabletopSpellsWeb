@@ -613,11 +613,11 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   })
 
   const equipResMutation = useMutation({
-    mutationFn: ({ action, usageId }: { action: 'use' | 'restore' | 'rest-short' | 'rest-long', usageId?: string }) => {
-      if (action === 'use') return equipmentResourcesApi.use(id!, usageId!)
-      if (action === 'restore') return equipmentResourcesApi.restore(id!, usageId!)
-      if (action === 'rest-short') return equipmentResourcesApi.rest(id!, 'short')
-      return equipmentResourcesApi.rest(id!, 'long')
+    mutationFn: async ({ action, usageId }: { action: 'use' | 'restore' | 'rest-short' | 'rest-long', usageId?: string }) => {
+      if (action === 'use') await equipmentResourcesApi.use(id!, usageId!)
+      else if (action === 'restore') await equipmentResourcesApi.restore(id!, usageId!)
+      else if (action === 'rest-short') await equipmentResourcesApi.rest(id!, 'short')
+      else await equipmentResourcesApi.rest(id!, 'long')
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['equipment-resources', id] }),
   })
