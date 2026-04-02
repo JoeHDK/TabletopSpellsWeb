@@ -18,6 +18,7 @@ public class CharacterDto
     public List<string> AlwaysPreparedSpells { get; set; } = new();
     public List<string> SavingThrowProficiencies { get; set; } = new();
     public List<string> SkillProficiencies { get; set; } = new();
+    public List<string> ClassSkillProficiencies { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public int MaxHp { get; set; }
@@ -108,6 +109,7 @@ public class UpdateCharacterRequest
     public int? BaseArmorClass { get; set; }
     public List<string>? SavingThrowProficiencies { get; set; }
     public List<string>? SkillProficiencies { get; set; }
+    public List<string>? ClassSkillProficiencies { get; set; }
     public string? Race { get; set; }
 }
 

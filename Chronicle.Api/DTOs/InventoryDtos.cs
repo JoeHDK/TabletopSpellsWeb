@@ -62,5 +62,6 @@ public class EquipItemRequest
     public bool IsEquipped { get; set; }
     public InventorySlot? Slot { get; set; }
     public ArmorType? ArmorType { get; set; }
+    public int? AcBonus { get; set; }
     public bool IsTwoHanded { get; set; }
 }

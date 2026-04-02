@@ -22,6 +22,7 @@ public class CharacterEntity
     [Column(TypeName = "jsonb")] public string AlwaysPreparedSpellsJson { get; set; } = "[]";
     [Column(TypeName = "jsonb")] public string SavingThrowProficienciesJson { get; set; } = "[]";
     [Column(TypeName = "jsonb")] public string SkillProficienciesJson { get; set; } = "[]";
+    [Column(TypeName = "jsonb")] public string ClassSkillProficienciesJson { get; set; } = "[]";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

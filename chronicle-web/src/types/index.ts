@@ -20,6 +20,7 @@ export interface Character {
   alwaysPreparedSpells: string[]
   savingThrowProficiencies: string[]
   skillProficiencies: string[]
+  classSkillProficiencies: string[]
   createdAt: string
   updatedAt: string
   maxHp: number
@@ -89,6 +90,7 @@ export interface UpdateCharacterRequest {
   baseArmorClass?: number
   savingThrowProficiencies?: string[]
   skillProficiencies?: string[]
+  classSkillProficiencies?: string[]
 }
 
 export interface Spell {
@@ -326,6 +328,7 @@ export interface EquipItemRequest {
   isEquipped: boolean
   slot?: InventorySlot
   armorType?: ArmorType
+  acBonus?: number
   isTwoHanded?: boolean
 }
 

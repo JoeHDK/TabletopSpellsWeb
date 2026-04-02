@@ -57,6 +57,23 @@ const BACKGROUND_SKILLS: Record<string, string[]> = {
   'urchin': ['Sleight of Hand', 'Stealth'],
 }
 
+// D&D 5e class skill options (player picks N from list; store chosen in classSkillProficiencies)
+const CLASS_SKILL_OPTIONS: Record<string, { skills: string[]; pick: number }> = {
+  Barbarian: { pick: 2, skills: ['Animal Handling', 'Athletics', 'Intimidation', 'Nature', 'Perception', 'Survival'] },
+  Bard:      { pick: 3, skills: ['Acrobatics', 'Animal Handling', 'Arcana', 'Athletics', 'Deception', 'History', 'Insight', 'Intimidation', 'Investigation', 'Medicine', 'Nature', 'Perception', 'Performance', 'Persuasion', 'Religion', 'Sleight of Hand', 'Stealth', 'Survival'] },
+  Cleric:    { pick: 2, skills: ['History', 'Insight', 'Medicine', 'Persuasion', 'Religion'] },
+  Druid:     { pick: 2, skills: ['Arcana', 'Animal Handling', 'Insight', 'Medicine', 'Nature', 'Perception', 'Religion', 'Survival'] },
+  Fighter:   { pick: 2, skills: ['Acrobatics', 'Animal Handling', 'Athletics', 'History', 'Insight', 'Intimidation', 'Perception', 'Survival'] },
+  Monk:      { pick: 2, skills: ['Acrobatics', 'Athletics', 'History', 'Insight', 'Religion', 'Stealth'] },
+  Paladin:   { pick: 2, skills: ['Athletics', 'Insight', 'Intimidation', 'Medicine', 'Persuasion', 'Religion'] },
+  Ranger:    { pick: 3, skills: ['Animal Handling', 'Athletics', 'Insight', 'Investigation', 'Nature', 'Perception', 'Stealth', 'Survival'] },
+  Rogue:     { pick: 4, skills: ['Acrobatics', 'Athletics', 'Deception', 'Insight', 'Intimidation', 'Investigation', 'Perception', 'Performance', 'Persuasion', 'Sleight of Hand', 'Stealth'] },
+  Sorcerer:  { pick: 2, skills: ['Arcana', 'Deception', 'Insight', 'Intimidation', 'Persuasion', 'Religion'] },
+  Warlock:   { pick: 2, skills: ['Arcana', 'Deception', 'History', 'Intimidation', 'Investigation', 'Nature', 'Religion'] },
+  Wizard:    { pick: 2, skills: ['Arcana', 'History', 'Insight', 'Investigation', 'Medicine', 'Religion'] },
+  Artificer: { pick: 2, skills: ['Arcana', 'History', 'Investigation', 'Medicine', 'Nature', 'Perception', 'Sleight of Hand'] },
+}
+
 // Standard D&D 5e point buy
 const POINT_BUY_COST: Record<number, number> = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 }
 const POINT_BUY_BUDGET = 27
@@ -435,8 +452,73 @@ function BackgroundSelector({ characterId, currentBackground, currentSkillProfic
   )
 }
 
+function ClassSkillsSelector({ characterId, characterClass, classSkillProficiencies, allSkillProficiencies }: {
+  characterId: string
+  characterClass: string
+  classSkillProficiencies: string[]
+  allSkillProficiencies: string[]
+}) {
+  const qc = useQueryClient()
+  const classOpts = CLASS_SKILL_OPTIONS[characterClass]
+  const [open, setOpen] = useState(false)
 
-export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
+  const mutation = useMutation({
+    mutationFn: (classSkills: string[]) => {
+      // Add newly chosen class skills to the overall skill proficiencies too
+      const merged = [...new Set([...allSkillProficiencies, ...classSkills])]
+      return charactersApi.update(characterId, { classSkillProficiencies: classSkills, skillProficiencies: merged })
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData<Character>(['character', characterId], updated)
+    },
+  })
+
+  if (!classOpts) return null
+
+  const toggle = (skill: string) => {
+    const current = classSkillProficiencies
+    const isSelected = current.includes(skill)
+    let next: string[]
+    if (isSelected) {
+      next = current.filter(s => s !== skill)
+    } else if (current.length < classOpts.pick) {
+      next = [...current, skill]
+    } else {
+      // At limit — swap: deselect first, add new
+      next = [...current.slice(1), skill]
+    }
+    mutation.mutate(next)
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1"
+      >
+        Class skills ({classSkillProficiencies.length}/{classOpts.pick}) {open ? '▲' : '▼'}
+      </button>
+      {open && (
+        <div className="mt-1.5 p-2 bg-gray-800 rounded-lg space-y-0.5">
+          <p className="text-[10px] text-gray-500 mb-1">Pick {classOpts.pick} from {characterClass}</p>
+          {classOpts.skills.map(skill => {
+            const chosen = classSkillProficiencies.includes(skill)
+            return (
+              <button
+                key={skill}
+                onClick={() => toggle(skill)}
+                className={`w-full flex items-center gap-2 px-2 py-1 rounded text-xs text-left transition-colors ${chosen ? 'text-indigo-300' : 'text-gray-400 hover:text-white'}`}
+              >
+                <span className={`w-2.5 h-2.5 rounded-full border flex-shrink-0 ${chosen ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
+                {skill}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -557,6 +639,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
   // ── Wild Shape state ──────────────────────────────────────────
   const [showBeastPicker, setShowBeastPicker] = useState(false)
+  const [showBeastStats, setShowBeastStats] = useState(false)
 
   const wildShapeMutation = useMutation({
     mutationFn: (req: Parameters<typeof beastsApi.updateWildShape>[1]) =>
@@ -722,8 +805,8 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const maxSkillProficiencies = character.gameType === 'pathfinder1e'
     ? (PF1E_SKILL_RANKS_PER_LEVEL[character.characterClass] ?? 2) * d.level
       + Math.max(0, abilityMod('Intelligence')) * d.level
-    : DND5E_SKILL_LIMIT[character.characterClass] ?? 2
-  const atSkillLimit = d.skillProficiencies.length >= maxSkillProficiencies
+    : null // No cap for D&D 5e — free selection
+  const atSkillLimit = maxSkillProficiencies !== null && d.skillProficiencies.length >= maxSkillProficiencies
 
   const subclassList = SUBCLASSES[character.characterClass] ?? []
 
@@ -1186,10 +1269,14 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">🐺</span>
-                      <div>
-                        <p className="text-sm font-semibold text-white">{character.wildShapeBeastName}</p>
-                        <p className="text-xs text-gray-400">Beast form active</p>
-                      </div>
+                      <button
+                        className="text-left hover:opacity-80 transition-opacity"
+                        onClick={() => setShowBeastStats(true)}
+                        title="View beast stats"
+                      >
+                        <p className="text-sm font-semibold text-white underline decoration-dotted">{character.wildShapeBeastName}</p>
+                        <p className="text-xs text-gray-400">Beast form active — tap for stats</p>
+                      </button>
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1">
@@ -1242,6 +1329,62 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                     }}
                   />
                 )}
+
+                {showBeastStats && character.wildShapeBeastName && (() => {
+                  const activeBeast = allBeasts.find(b => b.name === character.wildShapeBeastName)
+                  if (!activeBeast) return null
+                  const abilityMod = (score: number) => Math.floor((score - 10) / 2)
+                  const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
+                  return (
+                    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setShowBeastStats(false)}>
+                      <div className="bg-gray-900 rounded-2xl w-full max-w-md p-5 space-y-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h2 className="text-lg font-bold">{activeBeast.name}</h2>
+                            <p className="text-xs text-gray-400">{activeBeast.size} Beast · CR {activeBeast.cr}</p>
+                          </div>
+                          <button onClick={() => setShowBeastStats(false)} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          {[['AC', activeBeast.ac], ['HP', activeBeast.hp], ['CR', activeBeast.cr]].map(([label, val]) => (
+                            <div key={label as string} className="bg-gray-800 rounded-lg p-2">
+                              <p className="text-xs text-gray-400">{label}</p>
+                              <p className="font-bold">{val}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          {[['STR', activeBeast.str], ['DEX', activeBeast.dex], ['CON', activeBeast.con]].map(([label, score]) => (
+                            <div key={label as string} className="bg-gray-800 rounded-lg p-2">
+                              <p className="text-xs text-gray-400">{label}</p>
+                              <p className="font-bold">{score}</p>
+                              <p className="text-xs text-gray-400">{fmtMod(abilityMod(score as number))}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          {activeBeast.walkSpeed > 0 && <div className="flex justify-between"><span className="text-gray-400">Walk</span><span>{activeBeast.walkSpeed} ft</span></div>}
+                          {activeBeast.flySpeed > 0 && <div className="flex justify-between"><span className="text-gray-400">Fly</span><span>{activeBeast.flySpeed} ft</span></div>}
+                          {activeBeast.swimSpeed > 0 && <div className="flex justify-between"><span className="text-gray-400">Swim</span><span>{activeBeast.swimSpeed} ft</span></div>}
+                          {activeBeast.climbSpeed > 0 && <div className="flex justify-between"><span className="text-gray-400">Climb</span><span>{activeBeast.climbSpeed} ft</span></div>}
+                        </div>
+                        {activeBeast.attacks.length > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Attacks</p>
+                            <div className="space-y-1">
+                              {activeBeast.attacks.map((atk, i) => (
+                                <div key={i} className="flex justify-between text-sm bg-gray-800 rounded-lg px-3 py-1.5">
+                                  <span className="font-medium">{atk.name}</span>
+                                  <span className="text-red-400">{atk.dice} <span className="text-gray-400 text-xs">{atk.type}</span></span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 <p className="text-xs text-gray-600 text-center">
                   Max CR {crLabel(limits.maxCr)}{!limits.allowFly ? ' · No fly' : ''}{!limits.allowSwim ? ' · No swim' : ''}
@@ -1600,34 +1743,63 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Skills</h2>
               <span className={`text-xs font-semibold ${atSkillLimit ? 'text-amber-400' : 'text-gray-500'}`}>
-                {d.skillProficiencies.length}/{maxSkillProficiencies}
+                {maxSkillProficiencies !== null
+                  ? `${d.skillProficiencies.length}/${maxSkillProficiencies}`
+                  : `${d.skillProficiencies.length} selected`}
               </span>
             </div>
             <div className="space-y-0.5">
               {skillList.map(({ name, ability }) => {
                 const isProficient = d.skillProficiencies.includes(name)
                 const bgSkills = character.background ? (BACKGROUND_SKILLS[character.background] ?? []) : []
+                const classSkills = character.classSkillProficiencies ?? []
                 const isFromBackground = bgSkills.includes(name)
+                const isFromClass = classSkills.includes(name)
                 const lockedByBackground = isFromBackground && isProficient
-                const disabled = lockedByBackground || (!isProficient && atSkillLimit)
+                const lockedByClass = isFromClass && isProficient
+                const locked = lockedByBackground || lockedByClass
+                const disabled = locked || (!isProficient && atSkillLimit)
                 const total = abilityMod(ability) + (isProficient ? profBonusNum : 0)
+                const dotColour = isProficient
+                  ? isFromBackground ? 'bg-amber-500 border-amber-500'
+                  : isFromClass ? 'bg-purple-500 border-purple-500'
+                  : 'bg-indigo-500 border-indigo-500'
+                  : 'border-gray-500'
+                const scoreColour = isProficient
+                  ? isFromBackground ? 'text-amber-300'
+                  : isFromClass ? 'text-purple-300'
+                  : 'text-indigo-300'
+                  : 'text-gray-300'
                 return (
                   <button
                     key={name}
                     onClick={() => !disabled && toggleSkillProficiency(name)}
                     disabled={disabled}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${lockedByBackground ? 'cursor-default' : disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-gray-800'}`}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${locked ? 'cursor-default' : disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-gray-800'}`}
                   >
-                    <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors ${isProficient ? (isFromBackground ? 'bg-amber-500 border-amber-500' : 'bg-indigo-500 border-indigo-500') : 'border-gray-500'}`} />
+                    <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors ${dotColour}`} />
                     <span className="flex-1 text-xs truncate">{name}</span>
                     {isFromBackground && isProficient && (
                       <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-400">bg</span>
                     )}
-                    <span className={`text-xs font-semibold w-6 text-right flex-shrink-0 ${isProficient ? (isFromBackground ? 'text-amber-300' : 'text-indigo-300') : 'text-gray-300'}`}>{fmtMod(total)}</span>
+                    {isFromClass && isProficient && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-purple-900/60 text-purple-400">cl</span>
+                    )}
+                    <span className={`text-xs font-semibold w-6 text-right flex-shrink-0 ${scoreColour}`}>{fmtMod(total)}</span>
                   </button>
                 )
               })}
             </div>
+            {character.gameType === 'dnd5e' && CLASS_SKILL_OPTIONS[character.characterClass] && (
+              <div className="mt-2 pt-2 border-t border-gray-800">
+                <ClassSkillsSelector
+                  characterId={character.id}
+                  characterClass={character.characterClass}
+                  classSkillProficiencies={character.classSkillProficiencies ?? []}
+                  allSkillProficiencies={d.skillProficiencies}
+                />
+              </div>
+            )}
             <p className="text-xs text-gray-600 mt-2 text-center">Prof {fmtMod(profBonusNum)}</p>
           </section>
 

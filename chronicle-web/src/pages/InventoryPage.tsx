@@ -114,8 +114,8 @@ function InventoryItemModal({ item, onClose }: { item: InventoryItem; onClose: (
         <div className="space-y-2 text-sm">
           {item.acBonus != null && (
             <div className="flex justify-between">
-              <span className="text-gray-400">AC Bonus</span>
-              <span className="text-green-400 font-medium">+{item.acBonus}</span>
+              <span className="text-gray-400">{(item.armorType && item.armorType !== 'None') || lookupArmor(item.name) ? 'Base AC' : 'AC Bonus'}</span>
+              <span className="text-green-400 font-medium">{(item.armorType && item.armorType !== 'None') || lookupArmor(item.name) ? item.acBonus : `+${item.acBonus}`}</span>
             </div>
           )}
           {item.armorType && item.armorType !== 'None' && (
@@ -850,7 +850,17 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                   <button
                     key={item.id}
                     onClick={() => {
-                      equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: selectingSlot } })
+                      const armorEntry = (selectingSlot === 'Chest' || selectingSlot === 'Armor')
+                        ? lookupArmor(item.name) : undefined
+                      equipMutation.mutate({
+                        itemId: item.id,
+                        req: {
+                          isEquipped: true,
+                          slot: selectingSlot,
+                          armorType: armorEntry ? armorEntry.type : item.armorType,
+                          acBonus: armorEntry && item.acBonus == null ? armorEntry.ac : item.acBonus,
+                        }
+                      })
                       setSelectingSlot(null)
                     }}
                     className="w-full flex items-center gap-3 bg-gray-800 hover:bg-gray-700 rounded-lg px-3 py-2.5 text-left transition-colors"
@@ -858,7 +868,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate text-sm">{item.name}</p>
                       <div className="flex gap-2 flex-wrap mt-0.5">
-                        {item.acBonus != null && <span className="text-xs text-green-400">AC +{item.acBonus}</span>}
+                        {item.acBonus != null && <span className="text-xs text-green-400">{lookupArmor(item.name) ? `AC ${item.acBonus}` : `AC +${item.acBonus}`}</span>}
                         {item.damageOverride && <span className="text-xs text-red-400">{item.damageOverride}</span>}
                         {item.notes && <span className="text-xs text-gray-400">{item.notes}</span>}
                       </div>

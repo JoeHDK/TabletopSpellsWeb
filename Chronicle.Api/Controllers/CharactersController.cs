@@ -78,6 +78,7 @@ public class CharactersController : ControllerBase
         if (req.BaseArmorClass.HasValue) entity.BaseArmorClass = req.BaseArmorClass.Value;
         if (req.SavingThrowProficiencies != null) entity.SavingThrowProficienciesJson = JsonConvert.SerializeObject(req.SavingThrowProficiencies);
         if (req.SkillProficiencies != null) entity.SkillProficienciesJson = JsonConvert.SerializeObject(req.SkillProficiencies);
+        if (req.ClassSkillProficiencies != null) entity.ClassSkillProficienciesJson = JsonConvert.SerializeObject(req.ClassSkillProficiencies);
         if (req.Race != null) entity.Race = req.Race;
 
         entity.UpdatedAt = DateTime.UtcNow;
@@ -273,6 +274,7 @@ public class CharactersController : ControllerBase
         AlwaysPreparedSpells = DeserializeList(e.AlwaysPreparedSpellsJson),
         SavingThrowProficiencies = DeserializeList(e.SavingThrowProficienciesJson),
         SkillProficiencies = DeserializeList(e.SkillProficienciesJson),
+        ClassSkillProficiencies = DeserializeList(e.ClassSkillProficienciesJson),
         CreatedAt = e.CreatedAt,
         UpdatedAt = e.UpdatedAt,
         MaxHp = e.MaxHp,
