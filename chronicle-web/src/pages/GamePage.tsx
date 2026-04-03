@@ -7,12 +7,9 @@ import { itemsApi } from '../api/items'
 import { customItemsApi } from '../api/customItems'
 import { useAuthStore } from '../store/authStore'
 import { lookupArmor } from '../utils/armorTable'
-import type { AddMemberRequest, GiveItemRequest, ItemSource, DamageEntry, ArmorType, SaveCustomItemRequest } from '../types'
+import CustomItemFormModal from '../components/CustomItemFormModal'
+import type { AddMemberRequest, GiveItemRequest, ItemSource, ArmorType, SaveCustomItemRequest } from '../types'
 
-const DAMAGE_TYPES = [
-  'Acid', 'Bludgeoning', 'Cold', 'Fire', 'Force', 'Lightning',
-  'Necrotic', 'Piercing', 'Poison', 'Psychic', 'Radiant', 'Slashing', 'Thunder',
-]
 
 type GiveFormState = {
   name: string
@@ -34,33 +31,6 @@ const defaultGiveForm = (): GiveFormState => ({
   armorType: undefined,
 })
 
-type AddCustomFormState = {
-  name: string
-  damage: string
-  damageEntries: DamageEntry[]
-  acBonusStr: string
-  strBonusStr: string
-  conBonusStr: string
-  dexBonusStr: string
-  wisBonusStr: string
-  intBonusStr: string
-  chaBonusStr: string
-  notes: string
-}
-
-const defaultAddCustomForm = (): AddCustomFormState => ({
-  name: '',
-  damage: '',
-  damageEntries: [],
-  acBonusStr: '',
-  strBonusStr: '',
-  conBonusStr: '',
-  dexBonusStr: '',
-  wisBonusStr: '',
-  intBonusStr: '',
-  chaBonusStr: '',
-  notes: '',
-})
 
 export default function GamePage() {
   const { id } = useParams<{ id: string }>()
@@ -81,8 +51,6 @@ export default function GamePage() {
 
   // Add Custom Item state
   const [showAddCustom, setShowAddCustom] = useState(false)
-  const [addCustomForm, setAddCustomForm] = useState(defaultAddCustomForm())
-  const [addCustomError, setAddCustomError] = useState('')
 
   const { data: game, isLoading } = useQuery({
     queryKey: ['game', id],
@@ -174,11 +142,8 @@ export default function GamePage() {
     mutationFn: (req: SaveCustomItemRequest) => customItemsApi.create(req),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['custom-items'] })
-      setAddCustomForm(defaultAddCustomForm())
       setShowAddCustom(false)
-      setAddCustomError('')
     },
-    onError: () => setAddCustomError('Failed to create item.'),
   })
 
   const copyInviteCode = () => {
@@ -540,118 +505,21 @@ export default function GamePage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Custom Items</h2>
                 <button
-                  onClick={() => { setShowAddCustom(v => !v); setAddCustomForm(defaultAddCustomForm()); setAddCustomError('') }}
+                  onClick={() => setShowAddCustom(true)}
                   className="text-sm text-indigo-400 hover:text-indigo-300"
                 >
-                  {showAddCustom ? 'Cancel' : '+ Add Custom Item'}
+                  + Add Custom Item
                 </button>
               </div>
-
-              {showAddCustom && (
-                <div className="bg-gray-900 rounded-xl p-4 space-y-4">
-                  {/* Name */}
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Item Name *</label>
-                    <input
-                      className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                      placeholder="e.g. Sword of Flames"
-                      value={addCustomForm.name}
-                      onChange={e => setAddCustomForm(f => ({ ...f, name: e.target.value }))}
-                    />
-                  </div>
-
-                  {/* Damage */}
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-400 block">Damage</label>
-                    <div className="flex gap-2">
-                      <input
-                        className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                        placeholder="e.g. 2d6+4"
-                        value={addCustomForm.damage}
-                        onChange={e => setAddCustomForm(f => ({ ...f, damage: e.target.value }))}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setAddCustomForm(f => ({ ...f, damageEntries: [...f.damageEntries, { dice: '', damageType: 'Fire' }] }))}
-                        className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-indigo-300 text-sm font-bold leading-none"
-                        title="Add extra damage type"
-                      >+</button>
-                    </div>
-                    {addCustomForm.damageEntries.map((entry, i) => (
-                      <div key={i} className="flex gap-2 items-center">
-                        <input
-                          value={entry.dice}
-                          onChange={e => setAddCustomForm(f => { const d = [...f.damageEntries]; d[i] = { ...d[i], dice: e.target.value }; return { ...f, damageEntries: d } })}
-                          className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                          placeholder="e.g. 1d6"
-                        />
-                        <select
-                          value={entry.damageType}
-                          onChange={e => setAddCustomForm(f => { const d = [...f.damageEntries]; d[i] = { ...d[i], damageType: e.target.value }; return { ...f, damageEntries: d } })}
-                          className="w-36 bg-gray-800 text-white rounded-lg px-2 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                        >
-                          {DAMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                        <button type="button" onClick={() => setAddCustomForm(f => ({ ...f, damageEntries: f.damageEntries.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-300 px-2 py-1 text-sm">✕</button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Bonuses */}
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-2">Bonuses</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {([['AC', 'acBonusStr'], ['STR', 'strBonusStr'], ['CON', 'conBonusStr'], ['DEX', 'dexBonusStr'], ['WIS', 'wisBonusStr'], ['INT', 'intBonusStr'], ['CHA', 'chaBonusStr']] as const).map(([label, field]) => (
-                        <div key={field}>
-                          <label className="text-xs text-gray-500 block mb-0.5">{label}</label>
-                          <input
-                            type="number"
-                            className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                            placeholder="—"
-                            value={addCustomForm[field]}
-                            onChange={e => setAddCustomForm(f => ({ ...f, [field]: e.target.value }))}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Notes */}
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Notes / Description</label>
-                    <input
-                      className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                      value={addCustomForm.notes}
-                      onChange={e => setAddCustomForm(f => ({ ...f, notes: e.target.value }))}
-                    />
-                  </div>
-
-                  {addCustomError && <p className="text-red-400 text-sm">{addCustomError}</p>}
-                  <button
-                    disabled={addCustomItemMutation.isPending || !addCustomForm.name}
-                    onClick={() => addCustomItemMutation.mutate({
-                      name: addCustomForm.name,
-                      item_type: 'equipment',
-                      damage: addCustomForm.damage || undefined,
-                      damage_entries: addCustomForm.damageEntries.length > 0 ? addCustomForm.damageEntries : undefined,
-                      ac_bonus: addCustomForm.acBonusStr ? Number(addCustomForm.acBonusStr) : undefined,
-                      str_bonus: addCustomForm.strBonusStr ? Number(addCustomForm.strBonusStr) : undefined,
-                      con_bonus: addCustomForm.conBonusStr ? Number(addCustomForm.conBonusStr) : undefined,
-                      dex_bonus: addCustomForm.dexBonusStr ? Number(addCustomForm.dexBonusStr) : undefined,
-                      wis_bonus: addCustomForm.wisBonusStr ? Number(addCustomForm.wisBonusStr) : undefined,
-                      int_bonus: addCustomForm.intBonusStr ? Number(addCustomForm.intBonusStr) : undefined,
-                      cha_bonus: addCustomForm.chaBonusStr ? Number(addCustomForm.chaBonusStr) : undefined,
-                      description: addCustomForm.notes || undefined,
-                      requires_attunement: false,
-                      properties: [],
-                    })}
-                    className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-4 py-2 rounded-lg text-sm"
-                  >
-                    {addCustomItemMutation.isPending ? 'Saving…' : 'Save Custom Item'}
-                  </button>
-                </div>
-              )}
             </section>
+
+            {showAddCustom && (
+              <CustomItemFormModal
+                onSave={data => addCustomItemMutation.mutate(data)}
+                onClose={() => setShowAddCustom(false)}
+                isSaving={addCustomItemMutation.isPending}
+              />
+            )}
           </>
         )}
 
