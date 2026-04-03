@@ -6,35 +6,28 @@ using Microsoft.EntityFrameworkCore;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
-using Chronicle.Api.Models.Enums;
+using Chronicle.Api.Services;
 
 namespace Chronicle.Api.Controllers;
 
 [ApiController]
 [Route("api/game-rooms/{gameRoomId}/images")]
 [Authorize]
-public class CampaignImagesController(AppDbContext db, IWebHostEnvironment env) : ControllerBase
+public class CampaignImagesController(AppDbContext db, IWebHostEnvironment env, IGameAuthorizationService authService) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     private static readonly string[] AllowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
 
-    private async Task<bool> IsMember(Guid gameRoomId) =>
-        await db.GameMembers.AnyAsync(m => m.GameRoomId == gameRoomId && m.UserId == UserId);
-
-    private async Task<bool> IsDm(Guid gameRoomId) =>
-        await db.GameMembers.AnyAsync(m => m.GameRoomId == gameRoomId && m.UserId == UserId && m.Role == GameRole.DM);
-
     // GET /api/game-rooms/{gameRoomId}/images
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid gameRoomId)
     {
-        if (!await IsMember(gameRoomId)) return Forbid();
-        var isDm = await IsDm(gameRoomId);
+        if (!await authService.IsMemberAsync(gameRoomId, UserId)) return Forbid();
+        var isDm = await authService.IsDmAsync(gameRoomId, UserId);
 
         var images = await db.CampaignImages
-            .Where(i => i.GameRoomId == gameRoomId)
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync();
 
@@ -58,9 +51,9 @@ public class CampaignImagesController(AppDbContext db, IWebHostEnvironment env) 
     [RequestSizeLimit(10_500_000)]
     public async Task<IActionResult> Upload(Guid gameRoomId, IFormFile file, [FromForm] string? caption)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
-        if (file == null || file.Length == 0) return BadRequest("No file provided.");
+        if (file == null|| file.Length == 0) return BadRequest("No file provided.");
         if (file.Length > MaxFileSizeBytes) return BadRequest("File exceeds 10 MB limit.");
         if (!AllowedTypes.Contains(file.ContentType)) return BadRequest("Unsupported image type.");
 
@@ -94,8 +87,8 @@ public class CampaignImagesController(AppDbContext db, IWebHostEnvironment env) 
     [HttpGet("{imageId:guid}/file")]
     public async Task<IActionResult> GetFile(Guid gameRoomId, Guid imageId)
     {
-        if (!await IsMember(gameRoomId)) return Forbid();
-        var isDm = await IsDm(gameRoomId);
+        if (!await authService.IsMemberAsync(gameRoomId, UserId)) return Forbid();
+        var isDm = await authService.IsDmAsync(gameRoomId, UserId);
 
         var image = await db.CampaignImages
             .FirstOrDefaultAsync(i => i.Id == imageId && i.GameRoomId == gameRoomId);
@@ -121,7 +114,7 @@ public class CampaignImagesController(AppDbContext db, IWebHostEnvironment env) 
     [HttpPatch("{imageId:guid}")]
     public async Task<IActionResult> Update(Guid gameRoomId, Guid imageId, [FromBody] UpdateCampaignImageRequest req)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var image = await db.CampaignImages
             .FirstOrDefaultAsync(i => i.Id == imageId && i.GameRoomId == gameRoomId);
@@ -142,7 +135,7 @@ public class CampaignImagesController(AppDbContext db, IWebHostEnvironment env) 
     [HttpDelete("{imageId:guid}")]
     public async Task<IActionResult> Delete(Guid gameRoomId, Guid imageId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var image = await db.CampaignImages
             .FirstOrDefaultAsync(i => i.Id == imageId && i.GameRoomId == gameRoomId);

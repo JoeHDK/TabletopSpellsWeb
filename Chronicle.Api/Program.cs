@@ -74,6 +74,8 @@ builder.Services.AddCors(options =>
 
 // Services
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IGameAuthorizationService, GameAuthorizationService>();
 builder.Services.AddSingleton<SpellService>();
 builder.Services.AddSingleton<BeastService>();
 builder.Services.AddSingleton<ItemService>();

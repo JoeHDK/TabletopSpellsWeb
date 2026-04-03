@@ -3,13 +3,11 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
-using Chronicle.Api.Hubs;
 using Chronicle.Api.Models.Enums;
 using Chronicle.Api.Services;
 
@@ -23,35 +21,19 @@ public class GamesController : ControllerBase
     private readonly AppDbContext _db;
     private readonly UserManager<AppUser> _userManager;
     private readonly EncryptionService _encryption;
-    private readonly IHubContext<NotificationHub> _notifHub;
-    private readonly WebPushService _pushService;
+    private readonly INotificationService _notifService;
+    private readonly IGameAuthorizationService _authService;
 
-    public GamesController(AppDbContext db, UserManager<AppUser> userManager, EncryptionService encryption, IHubContext<NotificationHub> notifHub, WebPushService pushService)
+    public GamesController(AppDbContext db, UserManager<AppUser> userManager, EncryptionService encryption, INotificationService notifService, IGameAuthorizationService authService)
     {
         _db = db;
         _userManager = userManager;
         _encryption = encryption;
-        _notifHub = notifHub;
-        _pushService = pushService;
+        _notifService = notifService;
+        _authService = authService;
     }
 
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-
-    private async Task PushNotifAsync(NotificationEntity entity)
-    {
-        var dto = new NotificationDto
-        {
-            Id = entity.Id,
-            Type = entity.Type.ToString(),
-            Title = entity.Title,
-            Message = entity.Message,
-            Link = entity.Link,
-            IsRead = false,
-            CreatedAt = entity.CreatedAt,
-        };
-        await _notifHub.Clients.Group($"notifications-{entity.UserId}").SendAsync("ReceiveNotification", dto);
-        await _pushService.SendNotificationAsync(entity.UserId, dto);
-    }
 
     [HttpGet]
     public async Task<IActionResult> GetMyGames()
@@ -209,7 +191,7 @@ public class GamesController : ControllerBase
         await AddUserToGameRoomChat(id, targetUser.Id);
 
         await _db.SaveChangesAsync();
-        await PushNotifAsync(gameInviteNotif);
+        await _notifService.PushAsync(gameInviteNotif);
 
         return Ok(new GameMemberDto
         {
@@ -373,7 +355,7 @@ public class GamesController : ControllerBase
         _db.Notifications.Add(itemNotif);
 
         await _db.SaveChangesAsync();
-        await PushNotifAsync(itemNotif);
+        await _notifService.PushAsync(itemNotif);
         return Ok();
     }
 
@@ -454,15 +436,10 @@ public class GamesController : ControllerBase
     }
 
     private async Task<bool> IsMember(Guid gameId) =>
-        await _db.GameMembers.AnyAsync(m => m.GameRoomId == gameId && m.UserId == UserId)
-        || await IsGlobalAdmin();
+        await _authService.IsMemberAsync(gameId, UserId) || await IsGlobalAdmin();
 
-    private async Task<bool> IsDmOrAdmin(Guid gameId)
-    {
-        if (await IsGlobalAdmin()) return true;
-        return await _db.GameMembers.AnyAsync(m =>
-            m.GameRoomId == gameId && m.UserId == UserId && m.Role == GameRole.DM);
-    }
+    private async Task<bool> IsDmOrAdmin(Guid gameId) =>
+        await IsGlobalAdmin() || await _authService.IsDmAsync(gameId, UserId);
 
     private async Task<bool> IsGlobalAdmin()
     {

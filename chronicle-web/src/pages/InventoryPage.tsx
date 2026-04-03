@@ -11,104 +11,21 @@ import type {
   InventoryItem, InventorySlot, ItemSource, ArmorType, AddInventoryItemRequest, EquipItemRequest,
   Item, CustomItem, SaveCustomItemRequest,
 } from '../types'
-import { SLOTS, EQUIPPED_PANEL_SLOTS, ARMOR_TYPES, ARMOR_TYPE_LABEL, SLOT_ICON, SLOT_LABEL } from '../constants/inventory'
+import { SLOTS, ARMOR_TYPES, ARMOR_TYPE_LABEL } from '../constants/inventory'
 import { RARITIES } from '../constants/rarities'
-
-
-
-function guessSlot(item: InventoryItem): InventorySlot {
-  if (item.equippedSlot) return item.equippedSlot
-  if (item.acBonus != null) return 'Chest'
-  if (item.damageOverride) return 'MainHand'
-  const name = item.name.toLowerCase()
-  if (/helmet|helm|hat|hood|crown|cap/.test(name)) return 'Head'
-  if (/armor|mail|plate|breastplate|hide|leather|studded|splint|scale|robe|coat/.test(name)) return 'Chest'
-  if (/boots|shoes|greaves|sabatons|slippers/.test(name)) return 'Feet'
-  if (/gauntlet|gloves|bracers|vambraces/.test(name)) return 'Hands'
-  if (/leggings|breeches|trousers|pants/.test(name)) return 'Legs'
-  if (/shield/.test(name)) return 'OffHand'
-  if (/sword|axe|bow|dagger|hammer|mace|spear|staff|wand|flail|scimitar|rapier|lance|pike|halberd|glaive|crossbow|sling|trident|whip|quarterstaff|shortsword|longsword|greatsword|handaxe|battleaxe|greataxe/.test(name)) return 'MainHand'
-  if (/necklace|amulet|pendant|collar/.test(name)) return 'Neck'
-  if (/ring/.test(name)) return 'Ring1'
-  if (/cloak|cape|mantle|shroud/.test(name)) return 'Back'
-  return 'Accessory'
-}
-
 import { lookupArmor } from '../utils/armorTable'
 import { lookupProtection } from '../utils/protectionTable'
+import {
+  InventoryItemCard,
+  InventoryItemModal,
+  ItemDetailModal,
+  EquippedTab,
+  SlotPickerModal,
+  rarityColor,
+} from '../components/inventory'
 
 function guessArmorType(name: string): ArmorType {
   return lookupArmor(name)?.type ?? 'None'
-}
-
-function InventoryItemModal({ item, onClose }: { item: InventoryItem; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-gray-900 rounded-2xl w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-lg font-bold">{item.name}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs">
-          {item.quantity > 1 && (
-            <span className="px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">×{item.quantity}</span>
-          )}
-          {item.isEquipped && item.equippedSlot && (
-            <span className="px-2 py-0.5 rounded-full bg-indigo-900/50 text-indigo-300">
-              {SLOT_ICON[item.equippedSlot]} {SLOT_LABEL[item.equippedSlot]}
-            </span>
-          )}
-          <span className="px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">{item.itemSource}</span>
-        </div>
-        <div className="space-y-2 text-sm">
-          {item.acBonus != null && (
-            <div className="flex justify-between">
-              <span className="text-gray-400">{(item.armorType && item.armorType !== 'None') || lookupArmor(item.name) ? 'Base AC' : 'AC Bonus'}</span>
-              <span className="text-green-400 font-medium">{(item.armorType && item.armorType !== 'None') || lookupArmor(item.name) ? item.acBonus : `+${item.acBonus}`}</span>
-            </div>
-          )}
-          {item.savingThrowBonus != null && item.savingThrowBonus !== 0 && (
-            <div className="flex justify-between">
-              <span className="text-gray-400">Saving Throw Bonus</span>
-              <span className="text-blue-400 font-medium">{item.savingThrowBonus > 0 ? `+${item.savingThrowBonus}` : item.savingThrowBonus} to all saves</span>
-            </div>
-          )}
-          {item.armorType && item.armorType !== 'None' && (
-            <div className="flex justify-between">
-              <span className="text-gray-400">Armor Type</span>
-              <span className="text-yellow-400 font-medium">{ARMOR_TYPE_LABEL[item.armorType]}</span>
-            </div>
-          )}
-          {item.damageOverride && (
-            <div className="flex justify-between">
-              <span className="text-gray-400">Damage</span>
-              <span className="text-red-400 font-medium">{item.damageOverride}</span>
-            </div>
-          )}
-          {item.notes && (
-            <div className="border-t border-gray-800 pt-2">
-              <p className="text-gray-400 text-xs mb-1">Notes</p>
-              <p className="text-gray-300">{item.notes}</p>
-            </div>
-          )}
-          {item.grantedByUsername && (
-            <p className="text-gray-500 text-xs">From @{item.grantedByUsername}</p>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function rarityColor(rarity: string) {
-  switch (rarity.toLowerCase()) {
-    case 'uncommon': return 'bg-green-900/50 text-green-300'
-    case 'rare': return 'bg-blue-900/50 text-blue-300'
-    case 'very rare': return 'bg-purple-900/50 text-purple-300'
-    case 'legendary': return 'bg-orange-900/50 text-orange-300'
-    case 'artifact': return 'bg-red-900/50 text-red-300'
-    default: return 'bg-gray-800 text-gray-400'
-  }
 }
 
 function customItemToItem(ci: CustomItem): Item {
@@ -119,53 +36,6 @@ function customItemToItem(ci: CustomItem): Item {
     attunement_note: ci.attunement_note, cost: ci.cost, weight: ci.weight,
     damage: ci.damage, properties: ci.properties, source: 'Custom',
   }
-}
-
-function ItemDetailModal({ item, onClose }: { item: Item; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-gray-900 rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto p-5 space-y-3" onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-bold">{item.name}</h2>
-            <p className="text-sm text-indigo-400">{item.category}</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className={`px-2 py-0.5 rounded-full font-medium ${rarityColor(item.rarity)}`}>{item.rarity}</span>
-          {item.requires_attunement && (
-            <span className="px-2 py-0.5 rounded-full bg-amber-900/50 text-amber-300">
-              Requires Attunement{item.attunement_note ? ` (${item.attunement_note})` : ''}
-            </span>
-          )}
-          {item.damage && <span className="px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">⚔ {item.damage}</span>}
-          {item.acBonus != null && (
-            <span className="px-2 py-0.5 rounded-full bg-green-900/50 text-green-300">
-              🛡 AC {item.acBonus}{item.armorType === 'Shield' ? ' bonus' : ''}
-            </span>
-          )}
-          {item.armorType && item.armorType !== 'Shield' && (
-            <span className="px-2 py-0.5 rounded-full bg-yellow-900/50 text-yellow-300">{item.armorType} Armor</span>
-          )}
-          {item.cost && <span className="px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">💰 {item.cost}</span>}
-          {item.weight != null && <span className="px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">⚖ {item.weight} lb</span>}
-        </div>
-        {item.properties.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {item.properties.map(p => (
-              <span key={p} className="text-xs px-2 py-0.5 bg-gray-800 rounded-full text-gray-400">{p}</span>
-            ))}
-          </div>
-        )}
-        {item.description && (
-          <div className="text-sm text-gray-300 whitespace-pre-line leading-relaxed border-t border-gray-800 pt-3">
-            {item.description}
-          </div>
-        )}
-      </div>
-    </div>
-  )
 }
 
 const defaultForm = (): AddInventoryItemRequest & { acBonusStr: string; slot: InventorySlot } => ({
@@ -547,146 +417,22 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
               ) : (
                 <div className="space-y-2">
                   {filteredItems.map(item => (
-                    <div
+                    <InventoryItemCard
                       key={item.id}
-                      className={`bg-gray-900 rounded-xl px-4 py-3 space-y-2 ${item.isEquipped ? 'ring-1 ring-indigo-600/50' : ''}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <button
-                              className="font-medium hover:text-indigo-300 transition-colors text-left"
-                              onClick={() => setSelectedInvItem(item)}
-                            >
-                              {item.name}
-                            </button>
-                            {item.quantity > 1 && <span className="text-xs text-gray-400">×{item.quantity}</span>}
-                            {item.isEquipped && item.equippedSlot && (
-                              <span className="text-xs bg-indigo-900/50 text-indigo-300 px-1.5 py-0.5 rounded-full">
-                                {SLOT_ICON[item.equippedSlot]} {SLOT_LABEL[item.equippedSlot]}
-                              </span>
-                            )}
-                            {item.acBonus != null && (
-                              <span className="text-xs bg-green-900/40 text-green-400 px-1.5 py-0.5 rounded-full">
-                                AC +{item.acBonus}
-                              </span>
-                            )}
-                            {item.armorType && item.armorType !== 'None' && (
-                              <span className="text-xs bg-yellow-900/40 text-yellow-400 px-1.5 py-0.5 rounded-full">
-                                {item.armorType}
-                              </span>
-                            )}
-                            {item.damageOverride && (
-                              <span className="text-xs bg-red-900/40 text-red-400 px-1.5 py-0.5 rounded-full">
-                                {item.damageOverride}
-                              </span>
-                            )}
-                          </div>
-                          {item.notes && <p className="text-xs text-gray-400 mt-0.5">{item.notes}</p>}
-                          {item.grantedByUsername && (
-                            <p className="text-xs text-gray-600 mt-0.5">From @{item.grantedByUsername}</p>
-                          )}
-                        </div>
-                        <div className="flex gap-1.5 shrink-0">
-                          <button
-                            onClick={() => equipMutation.mutate({
-                              itemId: item.id,
-                              req: { isEquipped: !item.isEquipped, slot: guessSlot(item) },
-                            })}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${
-                              item.isEquipped
-                                ? 'bg-indigo-800 hover:bg-indigo-700 text-indigo-200'
-                                : 'bg-gray-800 hover:bg-gray-700 text-gray-400'
-                            }`}
-                          >
-                            {item.isEquipped ? 'Unequip' : 'Equip'}
-                          </button>
-                          {character?.gameRoomId && (
-                            <button
-                              onClick={() => { setSendingId(item.id); setSendCharId(''); setSendError('') }}
-                              className="text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-gray-400 transition-colors"
-                            >
-                              ↗
-                            </button>
-                          )}
-                          <button
-                            onClick={() => removeMutation.mutate(item.id)}
-                            className="text-xs bg-gray-800 hover:bg-red-900/50 hover:text-red-400 px-2 py-1 rounded text-gray-500 transition-colors"
-                          >
-                            🗑
-                          </button>
-                        </div>
-                      </div>
-
-                      {item.isEquipped && (
-                        <div className="flex gap-1.5 flex-wrap">
-                          {EQUIPPED_PANEL_SLOTS.map(s => (
-                            <button
-                              key={s}
-                              onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: s, armorType: item.armorType } })}
-                              className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
-                                item.equippedSlot === s
-                                  ? 'bg-indigo-700 text-white'
-                                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                              }`}
-                            >
-                              {SLOT_LABEL[s]}
-                            </button>
-                          ))}
-                          {(item.equippedSlot === 'Chest' || item.equippedSlot === 'Armor') && (
-                            <>
-                              <span className="text-xs text-gray-400 self-center">|</span>
-                              {ARMOR_TYPES.map(t => (
-                                <button
-                                  key={t}
-                                  onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: item.equippedSlot ?? 'Chest', armorType: t } })}
-                                  className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
-                                    item.armorType === t
-                                      ? 'bg-yellow-700 text-white'
-                                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                  }`}
-                                >
-                                  {t}
-                                </button>
-                              ))}
-                            </>
-                          )}
-                          {item.equippedSlot === 'MainHand' && (
-                            <>
-                              <span className="text-xs text-gray-400 self-center">|</span>
-                              <button
-                                onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: true, slot: 'MainHand', isTwoHanded: !item.isTwoHanded } })}
-                                className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
-                                  item.isTwoHanded ? 'bg-yellow-700 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                }`}
-                              >
-                                2-Handed
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      )}
-
-                      {sendingId === item.id && (
-                        <div className="flex gap-2 mt-1">
-                          <input
-                            className="flex-1 bg-gray-800 text-white rounded-lg px-3 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
-                            placeholder="Recipient character ID"
-                            value={sendCharId}
-                            onChange={e => setSendCharId(e.target.value)}
-                          />
-                          <button
-                            disabled={sendMutation.isPending || !sendCharId.trim()}
-                            onClick={() => sendMutation.mutate({ itemId: item.id, recipientCharacterId: sendCharId.trim() })}
-                            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-3 py-1.5 rounded-lg text-sm"
-                          >
-                            Send
-                          </button>
-                          <button onClick={() => { setSendingId(null); setSendError('') }} className="text-gray-400 hover:text-white px-2 py-1.5 text-sm">✕</button>
-                        </div>
-                      )}
-                      {sendingId === item.id && sendError && <p className="text-red-400 text-xs">{sendError}</p>}
-                    </div>
+                      item={item}
+                      sendingId={sendingId}
+                      sendCharId={sendCharId}
+                      sendError={sendError}
+                      isSendPending={sendMutation.isPending}
+                      hasGameRoom={!!character?.gameRoomId}
+                      onSelect={setSelectedInvItem}
+                      onEquip={(itemId, req) => equipMutation.mutate({ itemId, req })}
+                      onDelete={itemId => removeMutation.mutate(itemId)}
+                      onSendStart={itemId => { setSendingId(itemId); setSendCharId(''); setSendError('') }}
+                      onSendCharIdChange={setSendCharId}
+                      onSendConfirm={(itemId, recipientCharacterId) => sendMutation.mutate({ itemId, recipientCharacterId })}
+                      onSendCancel={() => { setSendingId(null); setSendError('') }}
+                    />
                   ))}
                 </div>
               )}
@@ -698,147 +444,26 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
 
       {/* ────────────── EQUIPPED TAB ────────────── */}
       {mainTab === 'equipped' && (
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="max-w-2xl mx-auto space-y-3">
-            {EQUIPPED_PANEL_SLOTS.map(slot => {
-              const slotItems = equippedBySlot[slot] ?? []
-              const unequipped = items.filter(i => !i.isEquipped)
-              return (
-                <div key={slot} className="bg-gray-900 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-semibold">{SLOT_ICON[slot]} {SLOT_LABEL[slot]}</p>
-                    {unequipped.length > 0 && (
-                      <button
-                        onClick={() => setSelectingSlot(slot)}
-                        className="text-xs px-2 py-1 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition-colors"
-                      >
-                        + Equip
-                      </button>
-                    )}
-                  </div>
-                  {slotItems.length === 0 ? (
-                    <p className="text-sm text-gray-600 italic">Empty</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {slotItems.map(item => (
-                        <div key={item.id} className="flex items-center gap-3 bg-gray-800 rounded-lg px-3 py-2.5">
-                          <div className="flex-1 min-w-0">
-                            <button
-                              className="font-medium truncate hover:text-indigo-300 transition-colors text-left w-full"
-                              onClick={() => setSelectedInvItem(item)}
-                            >
-                              {item.name}
-                              {item.isTwoHanded && (
-                                <span className="ml-2 text-xs text-yellow-400 font-normal">2H</span>
-                              )}
-                            </button>
-                            <div className="flex gap-2 flex-wrap mt-0.5">
-                              {item.acBonus != null && <span className="text-xs text-green-400">AC +{item.acBonus}</span>}
-                              {item.damageOverride && <span className="text-xs text-red-400">{item.damageOverride}</span>}
-                              {item.notes && <span className="text-xs text-gray-400">{item.notes}</span>}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: false, slot: item.equippedSlot } })}
-                            className="text-xs text-gray-500 hover:text-red-400 px-2 py-1 rounded transition-colors shrink-0"
-                            title="Unequip"
-                          >
-                            Unequip
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-            {/* Legacy slots — only show if something is equipped in them */}
-            {(['Armor', 'Weapon', 'Offhand', 'Accessory'] as InventorySlot[]).map(slot => {
-              const slotItems = equippedBySlot[slot] ?? []
-              if (slotItems.length === 0) return null
-              return (
-                <div key={slot} className="bg-gray-900 rounded-xl p-4">
-                  <p className="text-sm font-semibold mb-2 text-gray-400">{SLOT_ICON[slot]} {SLOT_LABEL[slot]} <span className="text-xs">(legacy)</span></p>
-                  <div className="space-y-2">
-                    {slotItems.map(item => (
-                      <div key={item.id} className="flex items-center gap-3 bg-gray-800 rounded-lg px-3 py-2.5">
-                        <div className="flex-1 min-w-0">
-                          <button className="font-medium truncate hover:text-indigo-300 text-left w-full" onClick={() => setSelectedInvItem(item)}>
-                            {item.name}
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => equipMutation.mutate({ itemId: item.id, req: { isEquipped: false, slot: item.equippedSlot } })}
-                          className="text-xs text-gray-500 hover:text-red-400 px-2 py-1 rounded transition-colors shrink-0"
-                        >
-                          Unequip
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-            {items.filter(i => i.isEquipped).length === 0 && (
-              <p className="text-gray-400 text-center py-10">
-                Nothing equipped yet.<br />
-                <span className="text-indigo-400 text-sm">Tap "+ Equip" on a slot above.</span>
-              </p>
-            )}
-          </div>
-        </div>
+        <EquippedTab
+          items={items}
+          equippedBySlot={equippedBySlot}
+          onSelectItem={setSelectedInvItem}
+          onEquip={(itemId, req) => equipMutation.mutate({ itemId, req })}
+          onEquipSlotClick={setSelectingSlot}
+        />
       )}
 
       {/* Slot picker modal */}
       {selectingSlot && (
-        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setSelectingSlot(null)}>
-          <div className="bg-gray-900 rounded-2xl w-full max-w-lg max-h-[70vh] overflow-y-auto p-5 space-y-3" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">
-                Equip to {SLOT_ICON[selectingSlot]} {SLOT_LABEL[selectingSlot]}
-              </h2>
-              <button onClick={() => setSelectingSlot(null)} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
-            </div>
-            {items.filter(i => !i.isEquipped).length === 0 ? (
-              <p className="text-gray-400 text-sm">No unequipped items in inventory.</p>
-            ) : (
-              <div className="space-y-2">
-                {items.filter(i => !i.isEquipped).map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      const armorEntry = (selectingSlot === 'Chest' || selectingSlot === 'Armor')
-                        ? lookupArmor(item.name) : undefined
-                      const protEntry = lookupProtection(item.name)
-                      equipMutation.mutate({
-                        itemId: item.id,
-                        req: {
-                          isEquipped: true,
-                          slot: selectingSlot,
-                          armorType: armorEntry ? armorEntry.type : item.armorType,
-                          acBonus: armorEntry && item.acBonus == null ? armorEntry.ac : (item.acBonus ?? protEntry?.acBonus),
-                          savingThrowBonus: item.savingThrowBonus ?? protEntry?.savingThrowBonus,
-                        }
-                      })
-                      setSelectingSlot(null)
-                    }}
-                    className="w-full flex items-center gap-3 bg-gray-800 hover:bg-gray-700 rounded-lg px-3 py-2.5 text-left transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate text-sm">{item.name}</p>
-                      <div className="flex gap-2 flex-wrap mt-0.5">
-                        {item.acBonus != null && <span className="text-xs text-green-400">{lookupArmor(item.name) ? `AC ${item.acBonus}` : `AC +${item.acBonus}`}</span>}
-                        {item.damageOverride && <span className="text-xs text-red-400">{item.damageOverride}</span>}
-                        {item.notes && <span className="text-xs text-gray-400">{item.notes}</span>}
-                      </div>
-                    </div>
-                    <span className="text-indigo-400 text-xs shrink-0">Equip →</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <SlotPickerModal
+          slot={selectingSlot}
+          items={items}
+          onClose={() => setSelectingSlot(null)}
+          onEquip={(itemId, req) => {
+            equipMutation.mutate({ itemId, req })
+            setSelectingSlot(null)
+          }}
+        />
       )}
 
       {/* ────────────── BROWSE TAB ────────────── */}

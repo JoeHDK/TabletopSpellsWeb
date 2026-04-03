@@ -7,7 +7,6 @@ using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
 using Chronicle.Api.Hubs;
-using Chronicle.Api.Models.Enums;
 using Chronicle.Api.Services;
 
 namespace Chronicle.Api.Controllers;
@@ -15,21 +14,15 @@ namespace Chronicle.Api.Controllers;
 [ApiController]
 [Route("api/game-rooms/{gameRoomId}/encounter")]
 [Authorize]
-public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub, MonsterService monsters) : ControllerBase
+public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub, MonsterService monsters, IGameAuthorizationService authService) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-
-    private async Task<bool> IsMember(Guid gameRoomId) =>
-        await db.GameMembers.AnyAsync(m => m.GameRoomId == gameRoomId && m.UserId == UserId);
-
-    private async Task<bool> IsDm(Guid gameRoomId) =>
-        await db.GameMembers.AnyAsync(m => m.GameRoomId == gameRoomId && m.UserId == UserId && m.Role == GameRole.DM);
 
     // GET /api/game-rooms/{gameRoomId}/encounter
     [HttpGet]
     public async Task<IActionResult> Get(Guid gameRoomId)
     {
-        if (!await IsMember(gameRoomId)) return Forbid();
+        if (!await authService.IsMemberAsync(gameRoomId, UserId)) return Forbid();
 
         var encounter = await db.Encounters
             .Include(e => e.Creatures)
@@ -43,7 +36,7 @@ public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub
     [HttpPost]
     public async Task<IActionResult> Create(Guid gameRoomId, [FromBody] CreateEncounterRequest request)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var existing = await db.Encounters.FirstOrDefaultAsync(e => e.GameRoomId == gameRoomId && e.IsActive);
         if (existing != null)
@@ -66,7 +59,7 @@ public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub
     [HttpDelete]
     public async Task<IActionResult> Delete(Guid gameRoomId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var encounter = await db.Encounters.FirstOrDefaultAsync(e => e.GameRoomId == gameRoomId && e.IsActive);
         if (encounter == null) return NotFound();
@@ -83,7 +76,7 @@ public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub
     [HttpPost("creatures")]
     public async Task<IActionResult> AddCreature(Guid gameRoomId, [FromBody] AddEncounterCreatureRequest request)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var encounter = await db.Encounters
             .Include(e => e.Creatures)
@@ -118,7 +111,7 @@ public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub
     [HttpDelete("creatures/{creatureId:guid}")]
     public async Task<IActionResult> RemoveCreature(Guid gameRoomId, Guid creatureId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var encounter = await db.Encounters
             .Include(e => e.Creatures)
@@ -141,7 +134,7 @@ public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub
     [HttpPatch("creatures/{creatureId:guid}")]
     public async Task<IActionResult> UpdateCreature(Guid gameRoomId, Guid creatureId, [FromBody] UpdateEncounterCreatureRequest request)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var encounter = await db.Encounters
             .Include(e => e.Creatures)
@@ -173,7 +166,7 @@ public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub
     [HttpPut("next-turn")]
     public async Task<IActionResult> NextTurn(Guid gameRoomId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var encounter = await db.Encounters
             .Include(e => e.Creatures)
@@ -199,7 +192,7 @@ public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub
     [HttpPost("add-players")]
     public async Task<IActionResult> AddPlayers(Guid gameRoomId, [FromBody] AddPlayersRequest request)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var encounter = await db.Encounters
             .Include(e => e.Creatures)
@@ -245,7 +238,7 @@ public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub
     [HttpPost("roll-initiative")]
     public async Task<IActionResult> RollInitiative(Guid gameRoomId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var encounter = await db.Encounters
             .Include(e => e.Creatures)
@@ -288,7 +281,7 @@ public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub
     [HttpPost("sort-by-initiative")]
     public async Task<IActionResult> SortByInitiative(Guid gameRoomId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var encounter = await db.Encounters
             .Include(e => e.Creatures)
@@ -343,3 +336,4 @@ public class EncountersController(AppDbContext db, IHubContext<EncounterHub> hub
         Notes = c.Notes,
     };
 }
+

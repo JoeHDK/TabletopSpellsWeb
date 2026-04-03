@@ -5,25 +5,22 @@ using Microsoft.EntityFrameworkCore;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
-using Chronicle.Api.Models.Enums;
+using Chronicle.Api.Services;
 
 namespace Chronicle.Api.Controllers;
 
 [ApiController]
 [Route("api/game-rooms/{gameRoomId}/planner/templates")]
 [Authorize]
-public class EncounterTemplatesController(AppDbContext db) : ControllerBase
+public class EncounterTemplatesController(AppDbContext db, IGameAuthorizationService authService) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-
-    private async Task<bool> IsDm(Guid gameRoomId) =>
-        await db.GameMembers.AnyAsync(m => m.GameRoomId == gameRoomId && m.UserId == UserId && m.Role == GameRole.DM);
 
     // GET /api/game-rooms/{gameRoomId}/planner/templates
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid gameRoomId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var templates = await db.EncounterTemplates
             .Include(t => t.Creatures)
@@ -38,7 +35,7 @@ public class EncounterTemplatesController(AppDbContext db) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Guid gameRoomId, [FromBody] CreateEncounterTemplateRequest request)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var template = new EncounterTemplateEntity
         {
@@ -55,7 +52,7 @@ public class EncounterTemplatesController(AppDbContext db) : ControllerBase
     [HttpPut("{templateId:guid}")]
     public async Task<IActionResult> Update(Guid gameRoomId, Guid templateId, [FromBody] UpdateEncounterTemplateRequest request)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var template = await db.EncounterTemplates
             .Include(t => t.Creatures)
@@ -76,7 +73,7 @@ public class EncounterTemplatesController(AppDbContext db) : ControllerBase
     [HttpDelete("{templateId:guid}")]
     public async Task<IActionResult> Delete(Guid gameRoomId, Guid templateId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var template = await db.EncounterTemplates.FirstOrDefaultAsync(t => t.Id == templateId && t.GameRoomId == gameRoomId);
         if (template == null) return NotFound();
@@ -90,7 +87,7 @@ public class EncounterTemplatesController(AppDbContext db) : ControllerBase
     [HttpPost("{templateId:guid}/creatures")]
     public async Task<IActionResult> AddCreature(Guid gameRoomId, Guid templateId, [FromBody] AddTemplateCreatureRequest request)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var template = await db.EncounterTemplates
             .Include(t => t.Creatures)
@@ -118,7 +115,7 @@ public class EncounterTemplatesController(AppDbContext db) : ControllerBase
     [HttpPut("{templateId:guid}/creatures/{creatureId:guid}")]
     public async Task<IActionResult> UpdateCreature(Guid gameRoomId, Guid templateId, Guid creatureId, [FromBody] UpdateTemplateCreatureRequest request)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var template = await db.EncounterTemplates
             .Include(t => t.Creatures)
@@ -141,7 +138,7 @@ public class EncounterTemplatesController(AppDbContext db) : ControllerBase
     [HttpDelete("{templateId:guid}/creatures/{creatureId:guid}")]
     public async Task<IActionResult> RemoveCreature(Guid gameRoomId, Guid templateId, Guid creatureId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var template = await db.EncounterTemplates
             .Include(t => t.Creatures)
@@ -161,7 +158,7 @@ public class EncounterTemplatesController(AppDbContext db) : ControllerBase
     [HttpPost("{templateId:guid}/launch")]
     public async Task<IActionResult> Launch(Guid gameRoomId, Guid templateId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var template = await db.EncounterTemplates
             .Include(t => t.Creatures)
@@ -246,3 +243,4 @@ public class EncounterTemplatesController(AppDbContext db) : ControllerBase
         }).ToList(),
     };
 }
+

@@ -2,12 +2,10 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
-using Chronicle.Api.Hubs;
 using Chronicle.Api.Models;
 using Chronicle.Api.Services;
 
@@ -19,31 +17,13 @@ namespace Chronicle.Api.Controllers;
 public class InventoryController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly IHubContext<NotificationHub> _notifHub;
-    private readonly WebPushService _pushService;
+    private readonly INotificationService _notifService;
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    public InventoryController(AppDbContext db, IHubContext<NotificationHub> notifHub, WebPushService pushService)
+    public InventoryController(AppDbContext db, INotificationService notifService)
     {
         _db = db;
-        _notifHub = notifHub;
-        _pushService = pushService;
-    }
-
-    private async Task PushNotifAsync(NotificationEntity entity)
-    {
-        var dto = new NotificationDto
-        {
-            Id = entity.Id,
-            Type = entity.Type.ToString(),
-            Title = entity.Title,
-            Message = entity.Message,
-            Link = entity.Link,
-            IsRead = false,
-            CreatedAt = entity.CreatedAt,
-        };
-        await _notifHub.Clients.Group($"notifications-{entity.UserId}").SendAsync("ReceiveNotification", dto);
-        await _pushService.SendNotificationAsync(entity.UserId, dto);
+        _notifService = notifService;
     }
 
     [HttpGet]
@@ -179,7 +159,7 @@ public class InventoryController : ControllerBase
         _db.Notifications.Add(tradeNotif);
 
         await _db.SaveChangesAsync();
-        await PushNotifAsync(tradeNotif);
+        await _notifService.PushAsync(tradeNotif);
         return NoContent();
     }
 

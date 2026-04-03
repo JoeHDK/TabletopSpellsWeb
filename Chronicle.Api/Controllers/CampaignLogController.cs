@@ -5,31 +5,25 @@ using Microsoft.EntityFrameworkCore;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
-using Chronicle.Api.Models.Enums;
+using Chronicle.Api.Services;
 
 namespace Chronicle.Api.Controllers;
 
 [ApiController]
 [Route("api/game-rooms/{gameRoomId}/log")]
 [Authorize]
-public class CampaignLogController(AppDbContext db) : ControllerBase
+public class CampaignLogController(AppDbContext db, IGameAuthorizationService authService) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     private string Username => User.Identity?.Name ?? "Unknown";
-
-    private async Task<bool> IsMember(Guid gameRoomId) =>
-        await db.GameMembers.AnyAsync(m => m.GameRoomId == gameRoomId && m.UserId == UserId);
-
-    private async Task<bool> IsDm(Guid gameRoomId) =>
-        await db.GameMembers.AnyAsync(m => m.GameRoomId == gameRoomId && m.UserId == UserId && m.Role == GameRole.DM);
 
     // GET /api/game-rooms/{gameRoomId}/log
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid gameRoomId)
     {
-        if (!await IsMember(gameRoomId)) return Forbid();
+        if (!await authService.IsMemberAsync(gameRoomId, UserId)) return Forbid();
 
-        var isDm = await IsDm(gameRoomId);
+        var isDm = await authService.IsDmAsync(gameRoomId, UserId);
 
         IQueryable<CampaignLogEntryEntity> query = db.CampaignLogEntries
             .Where(e => e.GameRoomId == gameRoomId);
@@ -46,7 +40,7 @@ public class CampaignLogController(AppDbContext db) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Guid gameRoomId, [FromBody] CreateCampaignLogEntryRequest request)
     {
-        if (!await IsMember(gameRoomId)) return Forbid();
+        if (!await authService.IsMemberAsync(gameRoomId, UserId)) return Forbid();
 
         var entry = new CampaignLogEntryEntity
         {
@@ -70,7 +64,7 @@ public class CampaignLogController(AppDbContext db) : ControllerBase
         if (entry == null) return NotFound();
 
         // Only author (or DM) can edit
-        var isDm = await IsDm(gameRoomId);
+        var isDm = await authService.IsDmAsync(gameRoomId, UserId);
         if (entry.AuthorUserId != UserId && !isDm) return Forbid();
 
         entry.Title = request.Title;
@@ -88,7 +82,7 @@ public class CampaignLogController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(e => e.Id == entryId && e.GameRoomId == gameRoomId);
         if (entry == null) return NotFound();
 
-        var isDm = await IsDm(gameRoomId);
+        var isDm = await authService.IsDmAsync(gameRoomId, UserId);
         if (entry.AuthorUserId != UserId && !isDm) return Forbid();
 
         db.CampaignLogEntries.Remove(entry);

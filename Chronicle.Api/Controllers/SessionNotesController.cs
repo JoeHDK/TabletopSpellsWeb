@@ -5,25 +5,22 @@ using Microsoft.EntityFrameworkCore;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
-using Chronicle.Api.Models.Enums;
+using Chronicle.Api.Services;
 
 namespace Chronicle.Api.Controllers;
 
 [ApiController]
 [Route("api/game-rooms/{gameRoomId}/planner/notes")]
 [Authorize]
-public class SessionNotesController(AppDbContext db) : ControllerBase
+public class SessionNotesController(AppDbContext db, IGameAuthorizationService authService) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-
-    private async Task<bool> IsDm(Guid gameRoomId) =>
-        await db.GameMembers.AnyAsync(m => m.GameRoomId == gameRoomId && m.UserId == UserId && m.Role == GameRole.DM);
 
     // GET /api/game-rooms/{gameRoomId}/planner/notes
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid gameRoomId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var notes = await db.SessionNotes
             .Where(n => n.GameRoomId == gameRoomId)
@@ -39,7 +36,7 @@ public class SessionNotesController(AppDbContext db) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Guid gameRoomId, [FromBody] CreateSessionNoteRequest request)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var maxSort = await db.SessionNotes
             .Where(n => n.GameRoomId == gameRoomId)
@@ -62,7 +59,7 @@ public class SessionNotesController(AppDbContext db) : ControllerBase
     [HttpPut("{noteId:guid}")]
     public async Task<IActionResult> Update(Guid gameRoomId, Guid noteId, [FromBody] UpdateSessionNoteRequest request)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var note = await db.SessionNotes.FirstOrDefaultAsync(n => n.Id == noteId && n.GameRoomId == gameRoomId);
         if (note == null) return NotFound();
@@ -79,7 +76,7 @@ public class SessionNotesController(AppDbContext db) : ControllerBase
     [HttpDelete("{noteId:guid}")]
     public async Task<IActionResult> Delete(Guid gameRoomId, Guid noteId)
     {
-        if (!await IsDm(gameRoomId)) return Forbid();
+        if (!await authService.IsDmAsync(gameRoomId, UserId)) return Forbid();
 
         var note = await db.SessionNotes.FirstOrDefaultAsync(n => n.Id == noteId && n.GameRoomId == gameRoomId);
         if (note == null) return NotFound();
@@ -100,3 +97,4 @@ public class SessionNotesController(AppDbContext db) : ControllerBase
         UpdatedAt = n.UpdatedAt,
     };
 }
+

@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
-using Chronicle.Api.Hubs;
 using Chronicle.Api.Services;
 
 namespace Chronicle.Api.Controllers;
@@ -18,34 +16,16 @@ public class FriendsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly UserManager<AppUser> _userManager;
-    private readonly IHubContext<NotificationHub> _notifHub;
-    private readonly WebPushService _pushService;
+    private readonly INotificationService _notifService;
 
-    public FriendsController(AppDbContext db, UserManager<AppUser> userManager, IHubContext<NotificationHub> notifHub, WebPushService pushService)
+    public FriendsController(AppDbContext db, UserManager<AppUser> userManager, INotificationService notifService)
     {
         _db = db;
         _userManager = userManager;
-        _notifHub = notifHub;
-        _pushService = pushService;
+        _notifService = notifService;
     }
 
     private string CurrentUserId => _userManager.GetUserId(User)!;
-
-    private async Task PushNotifAsync(NotificationEntity entity)
-    {
-        var dto = new NotificationDto
-        {
-            Id = entity.Id,
-            Type = entity.Type.ToString(),
-            Title = entity.Title,
-            Message = entity.Message,
-            Link = entity.Link,
-            IsRead = false,
-            CreatedAt = entity.CreatedAt,
-        };
-        await _notifHub.Clients.Group($"notifications-{entity.UserId}").SendAsync("ReceiveNotification", dto);
-        await _pushService.SendNotificationAsync(entity.UserId, dto);
-    }
 
     // ── DTOs ─────────────────────────────────────────────────────────────────
 
@@ -136,7 +116,7 @@ public class FriendsController : ControllerBase
         _db.Notifications.Add(friendRequestNotif);
 
         await _db.SaveChangesAsync();
-        await PushNotifAsync(friendRequestNotif);
+        await _notifService.PushAsync(friendRequestNotif);
         return Ok(new { friendship.Id });
     }
 
@@ -164,7 +144,7 @@ public class FriendsController : ControllerBase
         _db.Notifications.Add(acceptedNotif);
 
         await _db.SaveChangesAsync();
-        await PushNotifAsync(acceptedNotif);
+        await _notifService.PushAsync(acceptedNotif);
         return Ok();
     }
 
