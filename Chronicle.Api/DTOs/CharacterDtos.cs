@@ -19,6 +19,13 @@ public class CharacterDto
     public List<string> SavingThrowProficiencies { get; set; } = new();
     public List<string> SkillProficiencies { get; set; } = new();
     public List<string> ClassSkillProficiencies { get; set; } = new();
+    public List<string> SkillExpertise { get; set; } = new();
+    // Combat tracking
+    public List<string> ActiveConditions { get; set; } = new();
+    public int DeathSaveSuccesses { get; set; }
+    public int DeathSaveFailures { get; set; }
+    public int ExhaustionLevel { get; set; }
+    public string? ConcentrationSpell { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public int MaxHp { get; set; }
@@ -110,6 +117,13 @@ public class UpdateCharacterRequest
     public List<string>? SavingThrowProficiencies { get; set; }
     public List<string>? SkillProficiencies { get; set; }
     public List<string>? ClassSkillProficiencies { get; set; }
+    public List<string>? SkillExpertise { get; set; }
+    // Combat tracking
+    public List<string>? ActiveConditions { get; set; }
+    public int? DeathSaveSuccesses { get; set; }
+    public int? DeathSaveFailures { get; set; }
+    public int? ExhaustionLevel { get; set; }
+    public string? ConcentrationSpell { get; set; }
     public string? Race { get; set; }
 }
 

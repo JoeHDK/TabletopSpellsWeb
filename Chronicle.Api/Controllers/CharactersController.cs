@@ -86,6 +86,12 @@ public class CharactersController : ControllerBase
         if (req.SavingThrowProficiencies != null) entity.SavingThrowProficienciesJson = JsonConvert.SerializeObject(req.SavingThrowProficiencies);
         if (req.SkillProficiencies != null) entity.SkillProficienciesJson = JsonConvert.SerializeObject(req.SkillProficiencies);
         if (req.ClassSkillProficiencies != null) entity.ClassSkillProficienciesJson = JsonConvert.SerializeObject(req.ClassSkillProficiencies);
+        if (req.SkillExpertise != null) entity.SkillExpertiseJson = JsonConvert.SerializeObject(req.SkillExpertise);
+        if (req.ActiveConditions != null) entity.ActiveConditionsJson = JsonConvert.SerializeObject(req.ActiveConditions);
+        if (req.DeathSaveSuccesses.HasValue) entity.DeathSaveSuccesses = Math.Clamp(req.DeathSaveSuccesses.Value, 0, 3);
+        if (req.DeathSaveFailures.HasValue) entity.DeathSaveFailures = Math.Clamp(req.DeathSaveFailures.Value, 0, 3);
+        if (req.ExhaustionLevel.HasValue) entity.ExhaustionLevel = Math.Clamp(req.ExhaustionLevel.Value, 0, 6);
+        if (req.ConcentrationSpell != null) entity.ConcentrationSpell = req.ConcentrationSpell == "" ? null : req.ConcentrationSpell;
         if (req.Race != null) entity.Race = req.Race;
 
         entity.UpdatedAt = DateTime.UtcNow;
@@ -282,6 +288,12 @@ public class CharactersController : ControllerBase
         SavingThrowProficiencies = DeserializeList(e.SavingThrowProficienciesJson),
         SkillProficiencies = DeserializeList(e.SkillProficienciesJson),
         ClassSkillProficiencies = DeserializeList(e.ClassSkillProficienciesJson),
+        SkillExpertise = DeserializeList(e.SkillExpertiseJson),
+        ActiveConditions = DeserializeList(e.ActiveConditionsJson),
+        DeathSaveSuccesses = e.DeathSaveSuccesses,
+        DeathSaveFailures = e.DeathSaveFailures,
+        ExhaustionLevel = e.ExhaustionLevel,
+        ConcentrationSpell = e.ConcentrationSpell,
         CreatedAt = e.CreatedAt,
         UpdatedAt = e.UpdatedAt,
         MaxHp = e.MaxHp,

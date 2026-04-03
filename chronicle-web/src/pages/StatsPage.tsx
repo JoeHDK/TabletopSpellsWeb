@@ -450,7 +450,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   })
 
   const resourceMutation = useMutation({
-    mutationFn: async ({ action, key, amount }: { action: 'use' | 'restore' | 'long-rest' | 'short-rest' | 'sync', key?: string, amount?: number }): Promise<ClassResource[]> => {
+    mutationFn: async ({ action, key, amount, currentExhaustion }: { action: 'use' | 'restore' | 'long-rest' | 'short-rest' | 'sync', key?: string, amount?: number, currentExhaustion?: number }): Promise<ClassResource[]> => {
       if (action === 'use') return classResourcesApi.use(id!, key!, amount).then(r => [r])
       if (action === 'restore') return classResourcesApi.restore(id!, key!, amount).then(r => [r])
       if (action === 'long-rest') {
@@ -458,6 +458,11 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
           classResourcesApi.longRest(id!),
           equipmentResourcesApi.rest(id!, 'long'),
           spellsPerDayApi.longRest(id!),
+          charactersApi.update(id!, {
+            deathSaveSuccesses: 0,
+            deathSaveFailures: 0,
+            exhaustionLevel: Math.max(0, (currentExhaustion ?? 0) - 1),
+          }),
         ])
         return resources
       }
@@ -479,6 +484,9 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       if (action === 'long-rest' || action === 'short-rest') {
         qc.invalidateQueries({ queryKey: ['equipment-resources', id] })
         qc.invalidateQueries({ queryKey: ['spellsPerDay', id] })
+      }
+      if (action === 'long-rest') {
+        qc.invalidateQueries({ queryKey: ['character', id] })
       }
     },
   })
@@ -512,6 +520,8 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   // Local draft state — only set when something is dirty
   const [draft, setDraft] = useState<UpdateCharacterRequest & { currentHp?: number; maxHp?: number } | null>(null)
   const [editingName, setEditingName] = useState(false)
+  const [editingConcentration, setEditingConcentration] = useState(false)
+  const [concentrationInput, setConcentrationInput] = useState('')
 
   useEffect(() => {
     if (editingName) nameRef.current?.focus()
@@ -612,6 +622,12 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     maxHp: draft?.maxHp ?? character.maxHp,
     savingThrowProficiencies: draft?.savingThrowProficiencies ?? character.savingThrowProficiencies ?? [],
     skillProficiencies: draft?.skillProficiencies ?? character.skillProficiencies ?? [],
+    skillExpertise: draft?.skillExpertise ?? character.skillExpertise ?? [],
+    activeConditions: draft?.activeConditions ?? character.activeConditions ?? [],
+    deathSaveSuccesses: draft?.deathSaveSuccesses ?? character.deathSaveSuccesses ?? 0,
+    deathSaveFailures: draft?.deathSaveFailures ?? character.deathSaveFailures ?? 0,
+    exhaustionLevel: draft?.exhaustionLevel ?? character.exhaustionLevel ?? 0,
+    concentrationSpell: draft?.concentrationSpell !== undefined ? draft.concentrationSpell : character.concentrationSpell,
   }
 
   const getRacialBonus = (key: string) =>
@@ -685,10 +701,25 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   }
 
   const toggleSkillProficiency = (name: string) => {
-    const updated = d.skillProficiencies.includes(name)
-      ? d.skillProficiencies.filter(n => n !== name)
-      : [...d.skillProficiencies, name]
-    patch({ skillProficiencies: updated })
+    const isProficient = d.skillProficiencies.includes(name)
+    const isExpert = d.skillExpertise.includes(name)
+    const bgSkills = character.background ? (BACKGROUND_SKILLS[character.background] ?? []) : []
+    const classSkills = character.classSkillProficiencies ?? []
+    const isLocked = bgSkills.includes(name) || classSkills.includes(name)
+
+    if (!isProficient) {
+      // Not proficient → proficient
+      patch({ skillProficiencies: [...d.skillProficiencies, name] })
+    } else if (!isExpert) {
+      // Proficient → expert
+      patch({ skillExpertise: [...d.skillExpertise, name] })
+    } else if (isLocked) {
+      // Expert (locked) → remove expertise only, stay proficient
+      patch({ skillExpertise: d.skillExpertise.filter(n => n !== name) })
+    } else {
+      // Expert (unlocked) → remove both
+      patch({ skillProficiencies: d.skillProficiencies.filter(n => n !== name), skillExpertise: d.skillExpertise.filter(n => n !== name) })
+    }
   }
 
   const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
@@ -902,6 +933,34 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
             </div>
           </div>
 
+          {/* Death Saving Throws */}
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-400 w-16">Successes</span>
+              {[0, 1, 2].map(i => (
+                <button
+                  key={i}
+                  onClick={() => patch({ deathSaveSuccesses: d.deathSaveSuccesses > i ? i : i + 1 })}
+                  className={`w-4 h-4 rounded-full border-2 transition-colors ${i < d.deathSaveSuccesses ? 'bg-green-500 border-green-500' : 'border-green-800 hover:border-green-600'}`}
+                  title={`Success ${i + 1}`}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-400 w-14">Failures</span>
+              {[0, 1, 2].map(i => (
+                <button
+                  key={i}
+                  onClick={() => patch({ deathSaveFailures: d.deathSaveFailures > i ? i : i + 1 })}
+                  className={`w-4 h-4 rounded-full border-2 transition-colors ${i < d.deathSaveFailures ? 'bg-red-500 border-red-500' : 'border-red-800 hover:border-red-600'}`}
+                  title={`Failure ${i + 1}`}
+                />
+              ))}
+              {d.deathSaveFailures >= 3 && <span className="text-red-400 text-xs ml-1">💀 Dead</span>}
+            </div>
+            {d.deathSaveSuccesses >= 3 && <span className="text-green-400 text-xs">🛡️ Stable</span>}
+          </div>
+
           {/* AC, Initiative, Proficiency, Passive Perception (+ spell stats for casters) */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-800 rounded-xl p-3 text-center">
@@ -963,6 +1022,77 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
               </>
             )}
           </div>
+
+          {/* Concentration (casters only) */}
+          {spellSaveDC !== null && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-400">Concentrating:</span>
+              {d.concentrationSpell && !editingConcentration ? (
+                <div className="flex items-center gap-1 bg-purple-900/40 border border-purple-700/60 rounded-lg px-2 py-0.5">
+                  <span
+                    className="text-xs text-purple-300 cursor-pointer"
+                    onClick={() => { setConcentrationInput(d.concentrationSpell ?? ''); setEditingConcentration(true) }}
+                  >{d.concentrationSpell}</span>
+                  <button onClick={() => patch({ concentrationSpell: '' })} className="text-gray-500 hover:text-white text-sm leading-none ml-1">×</button>
+                </div>
+              ) : editingConcentration ? (
+                <input
+                  value={concentrationInput}
+                  onChange={e => setConcentrationInput(e.target.value)}
+                  onBlur={() => { patch({ concentrationSpell: concentrationInput || '' }); setEditingConcentration(false) }}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEditingConcentration(false) }}
+                  autoFocus
+                  placeholder="Spell name..."
+                  className="bg-gray-800 border border-purple-700/60 rounded-lg px-2 py-0.5 text-xs text-purple-300 outline-none focus:border-purple-500 w-36"
+                />
+              ) : (
+                <button
+                  onClick={() => { setConcentrationInput(''); setEditingConcentration(true) }}
+                  className="text-xs text-gray-600 hover:text-purple-400 transition-colors border border-dashed border-gray-700 rounded-lg px-2 py-0.5"
+                >+ Set spell</button>
+              )}
+            </div>
+          )}
+
+          {/* Conditions */}
+          <div>
+            <p className="text-xs text-gray-400 mb-1.5">Conditions</p>
+            <div className="flex flex-wrap gap-1">
+              {(['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious'] as const).map(c => {
+                const active = d.activeConditions.includes(c)
+                return (
+                  <button
+                    key={c}
+                    onClick={() => patch({ activeConditions: active ? d.activeConditions.filter(x => x !== c) : [...d.activeConditions, c] })}
+                    className={`text-[10px] px-1.5 py-0.5 rounded-md border transition-colors ${active ? 'bg-red-900/60 border-red-600 text-red-300' : 'bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-500'}`}
+                  >{c}</button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Exhaustion stepper */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">Exhaustion</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => patch({ exhaustionLevel: Math.max(0, d.exhaustionLevel - 1) })}
+                disabled={d.exhaustionLevel === 0}
+                className="w-6 h-6 rounded bg-gray-800 text-gray-400 hover:text-white disabled:opacity-30 flex items-center justify-center text-sm"
+              >−</button>
+              <span className={`text-sm font-bold w-6 text-center ${d.exhaustionLevel === 0 ? 'text-gray-500' : d.exhaustionLevel >= 5 ? 'text-red-400' : 'text-amber-400'}`}>{d.exhaustionLevel}</span>
+              <button
+                onClick={() => patch({ exhaustionLevel: Math.min(6, d.exhaustionLevel + 1) })}
+                disabled={d.exhaustionLevel === 6}
+                className="w-6 h-6 rounded bg-gray-800 text-gray-400 hover:text-white disabled:opacity-30 flex items-center justify-center text-sm"
+              >+</button>
+            </div>
+            {d.exhaustionLevel > 0 && (
+              <span className="text-[10px] text-gray-500">
+                {['','Disadv. checks','Speed halved','Disadv. attacks+saves','Max HP halved','Speed 0','Death'][d.exhaustionLevel]}
+              </span>
+            )}
+          </div>
         </section>
 
         {/* Active Feats */}
@@ -974,7 +1104,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
           equipmentResources={equipmentResources}
           classFeatures={classFeatures}
           characterLevel={d.level}
-          onResourceAction={(args) => resourceMutation.mutate(args)}
+          onResourceAction={(args) => resourceMutation.mutate({ ...args, currentExhaustion: args.action === 'long-rest' ? d.exhaustionLevel : undefined })}
           resourcePending={resourceMutation.isPending}
           onEquipResAction={(args) => equipResMutation.mutate(args)}
           equipResPending={equipResMutation.isPending}
@@ -1053,6 +1183,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
             <div className="space-y-0.5">
               {skillList.map(({ name, ability }) => {
                 const isProficient = d.skillProficiencies.includes(name)
+                const isExpert = d.skillExpertise.includes(name)
                 const bgSkills = character.background ? (BACKGROUND_SKILLS[character.background] ?? []) : []
                 const classSkills = character.classSkillProficiencies ?? []
                 const isFromBackground = bgSkills.includes(name)
@@ -1060,14 +1191,22 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                 const lockedByBackground = isFromBackground && isProficient
                 const lockedByClass = isFromClass && isProficient
                 const locked = lockedByBackground || lockedByClass
-                const disabled = locked || (!isProficient && atSkillLimit)
-                const total = abilityMod(ability) + (isProficient ? profBonusNum : 0)
-                const dotColour = isProficient
+                const disabled = !isProficient && atSkillLimit
+                const total = abilityMod(ability) + (isExpert ? profBonusNum * 2 : isProficient ? profBonusNum : 0)
+                const dotColour = isExpert
+                  ? isFromBackground ? 'bg-amber-300 border-amber-300'
+                  : isFromClass ? 'bg-purple-300 border-purple-300'
+                  : 'bg-cyan-400 border-cyan-400'
+                  : isProficient
                   ? isFromBackground ? 'bg-amber-500 border-amber-500'
                   : isFromClass ? 'bg-purple-500 border-purple-500'
                   : 'bg-indigo-500 border-indigo-500'
                   : 'border-gray-500'
-                const scoreColour = isProficient
+                const scoreColour = isExpert
+                  ? isFromBackground ? 'text-amber-200'
+                  : isFromClass ? 'text-purple-200'
+                  : 'text-cyan-300'
+                  : isProficient
                   ? isFromBackground ? 'text-amber-300'
                   : isFromClass ? 'text-purple-300'
                   : 'text-indigo-300'
@@ -1077,15 +1216,18 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                     key={name}
                     onClick={() => !disabled && toggleSkillProficiency(name)}
                     disabled={disabled}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${locked ? 'cursor-default' : disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-gray-800'}`}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-gray-800'}`}
                   >
-                    <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors ${dotColour}`} />
+                    <span className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-all ${dotColour}${isExpert ? ' ring-2 ring-offset-1 ring-offset-gray-900 ring-white/50' : ''}`} />
                     <span className="flex-1 text-xs truncate">{name}</span>
                     {isFromBackground && isProficient && (
                       <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-400">bg</span>
                     )}
                     {isFromClass && isProficient && (
                       <span className="text-[9px] px-1 py-0.5 rounded bg-purple-900/60 text-purple-400">cl</span>
+                    )}
+                    {isExpert && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-cyan-900/60 text-cyan-400">ex</span>
                     )}
                     <span className={`text-xs font-semibold w-6 text-right flex-shrink-0 ${scoreColour}`}>{fmtMod(total)}</span>
                   </button>

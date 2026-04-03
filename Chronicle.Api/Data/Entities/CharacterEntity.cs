@@ -23,6 +23,14 @@ public class CharacterEntity
     [Column(TypeName = "jsonb")] public string SavingThrowProficienciesJson { get; set; } = "[]";
     [Column(TypeName = "jsonb")] public string SkillProficienciesJson { get; set; } = "[]";
     [Column(TypeName = "jsonb")] public string ClassSkillProficienciesJson { get; set; } = "[]";
+    [Column(TypeName = "jsonb")] public string SkillExpertiseJson { get; set; } = "[]";
+
+    // Combat tracking
+    [Column(TypeName = "jsonb")] public string ActiveConditionsJson { get; set; } = "[]";
+    public int DeathSaveSuccesses { get; set; } = 0;
+    public int DeathSaveFailures { get; set; } = 0;
+    public int ExhaustionLevel { get; set; } = 0;
+    [MaxLength(200)] public string? ConcentrationSpell { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

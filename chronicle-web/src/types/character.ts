@@ -21,6 +21,13 @@ export interface Character {
   savingThrowProficiencies: string[]
   skillProficiencies: string[]
   classSkillProficiencies: string[]
+  skillExpertise: string[]
+  // Combat tracking
+  activeConditions: string[]
+  deathSaveSuccesses: number
+  deathSaveFailures: number
+  exhaustionLevel: number
+  concentrationSpell?: string
   createdAt: string
   updatedAt: string
   maxHp: number
@@ -91,6 +98,13 @@ export interface UpdateCharacterRequest {
   savingThrowProficiencies?: string[]
   skillProficiencies?: string[]
   classSkillProficiencies?: string[]
+  skillExpertise?: string[]
+  // Combat tracking
+  activeConditions?: string[]
+  deathSaveSuccesses?: number
+  deathSaveFailures?: number
+  exhaustionLevel?: number
+  concentrationSpell?: string
 }
 
 export interface CharacterTheme {
