@@ -31,12 +31,13 @@ public static class DataSeeder
         db.Users.Add(admin);
         await db.SaveChangesAsync();
 
-        // Print once to stdout so the operator can retrieve it from logs
+        // Write password to startup log only — avoid printing secrets to stdout/docker logs
+        var logPath = Path.Combine(AppContext.BaseDirectory, "admin-init.log");
+        var logLine = $"[{DateTime.UtcNow:O}] Admin account created. Username: admin  Password: {password}  (Change after first login.)";
+        await File.WriteAllTextAsync(logPath, logLine + Environment.NewLine);
         Console.WriteLine("=================================================");
-        Console.WriteLine($"  Admin account created");
-        Console.WriteLine($"  Username : admin");
-        Console.WriteLine($"  Password : {password}");
-        Console.WriteLine("  Change this password after first login.");
+        Console.WriteLine("  Admin account created.");
+        Console.WriteLine($"  Check startup log for credentials: {logPath}");
         Console.WriteLine("=================================================");
     }
 }
