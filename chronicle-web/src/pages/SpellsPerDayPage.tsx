@@ -1,11 +1,10 @@
 import { useEffect } from 'react'
-import type { Character, SpellsPerDay } from '../types'
+import type { Character } from '../types'
 import { getExpectedSpellSlots } from '../utils/spellSlotsTable'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { spellsPerDayApi } from '../api/spells'
 import { charactersApi } from '../api/characters'
-import { classResourcesApi } from '../api/classResources'
 import EditableNumber from '../components/EditableNumber'
 
 export default function SpellsPerDayPage({ embedded }: { embedded?: boolean } = {}) {
@@ -28,28 +27,6 @@ export default function SpellsPerDayPage({ embedded }: { embedded?: boolean } = 
     mutationFn: (newMax: Record<number, number>) =>
       charactersApi.update(id!, { maxSpellsPerDay: newMax }),
     onSuccess: (updatedCharacter) => qc.setQueryData<Character>(['character', id], updatedCharacter),
-  })
-
-  const resetMutation = useMutation({
-    mutationFn: async () => {
-      const maxSlotMap = character?.maxSpellsPerDay ?? {}
-      await Promise.all([
-        ...Object.keys(maxSlotMap).map((lvl) =>
-          spellsPerDayApi.upsert(id!, Number(lvl), {
-            spellLevel: Number(lvl),
-            maxSlots: maxSlotMap[Number(lvl)],
-            usedSlots: 0,
-          })
-        ),
-        classResourcesApi.longRest(id!),
-      ])
-    },
-    onSuccess: () => {
-      qc.setQueryData<SpellsPerDay[]>(['spellsPerDay', id], old =>
-        old?.map(s => ({ ...s, usedSlots: 0 })) ?? []
-      )
-      qc.invalidateQueries({ queryKey: ['classResources', id] })
-    },
   })
 
   const maxSlotMap = character?.maxSpellsPerDay ?? {}
@@ -116,16 +93,6 @@ export default function SpellsPerDayPage({ embedded }: { embedded?: boolean } = 
           )
         })}
       </main>
-
-      <div className="p-6 max-w-lg mx-auto w-full">
-        <button
-          onClick={() => resetMutation.mutate()}
-          disabled={resetMutation.isPending}
-          className="w-full py-3 rounded-xl bg-amber-700/40 hover:bg-amber-700/70 text-amber-300 font-medium transition-colors disabled:opacity-50"
-        >
-          🌙 Long Rest — Reset All Slots
-        </button>
-      </div>
     </div>
   )
 }

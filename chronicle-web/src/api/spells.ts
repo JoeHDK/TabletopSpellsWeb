@@ -21,6 +21,8 @@ export const spellsPerDayApi = {
     api.get<SpellsPerDay[]>(`/characters/${characterId}/spellsperday`).then((r) => r.data),
   upsert: (characterId: string, spellLevel: number, data: Omit<SpellsPerDay, 'id' | 'date'>) =>
     api.put<SpellsPerDay>(`/characters/${characterId}/spellsperday/${spellLevel}`, data).then((r) => r.data),
+  longRest: (characterId: string) =>
+    api.post(`/characters/${characterId}/spellsperday/long-rest`).then((r) => r.data),
 }
 
 export const spellLogsApi = {

@@ -72,16 +72,25 @@ interface ClassResourcesSectionProps {
   classResources: ClassResource[]
   equipmentResources: EquipmentResource[]
   classFeatures: ClassFeature[]
+  characterLevel: number
   onResourceAction: (args: { action: 'use' | 'restore' | 'long-rest' | 'short-rest' | 'sync'; key?: string; amount?: number }) => void
   resourcePending: boolean
   onEquipResAction: (args: { action: 'use' | 'restore' | 'rest-short' | 'rest-long'; usageId?: string }) => void
   equipResPending: boolean
 }
 
+function bardicInspirationDie(level: number): string {
+  if (level >= 15) return 'd12'
+  if (level >= 10) return 'd10'
+  if (level >= 5) return 'd8'
+  return 'd6'
+}
+
 export function ClassResourcesSection({
   classResources,
   equipmentResources,
   classFeatures,
+  characterLevel,
   onResourceAction,
   resourcePending,
   onEquipResAction,
@@ -129,6 +138,9 @@ export function ClassResourcesSection({
                       title={RESOURCE_DESCRIPTIONS[res.resourceKey] ? 'Tap for description' : undefined}
                     >
                       {res.name}
+                      {res.resourceKey === 'bardic_inspiration' && (
+                        <span className="ml-1 text-indigo-400 text-xs">({bardicInspirationDie(characterLevel)})</span>
+                      )}
                       {RESOURCE_DESCRIPTIONS[res.resourceKey] && (
                         <span className="ml-1 text-gray-600 text-xs">ℹ</span>
                       )}
@@ -218,20 +230,6 @@ export function ClassResourcesSection({
         <section className="bg-gray-900 rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Equipment Resources</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => onEquipResAction({ action: 'rest-short' })}
-                disabled={equipResPending}
-                className="text-xs px-2 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 disabled:opacity-40 transition-colors"
-                title="Short Rest — restores short-rest abilities"
-              >⏱ Short Rest</button>
-              <button
-                onClick={() => onEquipResAction({ action: 'rest-long' })}
-                disabled={equipResPending}
-                className="text-xs px-2 py-1 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 disabled:opacity-40 transition-colors"
-                title="Long Rest — restores all abilities"
-              >🌙 Long Rest</button>
-            </div>
           </div>
           <div className="space-y-3">
             {equipmentResources.map(res => {

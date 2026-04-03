@@ -25,6 +25,7 @@ interface AttacksSectionProps {
   allBeasts: Beast[]
   abilityScores: Record<string, number>
   profBonusNum: number
+  sneakAttackDice: number
   showAttackForm: boolean
   setShowAttackForm: (v: boolean) => void
   editingAttack: CharacterAttack | null
@@ -45,6 +46,7 @@ export function AttacksSection({
   allBeasts,
   abilityScores,
   profBonusNum,
+  sneakAttackDice,
   showAttackForm,
   setShowAttackForm,
   editingAttack,
@@ -149,6 +151,17 @@ export function AttacksSection({
           >+ Add</button>
         )}
       </div>
+
+      {/* Sneak Attack badge for Rogues */}
+      {sneakAttackDice > 0 && (
+        <div className="mb-3 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 flex items-start gap-2">
+          <span className="text-amber-400 text-sm shrink-0">🗡️</span>
+          <div className="text-xs">
+            <span className="text-amber-300 font-semibold">Sneak Attack: {sneakAttackDice}d6</span>
+            <span className="text-gray-400 ml-1">— once per turn, with advantage or an adjacent ally, using a finesse or ranged weapon</span>
+          </div>
+        </div>
+      )}
 
       {/* Auto-generated weapon attacks */}
       <div className="space-y-2 mb-3">

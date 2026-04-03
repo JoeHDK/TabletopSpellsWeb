@@ -9,6 +9,7 @@ import { characterFeatsApi } from '../api/characterFeats'
 import { classFeaturesApi } from '../api/classFeatures'
 import { classResourcesApi } from '../api/classResources'
 import { equipmentResourcesApi } from '../api/equipmentResources'
+import { spellsPerDayApi } from '../api/spells'
 import { racesApi } from '../api/races'
 import { backgroundsApi } from '../api/backgrounds'
 import EditableNumber from '../components/EditableNumber'
@@ -449,18 +450,37 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   })
 
   const resourceMutation = useMutation({
-    mutationFn: ({ action, key, amount }: { action: 'use' | 'restore' | 'long-rest' | 'short-rest' | 'sync', key?: string, amount?: number }): Promise<ClassResource[]> => {
+    mutationFn: async ({ action, key, amount }: { action: 'use' | 'restore' | 'long-rest' | 'short-rest' | 'sync', key?: string, amount?: number }): Promise<ClassResource[]> => {
       if (action === 'use') return classResourcesApi.use(id!, key!, amount).then(r => [r])
       if (action === 'restore') return classResourcesApi.restore(id!, key!, amount).then(r => [r])
-      if (action === 'long-rest') return classResourcesApi.longRest(id!)
-      if (action === 'short-rest') return classResourcesApi.shortRest(id!)
+      if (action === 'long-rest') {
+        const [resources] = await Promise.all([
+          classResourcesApi.longRest(id!),
+          equipmentResourcesApi.rest(id!, 'long'),
+          spellsPerDayApi.longRest(id!),
+        ])
+        return resources
+      }
+      if (action === 'short-rest') {
+        const [resources] = await Promise.all([
+          classResourcesApi.shortRest(id!),
+          equipmentResourcesApi.rest(id!, 'short'),
+        ])
+        return resources
+      }
       return classResourcesApi.sync(id!)
     },
-    onSuccess: (updated) => qc.setQueryData<ClassResource[]>(['classResources', id], old => {
-      if (!old) return updated
-      const map = new Map(updated.map(r => [r.resourceKey, r]))
-      return old.map(r => map.get(r.resourceKey) ?? r)
-    }),
+    onSuccess: (updated, { action }) => {
+      qc.setQueryData<ClassResource[]>(['classResources', id], old => {
+        if (!old) return updated
+        const map = new Map(updated.map(r => [r.resourceKey, r]))
+        return old.map(r => map.get(r.resourceKey) ?? r)
+      })
+      if (action === 'long-rest' || action === 'short-rest') {
+        qc.invalidateQueries({ queryKey: ['equipment-resources', id] })
+        qc.invalidateQueries({ queryKey: ['spellsPerDay', id] })
+      }
+    },
   })
 
   useEffect(() => {
@@ -679,6 +699,8 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const castingAbilityMod = castingAbility ? abilityMod(castingAbility) : null
   const spellSaveDC = castingAbilityMod !== null ? 8 + profBonusNum + castingAbilityMod : null
   const spellAttackBonus = castingAbilityMod !== null ? profBonusNum + castingAbilityMod : null
+
+  const sneakAttackDice = getFeatModifier([...charFeats, ...classFeatures], 'sneak_attack_dice')
 
   const maxSkillProficiencies = character.gameType === 'pathfinder1e'
     ? (PF1E_SKILL_RANKS_PER_LEVEL[character.characterClass] ?? 2) * d.level
@@ -951,6 +973,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
           classResources={classResources}
           equipmentResources={equipmentResources}
           classFeatures={classFeatures}
+          characterLevel={d.level}
           onResourceAction={(args) => resourceMutation.mutate(args)}
           resourcePending={resourceMutation.isPending}
           onEquipResAction={(args) => equipResMutation.mutate(args)}
@@ -973,6 +996,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
           allBeasts={allBeasts}
           abilityScores={d.abilityScores}
           profBonusNum={profBonusNum}
+          sneakAttackDice={sneakAttackDice}
           showAttackForm={showAttackForm}
           setShowAttackForm={setShowAttackForm}
           editingAttack={editingAttack}

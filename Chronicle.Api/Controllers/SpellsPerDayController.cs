@@ -62,6 +62,20 @@ public class SpellsPerDayController : ControllerBase
         return Ok(MapToDto(existing));
     }
 
+    [HttpPost("long-rest")]
+    public async Task<IActionResult> LongRest(Guid characterId)
+    {
+        if (!await OwnsCharacter(characterId)) return Forbid();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var slots = await _db.SpellsPerDay
+            .Where(s => s.CharacterId == characterId && s.Date == today)
+            .ToListAsync();
+        foreach (var s in slots)
+            s.UsedSlots = 0;
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private static SpellsPerDayDto MapToDto(SpellsPerDayEntity e) => new()
     {
         Id = e.Id, SpellLevel = e.SpellLevel, MaxSlots = e.MaxSlots,
