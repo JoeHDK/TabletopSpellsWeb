@@ -17,3 +17,6 @@ Thumbs.db
 
 # Local Docker overrides (developers create from docker-compose.override.yml.example)
 docker-compose.override.yml
+
+# Playwright MCP artifacts
+.playwright-mcp/
