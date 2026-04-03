@@ -30,7 +30,7 @@ function deduplicateFeatures(features: ClassFeature[]): ClassFeature[] {
 }
 
 export function ClassAbilitiesSection({ classFeatures }: ClassAbilitiesSectionProps) {
-  const [cardOpen, setCardOpen] = useState(true)
+  const [cardOpen, setCardOpen] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   if (classFeatures.length === 0) return null

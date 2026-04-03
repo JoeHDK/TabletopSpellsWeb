@@ -563,8 +563,8 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const [showAttackForm, setShowAttackForm] = useState(false)
   const [editingAttack, setEditingAttack] = useState<CharacterAttack | null>(null)
   const [attackForm, setAttackForm] = useState<AddAttackRequest>(BLANK_ATTACK)
-  const [deathSavesOpen, setDeathSavesOpen] = useState(true)
-  const [conditionsOpen, setConditionsOpen] = useState(true)
+  const [deathSavesOpen, setDeathSavesOpen] = useState(false)
+  const [conditionsOpen, setConditionsOpen] = useState(false)
 
   const addAttackMutation = useMutation({
     mutationFn: (req: AddAttackRequest) => attacksApi.add(id!, req),
