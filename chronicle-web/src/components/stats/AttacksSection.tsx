@@ -111,10 +111,12 @@ export function AttacksSection({
     const aMod = Math.floor(((abilityScores[ability] ?? 10) - 10) / 2)
     const isOffHand = item.equippedSlot === 'Offhand' || item.equippedSlot === 'OffHand'
     const toHit = aMod + profBonusNum + (isOffHand ? -profBonusNum : 0)
-    const dmgBonus = aMod
+    const extraDmg = (item.damageEntries ?? []).map(e => `+${e.dice} ${e.damageType}`).join('')
+    // If the item has a damage formula, it's a complete expression (creator included modifiers).
+    // Don't add the ability mod again; just append any extra typed damage entries.
     const dmgStr = item.damageOverride
-      ? `${item.damageOverride}${dmgBonus !== 0 ? fmtMod(dmgBonus) : ''}`
-      : fmtMod(dmgBonus)
+      ? `${item.damageOverride}${extraDmg}`
+      : `${aMod !== 0 ? fmtMod(aMod) : '—'}${extraDmg}`
     return { id: item.id, name: item.name, toHit, dmgStr, slot: item.equippedSlot, isAuto: true }
   })
 
