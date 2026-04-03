@@ -563,6 +563,8 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const [showAttackForm, setShowAttackForm] = useState(false)
   const [editingAttack, setEditingAttack] = useState<CharacterAttack | null>(null)
   const [attackForm, setAttackForm] = useState<AddAttackRequest>(BLANK_ATTACK)
+  const [deathSavesOpen, setDeathSavesOpen] = useState(true)
+  const [conditionsOpen, setConditionsOpen] = useState(true)
 
   const addAttackMutation = useMutation({
     mutationFn: (req: AddAttackRequest) => attacksApi.add(id!, req),
@@ -938,31 +940,44 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
           </div>
 
           {/* Death Saving Throws */}
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-400 w-16">Successes</span>
-              {[0, 1, 2].map(i => (
-                <button
-                  key={i}
-                  onClick={() => patch({ deathSaveSuccesses: d.deathSaveSuccesses > i ? i : i + 1 })}
-                  className={`w-4 h-4 rounded-full border-2 transition-colors ${i < d.deathSaveSuccesses ? 'bg-green-500 border-green-500' : 'border-green-800 hover:border-green-600'}`}
-                  title={`Success ${i + 1}`}
-                />
-              ))}
+          <div>
+            <button
+              onClick={() => setDeathSavesOpen(v => !v)}
+              className="w-full flex items-center justify-between mb-1 group"
+            >
+              <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Death Saves</span>
+              <span className={`text-gray-600 text-xs transition-transform duration-300 ${deathSavesOpen ? 'rotate-0' : '-rotate-90'}`}>▼</span>
+            </button>
+            <div className={`grid transition-all duration-300 ${deathSavesOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+              <div className="overflow-hidden">
+                <div className="flex items-center gap-6 pt-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400 w-16">Successes</span>
+                    {[0, 1, 2].map(i => (
+                      <button
+                        key={i}
+                        onClick={() => patch({ deathSaveSuccesses: d.deathSaveSuccesses > i ? i : i + 1 })}
+                        className={`w-4 h-4 rounded-full border-2 transition-colors ${i < d.deathSaveSuccesses ? 'bg-green-500 border-green-500' : 'border-green-800 hover:border-green-600'}`}
+                        title={`Success ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400 w-14">Failures</span>
+                    {[0, 1, 2].map(i => (
+                      <button
+                        key={i}
+                        onClick={() => patch({ deathSaveFailures: d.deathSaveFailures > i ? i : i + 1 })}
+                        className={`w-4 h-4 rounded-full border-2 transition-colors ${i < d.deathSaveFailures ? 'bg-red-500 border-red-500' : 'border-red-800 hover:border-red-600'}`}
+                        title={`Failure ${i + 1}`}
+                      />
+                    ))}
+                    {d.deathSaveFailures >= 3 && <span className="text-red-400 text-xs ml-1">💀 Dead</span>}
+                  </div>
+                  {d.deathSaveSuccesses >= 3 && <span className="text-green-400 text-xs">🛡️ Stable</span>}
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-400 w-14">Failures</span>
-              {[0, 1, 2].map(i => (
-                <button
-                  key={i}
-                  onClick={() => patch({ deathSaveFailures: d.deathSaveFailures > i ? i : i + 1 })}
-                  className={`w-4 h-4 rounded-full border-2 transition-colors ${i < d.deathSaveFailures ? 'bg-red-500 border-red-500' : 'border-red-800 hover:border-red-600'}`}
-                  title={`Failure ${i + 1}`}
-                />
-              ))}
-              {d.deathSaveFailures >= 3 && <span className="text-red-400 text-xs ml-1">💀 Dead</span>}
-            </div>
-            {d.deathSaveSuccesses >= 3 && <span className="text-green-400 text-xs">🛡️ Stable</span>}
           </div>
 
           {/* AC, Initiative, Proficiency, Passive Perception (+ spell stats for casters) */}
@@ -1060,18 +1075,28 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
           {/* Conditions */}
           <div>
-            <p className="text-xs text-gray-400 mb-1.5">Conditions</p>
-            <div className="flex flex-wrap gap-1">
-              {(['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious'] as const).map(c => {
-                const active = d.activeConditions.includes(c)
-                return (
-                  <button
-                    key={c}
-                    onClick={() => patch({ activeConditions: active ? d.activeConditions.filter(x => x !== c) : [...d.activeConditions, c] })}
-                    className={`text-[10px] px-1.5 py-0.5 rounded-md border transition-colors ${active ? 'bg-red-900/60 border-red-600 text-red-300' : 'bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-500'}`}
-                  >{c}</button>
-                )
-              })}
+            <button
+              onClick={() => setConditionsOpen(v => !v)}
+              className="w-full flex items-center justify-between mb-1 group"
+            >
+              <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Conditions</span>
+              <span className={`text-gray-600 text-xs transition-transform duration-300 ${conditionsOpen ? 'rotate-0' : '-rotate-90'}`}>▼</span>
+            </button>
+            <div className={`grid transition-all duration-300 ${conditionsOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+              <div className="overflow-hidden">
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {(['Blinded','Charmed','Deafened','Frightened','Grappled','Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious'] as const).map(c => {
+                    const active = d.activeConditions.includes(c)
+                    return (
+                      <button
+                        key={c}
+                        onClick={() => patch({ activeConditions: active ? d.activeConditions.filter(x => x !== c) : [...d.activeConditions, c] })}
+                        className={`text-[10px] px-1.5 py-0.5 rounded-md border transition-colors ${active ? 'bg-red-900/60 border-red-600 text-red-300' : 'bg-gray-800 border-gray-700 text-gray-500 hover:border-gray-500'}`}
+                      >{c}</button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 

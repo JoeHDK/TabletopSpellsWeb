@@ -30,6 +30,7 @@ function deduplicateFeatures(features: ClassFeature[]): ClassFeature[] {
 }
 
 export function ClassAbilitiesSection({ classFeatures }: ClassAbilitiesSectionProps) {
+  const [cardOpen, setCardOpen] = useState(true)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   if (classFeatures.length === 0) return null
@@ -44,41 +45,58 @@ export function ClassAbilitiesSection({ classFeatures }: ClassAbilitiesSectionPr
     })
 
   return (
-    <section className="bg-gray-900 rounded-2xl p-4 space-y-1">
-      <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Class Abilities</h2>
-      {features.map(f => {
-        const isOpen = expanded.has(f.index)
-        return (
-          <div key={f.index} className="rounded-xl overflow-hidden">
-            <button
-              onClick={() => toggle(f.index)}
-              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-800 transition-colors text-left rounded-xl"
-            >
-              <span className="text-xs text-gray-500 w-6 flex-shrink-0">L{f.min_level}</span>
-              <span className="flex-1 text-sm font-medium text-gray-100 truncate">{f.name}</span>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {f.subclass && (
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-400">sub</span>
-                )}
-                {f.resource_key && (
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-indigo-900/60 text-indigo-400">action</span>
-                )}
-                {!f.is_passive && !f.resource_key && (
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-green-900/60 text-green-400">active</span>
-                )}
-                <span className="text-gray-600 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
-              </div>
-            </button>
-            {isOpen && f.desc.length > 0 && (
-              <div className="px-3 pb-3 pt-1 space-y-1.5">
-                {f.desc.map((para, i) => (
-                  <p key={i} className="text-xs text-gray-400 leading-relaxed">{para}</p>
-                ))}
-              </div>
-            )}
+    <section className="bg-gray-900 rounded-2xl p-4">
+      <button
+        onClick={() => setCardOpen(v => !v)}
+        className="w-full flex items-center justify-between mb-2 group"
+      >
+        <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Class Abilities</h2>
+        <span className={`text-gray-600 text-xs transition-transform duration-300 ${cardOpen ? 'rotate-0' : '-rotate-90'}`}>▼</span>
+      </button>
+
+      <div className={`grid transition-all duration-300 ${cardOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+        <div className="overflow-hidden">
+          <div className="space-y-1 pt-0.5">
+            {features.map(f => {
+              const isOpen = expanded.has(f.index)
+              return (
+                <div key={f.index} className="rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => toggle(f.index)}
+                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-800 transition-colors text-left rounded-xl"
+                  >
+                    <span className="text-xs text-gray-500 w-6 flex-shrink-0">L{f.min_level}</span>
+                    <span className="flex-1 text-sm font-medium text-gray-100 truncate">{f.name}</span>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {f.subclass && (
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-amber-900/60 text-amber-400">sub</span>
+                      )}
+                      {f.resource_key && (
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-indigo-900/60 text-indigo-400">action</span>
+                      )}
+                      {!f.is_passive && !f.resource_key && (
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-green-900/60 text-green-400">active</span>
+                      )}
+                      <span className="text-gray-600 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                    </div>
+                  </button>
+                  <div className={`grid transition-all duration-300 ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                    <div className="overflow-hidden">
+                      {f.desc.length > 0 && (
+                        <div className="px-3 pb-3 pt-1 space-y-1.5">
+                          {f.desc.map((para, i) => (
+                            <p key={i} className="text-xs text-gray-400 leading-relaxed">{para}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        )
-      })}
+        </div>
+      </div>
     </section>
   )
 }
