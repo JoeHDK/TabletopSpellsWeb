@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { monstersApi, customMonstersApi } from '../api/monsters'
 import type { MonsterSummary, Monster, CustomMonster, SaveCustomMonsterRequest, MonsterAttack, MonsterSpell } from '../types'
 import CreatureStatBlockModal from '../components/CreatureStatBlockModal'
+import { DAMAGE_TYPES } from '../constants/damage'
 
 function crDisplay(cr: number): string {
   if (cr === 0.125) return '1/8'
@@ -15,11 +16,6 @@ const SIZES = ['Tiny', 'Small', 'Medium', 'Large', 'Huge', 'Gargantuan']
 const CREATURE_TYPES = [
   'aberration', 'beast', 'celestial', 'construct', 'dragon', 'elemental',
   'fey', 'fiend', 'giant', 'humanoid', 'monstrosity', 'ooze', 'plant', 'undead',
-]
-
-const DAMAGE_TYPES = [
-  'slashing', 'piercing', 'bludgeoning', 'fire', 'cold', 'lightning',
-  'thunder', 'acid', 'poison', 'necrotic', 'radiant', 'force', 'psychic',
 ]
 
 function newAttack(): MonsterAttack {

@@ -43,6 +43,8 @@ public class CharactersController : ControllerBase
             ["Intelligence"] = 10, ["Wisdom"] = 10, ["Charisma"] = 10
         };
         var scores = req.AbilityScores ?? defaultScores;
+        if (scores.Values.Any(v => v < 1 || v > 30))
+            return BadRequest("Ability scores must be between 1 and 30.");
 
         var entity = new CharacterEntity
         {
@@ -72,7 +74,12 @@ public class CharactersController : ControllerBase
         if (req.Name != null) entity.Name = req.Name;
         if (req.Level.HasValue) entity.Level = req.Level.Value;
         if (req.Subclass.HasValue) entity.Subclass = req.Subclass.Value;
-        if (req.AbilityScores != null) entity.AbilityScoresJson = JsonConvert.SerializeObject(req.AbilityScores);
+        if (req.AbilityScores != null)
+        {
+            if (req.AbilityScores.Values.Any(v => v < 1 || v > 30))
+                return BadRequest("Ability scores must be between 1 and 30.");
+            entity.AbilityScoresJson = JsonConvert.SerializeObject(req.AbilityScores);
+        }
         if (req.MaxSpellsPerDay != null) entity.MaxSpellsPerDayJson = JsonConvert.SerializeObject(req.MaxSpellsPerDay);
         if (req.SpellsUsedToday != null) entity.SpellsUsedTodayJson = JsonConvert.SerializeObject(req.SpellsUsedToday);
         if (req.BaseArmorClass.HasValue) entity.BaseArmorClass = req.BaseArmorClass.Value;

@@ -8,10 +8,10 @@ public class CustomItemEntity
     [Key] public Guid Id { get; set; } = Guid.NewGuid();
     [Required] public required string UserId { get; set; }
     [Required] public required string Name { get; set; }
-    public string ItemType { get; set; } = "magic";
-    public string? Category { get; set; }
-    public string? Rarity { get; set; }
-    public string? Description { get; set; }
+    [MaxLength(100)] public string ItemType { get; set; } = "magic";
+    [MaxLength(100)] public string? Category { get; set; }
+    [MaxLength(100)] public string? Rarity { get; set; }
+    [MaxLength(10_000)] public string? Description { get; set; }
     public bool RequiresAttunement { get; set; }
     public string? AttunementNote { get; set; }
     public string? Cost { get; set; }

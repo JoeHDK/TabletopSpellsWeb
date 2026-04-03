@@ -1,21 +1,23 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Chronicle.Api.DTOs;
 
 public class MonsterAttackDto
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name { get; set; } = string.Empty;
+    [MaxLength(200)] public string Name { get; set; } = string.Empty;
     public int? AttackBonus { get; set; }
-    public string? Range { get; set; }
-    public string? HitDamage { get; set; }
-    public string? DamageType { get; set; }
-    public string? Description { get; set; }
+    [MaxLength(100)] public string? Range { get; set; }
+    [MaxLength(50)] public string? HitDamage { get; set; }
+    [MaxLength(50)] public string? DamageType { get; set; }
+    [MaxLength(2_000)] public string? Description { get; set; }
 }
 
 public class MonsterSpellDto
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name { get; set; } = string.Empty;
-    public string? UsageNote { get; set; }
+    [MaxLength(200)] public string Name { get; set; } = string.Empty;
+    [MaxLength(200)] public string? UsageNote { get; set; }
 }
 
 public class CustomMonsterDto

@@ -54,17 +54,17 @@ public class CharacterEntity
     public ICollection<CharacterAttackEntity> Attacks { get; set; } = new List<CharacterAttackEntity>();
 
     // ── Roleplay / Characteristics (D&D 5e character sheet fields) ────────────
-    public string? PersonalityTraits { get; set; }
-    public string? Ideals { get; set; }
-    public string? Bonds { get; set; }
-    public string? Flaws { get; set; }
-    public string? Backstory { get; set; }
-    public string? Appearance { get; set; }
-    public string? Age { get; set; }
-    public string? Height { get; set; }
-    public string? Weight { get; set; }
-    public string? Eyes { get; set; }
-    public string? Hair { get; set; }
-    public string? Skin { get; set; }
-    public string? AlliesAndOrganizations { get; set; }
+    [MaxLength(5_000)] public string? PersonalityTraits { get; set; }
+    [MaxLength(5_000)] public string? Ideals { get; set; }
+    [MaxLength(5_000)] public string? Bonds { get; set; }
+    [MaxLength(5_000)] public string? Flaws { get; set; }
+    [MaxLength(10_000)] public string? Backstory { get; set; }
+    [MaxLength(5_000)] public string? Appearance { get; set; }
+    [MaxLength(50)] public string? Age { get; set; }
+    [MaxLength(50)] public string? Height { get; set; }
+    [MaxLength(50)] public string? Weight { get; set; }
+    [MaxLength(100)] public string? Eyes { get; set; }
+    [MaxLength(100)] public string? Hair { get; set; }
+    [MaxLength(100)] public string? Skin { get; set; }
+    [MaxLength(5_000)] public string? AlliesAndOrganizations { get; set; }
 }
