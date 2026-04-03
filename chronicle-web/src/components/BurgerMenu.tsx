@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { authApi } from '../api/auth'
 import { notificationsApi } from '../api/notifications'
 import { friendsApi } from '../api/friends'
 import { chatApi } from '../api/chat'
@@ -260,7 +261,7 @@ export default function BurgerMenu() {
 
             {/* Sign out */}
             <button
-              onClick={() => { setOpen(false); queryClient.clear(); logout() }}
+              onClick={() => { setOpen(false); authApi.logout().finally(() => { queryClient.clear(); logout() }) }}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
             >
               <span className="text-base">🚪</span>

@@ -11,7 +11,31 @@ export class OfflineQueuedError extends Error {
   }
 }
 
-const api = axios.create({ baseURL: '/api' })
+const api = axios.create({ baseURL: '/api', withCredentials: true })
+
+let refreshPromise: Promise<boolean> | null = null
+
+async function tryRefresh(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise
+  refreshPromise = (async () => {
+    try {
+      const res = await axios.post<{ token: string; username: string; userId: string; isDm: boolean }>(
+        '/api/auth/refresh',
+        null,
+        { withCredentials: true }
+      )
+      const { token, username, userId, isDm } = res.data
+      useAuthStore.getState().login(token, username, userId, isDm)
+      return true
+    } catch {
+      useAuthStore.getState().logout()
+      return false
+    } finally {
+      refreshPromise = null
+    }
+  })()
+  return refreshPromise
+}
 
 api.interceptors.request.use(async (config) => {
   const token = useAuthStore.getState().token
@@ -42,8 +66,6 @@ api.interceptors.response.use(
     const method = err.config?.method?.toLowerCase() ?? ''
     const isReplay = err.config?.headers?.['X-Offline-Replay'] === 'true'
 
-    // Queue the mutation if the request never reached the server (no err.response means
-    // a network-level failure: server down, no connection, proxy closed, etc.)
     if (!err.response && WRITE_METHODS.has(method) && !isReplay) {
       let body: unknown = err.config?.data
       if (typeof body === 'string') {
@@ -58,7 +80,16 @@ api.interceptors.response.use(
       return Promise.reject(new OfflineQueuedError())
     }
 
-    if (err.response?.status === 401) useAuthStore.getState().logout()
+    if (err.response?.status === 401 && !err.config?._retry) {
+      err.config._retry = true
+      const ok = await tryRefresh()
+      if (ok) {
+        const newToken = useAuthStore.getState().token
+        err.config.headers.Authorization = `Bearer ${newToken}`
+        return api(err.config)
+      }
+    }
+
     return Promise.reject(err)
   }
 )

@@ -16,6 +16,16 @@ public class AuthController : ControllerBase
     private readonly UserManager<AppUser> _userManager;
     private readonly TokenService _tokenService;
 
+    private const string RefreshCookie = "refresh_token";
+    private static readonly CookieOptions RefreshCookieOptions = new()
+    {
+        HttpOnly = true,
+        Secure = true,
+        SameSite = SameSiteMode.Strict,
+        Path = "/api/auth",
+        MaxAge = TimeSpan.FromDays(30),
+    };
+
     public AuthController(UserManager<AppUser> userManager, TokenService tokenService)
     {
         _userManager = userManager;
@@ -34,6 +44,7 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(result.Errors.Select(e => e.Description));
 
+        await IssueRefreshToken(user);
         return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin));
     }
 
@@ -45,7 +56,43 @@ public class AuthController : ControllerBase
         if (user == null || !await _userManager.CheckPasswordAsync(user, req.Password))
             return Unauthorized("Invalid username or password.");
 
+        await IssueRefreshToken(user);
         return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin));
+    }
+
+    [HttpPost("refresh")]
+    public async Task<ActionResult<AuthResponse>> Refresh()
+    {
+        var raw = Request.Cookies[RefreshCookie];
+        if (string.IsNullOrEmpty(raw)) return Unauthorized();
+
+        var hash = TokenService.HashRefreshToken(raw);
+        var user = _userManager.Users.SingleOrDefault(u =>
+            u.RefreshTokenHash == hash && u.RefreshTokenExpiresAt > DateTime.UtcNow);
+
+        if (user == null) return Unauthorized();
+
+        await IssueRefreshToken(user);
+        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin));
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        var raw = Request.Cookies[RefreshCookie];
+        if (!string.IsNullOrEmpty(raw))
+        {
+            var hash = TokenService.HashRefreshToken(raw);
+            var user = _userManager.Users.SingleOrDefault(u => u.RefreshTokenHash == hash);
+            if (user != null)
+            {
+                user.RefreshTokenHash = null;
+                user.RefreshTokenExpiresAt = null;
+                await _userManager.UpdateAsync(user);
+            }
+        }
+        Response.Cookies.Delete(RefreshCookie, new CookieOptions { Path = "/api/auth" });
+        return Ok();
     }
 
     [Authorize]
@@ -61,5 +108,14 @@ public class AuthController : ControllerBase
             return BadRequest(result.Errors.Select(e => e.Description));
 
         return Ok();
+    }
+
+    private async Task IssueRefreshToken(AppUser user)
+    {
+        var raw = TokenService.GenerateRefreshToken();
+        user.RefreshTokenHash = TokenService.HashRefreshToken(raw);
+        user.RefreshTokenExpiresAt = DateTime.UtcNow.AddDays(30);
+        await _userManager.UpdateAsync(user);
+        Response.Cookies.Append(RefreshCookie, raw, RefreshCookieOptions);
     }
 }
