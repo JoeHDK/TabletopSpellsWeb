@@ -17,7 +17,6 @@ public class CampaignImagesController(AppDbContext db, IWebHostEnvironment env, 
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    private static readonly string[] AllowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
 
     // GET /api/game-rooms/{gameRoomId}/images
@@ -28,6 +27,7 @@ public class CampaignImagesController(AppDbContext db, IWebHostEnvironment env, 
         var isDm = await authService.IsDmAsync(gameRoomId, UserId);
 
         var images = await db.CampaignImages
+            .Where(i => i.GameRoomId == gameRoomId)
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync();
 
@@ -55,17 +55,30 @@ public class CampaignImagesController(AppDbContext db, IWebHostEnvironment env, 
 
         if (file == null|| file.Length == 0) return BadRequest("No file provided.");
         if (file.Length > MaxFileSizeBytes) return BadRequest("File exceeds 10 MB limit.");
-        if (!AllowedTypes.Contains(file.ContentType)) return BadRequest("Unsupported image type.");
+
+        // Read and validate magic bytes — ContentType is client-controlled and cannot be trusted
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        var bytes = ms.ToArray();
+        var detectedMime = DetectImageMime(bytes);
+        if (detectedMime == null) return BadRequest("File must be a valid JPEG, PNG, GIF, or WebP image.");
 
         var uploadDir = Path.Combine(env.ContentRootPath, "uploads", gameRoomId.ToString());
         Directory.CreateDirectory(uploadDir);
 
-        var ext = Path.GetExtension(file.FileName);
+        // Use MIME-derived extension — never trust client-supplied filename
+        var ext = detectedMime switch
+        {
+            "image/jpeg" => ".jpg",
+            "image/png"  => ".png",
+            "image/gif"  => ".gif",
+            "image/webp" => ".webp",
+            _            => ".bin",
+        };
         var storedName = $"{Guid.NewGuid()}{ext}";
         var storagePath = Path.Combine(uploadDir, storedName);
 
-        await using (var stream = System.IO.File.Create(storagePath))
-            await file.CopyToAsync(stream);
+        await System.IO.File.WriteAllBytesAsync(storagePath, bytes);
 
         var entity = new CampaignImageEntity
         {
@@ -164,4 +177,18 @@ public class CampaignImagesController(AppDbContext db, IWebHostEnvironment env, 
             : JsonSerializer.Deserialize<List<string>>(i.PublishedToUserIdsJson),
         CreatedAt = i.CreatedAt,
     };
+
+    private static string? DetectImageMime(byte[] bytes)
+    {
+        if (bytes.Length < 4) return null;
+        if (bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return "image/jpeg";
+        if (bytes.Length >= 8 &&
+            bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47 &&
+            bytes[4] == 0x0D && bytes[5] == 0x0A && bytes[6] == 0x1A && bytes[7] == 0x0A) return "image/png";
+        if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return "image/gif";
+        if (bytes.Length >= 12 &&
+            bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 &&
+            bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50) return "image/webp";
+        return null;
+    }
 }

@@ -23,6 +23,8 @@
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss:; font-src 'self'; object-src 'none'; frame-ancestors 'none';"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 	}
 	reverse_proxy api:8080
 }

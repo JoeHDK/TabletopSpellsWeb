@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Chronicle.Api.DTOs;
 
 public class BeastAttackDto
@@ -29,9 +31,9 @@ public class BeastDto
 public class WildShapeActionRequest
 {
     /// <summary>enter | revert | damage | heal | restoreUses</summary>
-    public required string Action { get; set; }
-    public string? BeastName { get; set; }
-    public int? BeastMaxHp { get; set; }
-    public int? BeastCurrentHp { get; set; }
-    public int? Amount { get; set; }
+    [Required, MaxLength(20)] public required string Action { get; set; }
+    [MaxLength(200)] public string? BeastName { get; set; }
+    [Range(1, 99999)] public int? BeastMaxHp { get; set; }
+    [Range(0, 99999)] public int? BeastCurrentHp { get; set; }
+    [Range(0, 99999)] public int? Amount { get; set; }
 }

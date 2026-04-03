@@ -22,17 +22,20 @@ public class ChatController : ControllerBase
     private readonly EncryptionService _encryption;
     private readonly UserManager<AppUser> _userManager;
     private readonly IHubContext<ChatHub> _hub;
+    private readonly ILogger<ChatController> _logger;
 
     public ChatController(
         AppDbContext db,
         EncryptionService encryption,
         UserManager<AppUser> userManager,
-        IHubContext<ChatHub> hub)
+        IHubContext<ChatHub> hub,
+        ILogger<ChatController> logger)
     {
         _db = db;
         _encryption = encryption;
         _userManager = userManager;
         _hub = hub;
+        _logger = logger;
     }
 
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -354,6 +357,10 @@ public class ChatController : ControllerBase
     [HttpDelete("conversations/{id:guid}/messages/{messageId:guid}")]
     public async Task<IActionResult> DeleteMessage(Guid id, Guid messageId)
     {
+        var isMember = await _db.ChatParticipants
+            .AnyAsync(p => p.ConversationId == id && p.UserId == UserId);
+        if (!isMember) return Forbid();
+
         var message = await _db.ChatMessages
             .FirstOrDefaultAsync(m => m.Id == messageId && m.ConversationId == id);
         if (message == null) return NotFound();
@@ -388,7 +395,7 @@ public class ChatController : ControllerBase
         if (!m.IsDeleted && m.EncryptedContent != null && m.Iv != null)
         {
             try { content = _encryption.DecryptMessage(m.EncryptedContent, m.Iv, convKey); }
-            catch { content = null; }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to decrypt message {MessageId}", m.Id); content = null; }
         }
         return new MessageDto
         {

@@ -59,6 +59,8 @@ public class CampaignLogController(AppDbContext db, IGameAuthorizationService au
     [HttpPut("{entryId:guid}")]
     public async Task<IActionResult> Update(Guid gameRoomId, Guid entryId, [FromBody] UpdateCampaignLogEntryRequest request)
     {
+        if (!await authService.IsMemberAsync(gameRoomId, UserId)) return Forbid();
+
         var entry = await db.CampaignLogEntries
             .FirstOrDefaultAsync(e => e.Id == entryId && e.GameRoomId == gameRoomId);
         if (entry == null) return NotFound();
@@ -78,6 +80,8 @@ public class CampaignLogController(AppDbContext db, IGameAuthorizationService au
     [HttpDelete("{entryId:guid}")]
     public async Task<IActionResult> Delete(Guid gameRoomId, Guid entryId)
     {
+        if (!await authService.IsMemberAsync(gameRoomId, UserId)) return Forbid();
+
         var entry = await db.CampaignLogEntries
             .FirstOrDefaultAsync(e => e.Id == entryId && e.GameRoomId == gameRoomId);
         if (entry == null) return NotFound();

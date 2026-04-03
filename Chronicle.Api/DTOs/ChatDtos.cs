@@ -50,7 +50,7 @@ public class CreateGroupConversationRequest
 {
     [Required, StringLength(100, MinimumLength = 1)]
     public required string Name { get; set; }
-    public List<string> ParticipantUserIds { get; set; } = [];
+    [MaxLength(50)] public List<string> ParticipantUserIds { get; set; } = [];
 }
 
 public class AddChatParticipantRequest

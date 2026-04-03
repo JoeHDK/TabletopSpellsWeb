@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Chronicle.Api.DTOs;
 
 public class PreparedSpellDto
@@ -12,7 +14,7 @@ public class PreparedSpellDto
 
 public class UpsertPreparedSpellRequest
 {
-    public required string SpellId { get; set; }
+    [Required, MaxLength(200)] public required string SpellId { get; set; }
     public bool IsPrepared { get; set; }
     public bool IsAlwaysPrepared { get; set; }
     public bool IsFavorite { get; set; }
@@ -30,9 +32,9 @@ public class SpellsPerDayDto
 
 public class UpsertSpellsPerDayRequest
 {
-    public int SpellLevel { get; set; }
-    public int MaxSlots { get; set; }
-    public int UsedSlots { get; set; }
+    [Range(0, 9)] public int SpellLevel { get; set; }
+    [Range(0, 999)] public int MaxSlots { get; set; }
+    [Range(0, 999)] public int UsedSlots { get; set; }
 }
 
 public class SpellCastLogDto
@@ -50,12 +52,12 @@ public class SpellCastLogDto
 
 public class CreateSpellCastLogRequest
 {
-    public required string SpellName { get; set; }
-    public int SpellLevel { get; set; }
+    [Required, MaxLength(200)] public required string SpellName { get; set; }
+    [Range(0, 9)] public int SpellLevel { get; set; }
     public bool CastAsRitual { get; set; }
     public bool Success { get; set; }
-    public string? Reason { get; set; }
-    public string? FailedReason { get; set; }
+    [MaxLength(500)] public string? Reason { get; set; }
+    [MaxLength(500)] public string? FailedReason { get; set; }
     public int SessionId { get; set; }
 }
 
@@ -68,6 +70,6 @@ public class CharacterThemeDto
 
 public class UpsertThemeRequest
 {
-    public required string ThemeName { get; set; }
+    [Required, MaxLength(100)] public required string ThemeName { get; set; }
     public Dictionary<string, string>? CustomColors { get; set; }
 }
