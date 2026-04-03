@@ -16,7 +16,7 @@ import EditableNumber from '../components/EditableNumber'
 import { resizeImage } from '../utils/resizeImage'
 import { lookupArmor } from '../utils/armorTable'
 import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race, EquipmentResource } from '../types'
-import { AbilityScoresSection, SavingThrowsSection, AttacksSection, BLANK_ATTACK, ClassResourcesSection, ClassFeaturesSection, FeatsSection } from '../components/stats'
+import { AbilityScoresSection, SavingThrowsSection, AttacksSection, BLANK_ATTACK, ClassResourcesSection, ClassFeaturesSection, ClassAbilitiesSection, FeatsSection } from '../components/stats'
 import { CLASS_SAVING_THROWS, ABILITY_KEYS, ABILITY_SHORT } from '../components/stats/statsConstants'
 
 // D&D 5e SRD background skill proficiencies
@@ -731,7 +731,11 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const spellSaveDC = castingAbilityMod !== null ? 8 + profBonusNum + castingAbilityMod : null
   const spellAttackBonus = castingAbilityMod !== null ? profBonusNum + castingAbilityMod : null
 
-  const sneakAttackDice = getFeatModifier([...charFeats, ...classFeatures], 'sneak_attack_dice')
+  // sneak_attack_dice entries each represent the TOTAL at that tier; take the highest, not sum
+  const sneakAttackDice = classFeatures
+    .flatMap(f => f.modifiers)
+    .filter(m => m.type === 'sneak_attack_dice')
+    .reduce((max, m) => Math.max(max, m.value), 0)
 
   const maxSkillProficiencies = character.gameType === 'pathfinder1e'
     ? (PF1E_SKILL_RANKS_PER_LEVEL[character.characterClass] ?? 2) * d.level
@@ -1117,6 +1121,11 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
           onWildShapeAction={(req) => wildShapeMutation.mutate(req)}
           wildShapePending={wildShapeMutation.isPending}
         />
+
+        {/* Class & Subclass Abilities */}
+        {character.gameType === 'dnd5e' && (
+          <ClassAbilitiesSection classFeatures={classFeatures} />
+        )}
 
         {/* Attacks */}
         <AttacksSection
