@@ -1190,7 +1190,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                 const isFromClass = classSkills.includes(name)
                 const lockedByBackground = isFromBackground && isProficient
                 const lockedByClass = isFromClass && isProficient
-                const locked = lockedByBackground || lockedByClass
                 const disabled = !isProficient && atSkillLimit
                 const total = abilityMod(ability) + (isExpert ? profBonusNum * 2 : isProficient ? profBonusNum : 0)
                 const dotColour = isExpert
