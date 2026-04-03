@@ -112,11 +112,25 @@ export function AttacksSection({
     const isOffHand = item.equippedSlot === 'Offhand' || item.equippedSlot === 'OffHand'
     const toHit = aMod + profBonusNum + (isOffHand ? -profBonusNum : 0)
     const extraDmg = (item.damageEntries ?? []).map(e => `+${e.dice} ${e.damageType}`).join('')
-    // If the item has a damage formula, it's a complete expression (creator included modifiers).
-    // Don't add the ability mod again; just append any extra typed damage entries.
-    const dmgStr = item.damageOverride
-      ? `${item.damageOverride}${extraDmg}`
-      : `${aMod !== 0 ? fmtMod(aMod) : '—'}${extraDmg}`
+
+    let dmgStr: string
+    if (item.damageOverride) {
+      if (item.itemSource === 'Custom') {
+        // Custom items: the formula was typed by the user and is complete (modifiers already included)
+        dmgStr = `${item.damageOverride}${extraDmg}`
+      } else {
+        // SRD items: damageOverride is base dice + type (e.g. "1d6 Piercing"); insert ability mod before the type
+        const match = item.damageOverride.match(/^(\S+)\s+(.+)$/)
+        if (match) {
+          const [, dice, type] = match
+          dmgStr = `${dice}${aMod !== 0 ? fmtMod(aMod) : ''} ${type}${extraDmg}`
+        } else {
+          dmgStr = `${item.damageOverride}${aMod !== 0 ? fmtMod(aMod) : ''}${extraDmg}`
+        }
+      }
+    } else {
+      dmgStr = `${aMod !== 0 ? fmtMod(aMod) : '—'}${extraDmg}`
+    }
     return { id: item.id, name: item.name, toHit, dmgStr, slot: item.equippedSlot, isAuto: true }
   })
 
