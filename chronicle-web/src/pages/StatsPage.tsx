@@ -249,28 +249,88 @@ function calculateAC(
   return { total, breakdown: parts.join(' '), isAutoCalc: true }
 }
 
-function RaceSelector({ characterId, currentRace }: { characterId: string; currentRace?: string }) {
+function RaceSelector({ characterId, currentRace, currentRaceChoices }: {
+  characterId: string
+  currentRace?: string
+  currentRaceChoices?: Record<string, number>
+}) {
   const qc = useQueryClient()
   const { data: allRaces = [] } = useQuery({ queryKey: ['races'], queryFn: () => racesApi.getAll() })
+  const selectedRace = allRaces.find(r => r.index === currentRace)
+  const choiceModifier = selectedRace?.modifiers.find(m => m.type === 'ability_score_choice')
+  const choiceCount = choiceModifier?.condition === 'choose_2' ? 2 : choiceModifier ? 1 : 0
+
   const mutation = useMutation({
-    mutationFn: (race: string | undefined) => charactersApi.update(characterId, { race }),
+    mutationFn: (race: string | undefined) => charactersApi.update(characterId, { race, raceChoices: {} }),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', characterId], updated)
       qc.invalidateQueries({ queryKey: ['race'] })
     },
   })
+  const choiceMutation = useMutation({
+    mutationFn: (raceChoices: Record<string, number>) => charactersApi.update(characterId, { raceChoices }),
+    onSuccess: (updated) => {
+      qc.setQueryData<Character>(['character', characterId], updated)
+    },
+  })
+
+  const choices = currentRaceChoices ?? {}
+  const chosenKeys = Object.keys(choices).filter(k => (choices[k] ?? 0) > 0)
+
+  const handleChoiceToggle = (ability: string) => {
+    const next = { ...choices }
+    if (next[ability]) {
+      delete next[ability]
+    } else if (chosenKeys.length < choiceCount) {
+      next[ability] = choiceModifier?.value ?? 1
+    }
+    choiceMutation.mutate(next)
+  }
+
   return (
-    <select
-      className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
-      value={currentRace ?? ''}
-      onChange={e => mutation.mutate(e.target.value || undefined)}
-      disabled={mutation.isPending}
-    >
-      <option value="">— None —</option>
-      {allRaces.map(r => (
-        <option key={r.index} value={r.index}>{r.name}</option>
-      ))}
-    </select>
+    <div className="flex flex-col gap-1">
+      <select
+        className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
+        value={currentRace ?? ''}
+        onChange={e => mutation.mutate(e.target.value || undefined)}
+        disabled={mutation.isPending}
+      >
+        <option value="">— None —</option>
+        {allRaces.map(r => (
+          <option key={r.index} value={r.index}>{r.name}</option>
+        ))}
+      </select>
+      {choiceCount > 0 && (
+        <div className="mt-1">
+          <div className="text-xs text-gray-400 mb-1">
+            Choose {choiceCount} ability score{choiceCount > 1 ? 's' : ''} (+{choiceModifier?.value ?? 1} each):
+            <span className="text-yellow-400 ml-1">{chosenKeys.length}/{choiceCount}</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma'].map(ab => {
+              const isChosen = !!choices[ab]
+              const isFull = chosenKeys.length >= choiceCount && !isChosen
+              return (
+                <button
+                  key={ab}
+                  onClick={() => !isFull && handleChoiceToggle(ab)}
+                  disabled={isFull || choiceMutation.isPending}
+                  className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                    isChosen
+                      ? 'bg-indigo-600 text-white'
+                      : isFull
+                        ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {ab.slice(0, 3)}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -632,10 +692,14 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     concentrationSpell: draft?.concentrationSpell !== undefined ? draft.concentrationSpell : character.concentrationSpell,
   }
 
-  const getRacialBonus = (key: string) =>
-    race?.modifiers
+  const getRacialBonus = (key: string) => {
+    if (!race) return 0
+    const fixed = race.modifiers
       .filter(m => m.type === 'ability_score' && m.ability?.toLowerCase() === key.toLowerCase())
-      .reduce((sum, m) => sum + m.value, 0) ?? 0
+      .reduce((sum, m) => sum + m.value, 0)
+    const chosen = character.raceChoices?.[key] ?? 0
+    return fixed + chosen
+  }
 
   const getAsiBonus = (key: string) =>
     charFeats
@@ -850,7 +914,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
               {character.gameType === 'dnd5e' && (
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Race</p>
-                  <RaceSelector characterId={character.id} currentRace={character.race} />
+                  <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} />
                 </div>
               )}
 

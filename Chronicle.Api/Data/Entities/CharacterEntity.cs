@@ -45,6 +45,7 @@ public class CharacterEntity
     public string? AvatarBase64 { get; set; }
     public bool IsNpc { get; set; } = false;
     public string? Race { get; set; }
+    [Column(TypeName = "jsonb")] public string? RaceChoicesJson { get; set; }
     public string? Background { get; set; }
 
     // Wild Shape state (Druid only)

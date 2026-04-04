@@ -39,6 +39,7 @@ public class CharacterDto
     public int? WildShapeBeastCurrentHp { get; set; }
     public int? WildShapeBeastMaxHp { get; set; }
     public string? Race { get; set; }
+    public Dictionary<string, int>? RaceChoices { get; set; }
     public string? Background { get; set; }
     // Roleplay / Characteristics
     public string? PersonalityTraits { get; set; }
@@ -125,6 +126,7 @@ public class UpdateCharacterRequest
     public int? ExhaustionLevel { get; set; }
     public string? ConcentrationSpell { get; set; }
     public string? Race { get; set; }
+    public Dictionary<string, int>? RaceChoices { get; set; }
 }
 
 public class UpdateHpRequest

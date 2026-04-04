@@ -170,6 +170,22 @@
     ]
   },
   {
+    "index": "variant-human",
+    "name": "Variant Human",
+    "parent_race": "human",
+    "speed": 30,
+    "size": "Medium",
+    "desc": ["If your campaign uses the optional feat rules from the Player's Handbook, your Dungeon Master might allow these variant traits, all of which replace the human's Ability Score Increase trait.", "Variant Humans gain +1 to two ability scores of their choice, one skill proficiency, and one feat."],
+    "traits": [
+      { "name": "Ability Score Increase", "desc": "Two different ability scores of your choice increase by 1." },
+      { "name": "Skills", "desc": "You gain proficiency in one skill of your choice." },
+      { "name": "Feat", "desc": "You gain one feat of your choice." }
+    ],
+    "modifiers": [
+      { "type": "ability_score_choice", "ability": "any", "value": 1, "condition": "choose_2" }
+    ]
+  },
+  {
     "index": "dragonborn",
     "name": "Dragonborn",
     "parent_race": null,

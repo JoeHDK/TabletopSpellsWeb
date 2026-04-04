@@ -41,6 +41,7 @@ export interface Character {
   wildShapeBeastCurrentHp: number | null
   wildShapeBeastMaxHp: number | null
   race?: string
+  raceChoices?: Record<string, number>
   background?: string
   // Roleplay / Characteristics
   personalityTraits?: string
@@ -91,6 +92,7 @@ export interface UpdateCharacterRequest {
   level?: number
   subclass?: string
   race?: string
+  raceChoices?: Record<string, number>
   abilityScores?: Record<string, number>
   maxSpellsPerDay?: Record<number, number>
   spellsUsedToday?: Record<number, number>

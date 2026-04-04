@@ -93,6 +93,7 @@ public class CharactersController : ControllerBase
         if (req.ExhaustionLevel.HasValue) entity.ExhaustionLevel = Math.Clamp(req.ExhaustionLevel.Value, 0, 6);
         if (req.ConcentrationSpell != null) entity.ConcentrationSpell = req.ConcentrationSpell == "" ? null : req.ConcentrationSpell;
         if (req.Race != null) entity.Race = req.Race;
+        if (req.RaceChoices != null) entity.RaceChoicesJson = JsonConvert.SerializeObject(req.RaceChoices);
 
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -307,6 +308,9 @@ public class CharactersController : ControllerBase
         WildShapeBeastCurrentHp = e.WildShapeBeastCurrentHp,
         WildShapeBeastMaxHp = e.WildShapeBeastMaxHp,
         Race = e.Race,
+        RaceChoices = e.RaceChoicesJson != null
+            ? JsonConvert.DeserializeObject<Dictionary<string, int>>(e.RaceChoicesJson)
+            : null,
         Background = e.Background,
         PersonalityTraits = e.PersonalityTraits,
         Ideals = e.Ideals,
