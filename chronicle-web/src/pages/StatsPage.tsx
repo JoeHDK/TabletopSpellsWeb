@@ -1463,7 +1463,17 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-5 space-y-3">
           {!embedded && (
-
+            <div className="flex justify-end">
+              {editMode ? (
+                <button onClick={() => setEditMode(false)} className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-medium">
+                  ✓ Done
+                </button>
+              ) : (
+                <button onClick={() => setEditMode(true)} className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors">
+                  ✎ Edit Layout
+                </button>
+              )}
+            </div>
           )}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
