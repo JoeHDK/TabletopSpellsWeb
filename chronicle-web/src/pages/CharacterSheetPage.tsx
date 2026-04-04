@@ -79,7 +79,7 @@ export default function CharacterSheetPage() {
       {/* Character header */}
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
         <button
-          onClick={() => navigate('/characters')}
+          onClick={() => navigate(`/characters/${id}`)}
           aria-label="Back to characters"
           className="text-gray-400 hover:text-white shrink-0"
         >←</button>
