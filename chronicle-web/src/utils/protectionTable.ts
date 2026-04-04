@@ -9,6 +9,12 @@ interface ProtectionEntry {
 }
 
 const PROTECTION_TABLE: Record<string, ProtectionEntry> = {
+  // Shields
+  'shield': { acBonus: 2 },
+  '+1 shield': { acBonus: 3 },
+  '+2 shield': { acBonus: 4 },
+  '+3 shield': { acBonus: 5 },
+  // Magic protection items
   'ring of protection':           { acBonus: 1, savingThrowBonus: 1 },
   'ring of protection +1':        { acBonus: 1, savingThrowBonus: 1 },
   'ring of protection +2':        { acBonus: 2, savingThrowBonus: 2 },

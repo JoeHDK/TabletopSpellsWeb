@@ -3,15 +3,15 @@ import { SLOT_ICON, SLOT_LABEL, EQUIPPED_PANEL_SLOTS, ARMOR_TYPES } from '../../
 
 function guessSlot(item: InventoryItem): InventorySlot {
   if (item.equippedSlot) return item.equippedSlot
-  if (item.acBonus != null) return 'Chest'
-  if (item.damageOverride) return 'MainHand'
   const name = item.name.toLowerCase()
+  if (/shield/.test(name)) return 'OffHand'
   if (/helmet|helm|hat|hood|crown|cap/.test(name)) return 'Head'
   if (/armor|mail|plate|breastplate|hide|leather|studded|splint|scale|robe|coat/.test(name)) return 'Chest'
+  if (item.acBonus != null) return 'Chest'
+  if (item.damageOverride) return 'MainHand'
   if (/boots|shoes|greaves|sabatons|slippers/.test(name)) return 'Feet'
   if (/gauntlet|gloves|bracers|vambraces/.test(name)) return 'Hands'
   if (/leggings|breeches|trousers|pants/.test(name)) return 'Legs'
-  if (/shield/.test(name)) return 'OffHand'
   if (/sword|axe|bow|dagger|hammer|mace|spear|staff|wand|flail|scimitar|rapier|lance|pike|halberd|glaive|crossbow|sling|trident|whip|quarterstaff|shortsword|longsword|greatsword|handaxe|battleaxe|greataxe/.test(name)) return 'MainHand'
   if (/necklace|amulet|pendant|collar/.test(name)) return 'Neck'
   if (/ring/.test(name)) return 'Ring1'

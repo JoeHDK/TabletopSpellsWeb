@@ -309,11 +309,12 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
                         onChange={e => {
                           const name = e.target.value
                           const armorEntry = lookupArmor(name)
+                          const protEntry = lookupProtection(name)
                           setForm(f => ({
                             ...f,
                             name,
-                            // Auto-fill AC and armor type from lookup table if not already set manually
-                            acBonusStr: f.acBonusStr || (armorEntry ? String(armorEntry.ac) : ''),
+                            // Auto-fill AC and armor type from lookup tables if not already set manually
+                            acBonusStr: f.acBonusStr || (armorEntry ? String(armorEntry.ac) : protEntry?.acBonus != null ? String(protEntry.acBonus) : ''),
                             armorType: f.armorType ?? armorEntry?.type,
                           }))
                         }}

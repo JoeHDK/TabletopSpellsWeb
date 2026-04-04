@@ -47,6 +47,7 @@ export function useEncounterConnection(gameRoomId: string) {
 
       conn.on('EncounterUpdated', (encounter: Encounter | null) => {
         qc.setQueryData(['encounter', encounter?.gameRoomId ?? gameRoomId], encounter)
+        qc.invalidateQueries({ queryKey: ['encounter', encounter?.gameRoomId ?? gameRoomId] })
       })
     }
 

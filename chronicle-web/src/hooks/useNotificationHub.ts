@@ -45,6 +45,7 @@ export function useNotificationHub() {
     if (!handlersRegistered) {
       conn.on('ReceiveNotification', (notif: Notification) => {
         qc.setQueryData<Notification[]>(['notifications'], (old = []) => [notif, ...old])
+        qc.invalidateQueries({ queryKey: ['notifications'] })
       })
       handlersRegistered = true
     }
