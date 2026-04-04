@@ -15,7 +15,7 @@ import { backgroundsApi } from '../api/backgrounds'
 import EditableNumber from '../components/EditableNumber'
 import { resizeImage } from '../utils/resizeImage'
 import { lookupArmor } from '../utils/armorTable'
-import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race, EquipmentResource } from '../types'
+import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race, EquipmentResource, CharacterClass } from '../types'
 import { AbilityScoresSection, SavingThrowsSection, AttacksSection, BLANK_ATTACK, ClassResourcesSection, ClassFeaturesSection, ClassAbilitiesSection, FeatsSection } from '../components/stats'
 import { CLASS_SAVING_THROWS, ABILITY_KEYS, ABILITY_SHORT } from '../components/stats/statsConstants'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -157,6 +157,12 @@ const SUBCLASSES:Record<string, string[]> = {
   Wizard: ['WizardAbjuration','WizardConjuration','WizardDivination','WizardEnchantment','WizardEvocation','WizardIllusion','WizardNecromancy','WizardTransmutation','WizardChronoturgy','WizardGravityMastery','WizardWar','WizardBladesingers'],
   Artificer: ['ArtificerAlchemist','ArtificerArtillerist','ArtificerBattleSmith','ArtificerArmorer'],
 }
+
+const DND5E_CLASSES: CharacterClass[] = [
+  'Artificer','Barbarian','Bard','Cleric','Druid',
+  'Fighter','Monk','Paladin','Ranger','Rogue',
+  'Sorcerer','Warlock','Wizard',
+]
 
 /** Convert "WizardEvocation" → "Evocation", "BardCollegeOfLore" → "College Of Lore" */
 function formatSubclass(value: string, cls: string): string {
@@ -816,6 +822,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     name: draft?.name ?? character.name,
     level: draft?.level ?? character.level,
     subclass: draft?.subclass ?? character.subclass,
+    characterClass: (draft?.characterClass ?? character.characterClass) as CharacterClass,
     abilityScores: draft?.abilityScores ?? character.abilityScores,
     baseArmorClass: draft?.baseArmorClass ?? character.baseArmorClass,
     currentHp: draft?.currentHp ?? character.currentHp,
@@ -950,7 +957,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     : null // No cap for D&D 5e — free selection
   const atSkillLimit = maxSkillProficiencies !== null && d.skillProficiencies.length >= maxSkillProficiencies
 
-  const subclassList = SUBCLASSES[character.characterClass] ?? []
+  const subclassList = SUBCLASSES[d.characterClass] ?? []
 
   // Expertise: all proficient skills across all sources (for the skill picker)
   const bgSkillsForExpertise = character.background ? (BACKGROUND_SKILLS[character.background] ?? []) : []
@@ -1032,7 +1039,22 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                 <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                   <div>
                     <p className="text-xs text-gray-400 mb-0.5">Class</p>
-                    <p className="font-medium text-sm">{character.characterClass}</p>
+                    {character.gameType === 'dnd5e' ? (
+                      <select
+                        className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs font-medium"
+                        value={d.characterClass}
+                        onChange={e => {
+                          const cls = e.target.value as CharacterClass
+                          patch({ characterClass: cls, subclass: 'None' })
+                        }}
+                      >
+                        {DND5E_CLASSES.map(cls => (
+                          <option key={cls} value={cls}>{cls}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="font-medium text-sm">{character.characterClass}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-0.5">Level</p>
@@ -1053,20 +1075,17 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                 )}
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Subclass</p>
-                  {subclassList.length > 0 ? (
-                    <select
-                      className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
-                      value={d.subclass ?? 'None'}
-                      onChange={e => patch({ subclass: e.target.value })}
-                    >
-                      <option value="None">— None —</option>
-                      {subclassList.map(s => (
-                        <option key={s} value={s}>{formatSubclass(s, character.characterClass)}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p className="text-sm text-gray-400">{formatSubclass(d.subclass ?? '', character.characterClass)}</p>
-                  )}
+                  <select
+                    className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                    value={d.subclass ?? 'None'}
+                    disabled={subclassList.length === 0}
+                    onChange={e => patch({ subclass: e.target.value })}
+                  >
+                    <option value="None">— None —</option>
+                    {subclassList.map(s => (
+                      <option key={s} value={s}>{formatSubclass(s, d.characterClass)}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 shrink-0">

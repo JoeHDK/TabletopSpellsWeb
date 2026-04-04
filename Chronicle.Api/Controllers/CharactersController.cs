@@ -94,6 +94,11 @@ public class CharactersController : ControllerBase
         if (req.ConcentrationSpell != null) entity.ConcentrationSpell = req.ConcentrationSpell == "" ? null : req.ConcentrationSpell;
         if (req.Race != null) entity.Race = req.Race;
         if (req.RaceChoices != null) entity.RaceChoicesJson = JsonConvert.SerializeObject(req.RaceChoices);
+        if (req.CharacterClass.HasValue)
+        {
+            entity.CharacterClass = req.CharacterClass.Value;
+            entity.IsDivineCaster = ClassHelper.IsDivineCaster(req.CharacterClass.Value);
+        }
 
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();

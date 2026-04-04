@@ -957,50 +957,5 @@
         "condition": "psychic"
       }
     ]
-  },
-  {
-    "index": "tortle",
-    "name": "Tortle",
-    "parent_race": "tortle",
-    "speed": 30,
-    "size": "Medium",
-    "desc": [
-      "Tortles are turtle-like humanoids with a natural shell that serves as their armor.",
-      "They are methodical wanderers, living simple lives and treasuring the journey."
-    ],
-    "traits": [
-      {
-        "name": "Claws",
-        "desc": "Your claws are natural weapons, which you can use to make unarmed strikes. If you hit with them, you deal slashing damage equal to 1d4 + your Strength modifier."
-      },
-      {
-        "name": "Hold Breath",
-        "desc": "You can hold your breath for up to 1 hour at a time."
-      },
-      {
-        "name": "Natural Armor",
-        "desc": "Due to your shell and the shape of your body, you are ill-suited to wearing armor. Your shell provides ample protection, however; it gives you a base AC of 17 (your Dexterity modifier does not affect this number). You gain no benefit from wearing armor, but if you are using a shield, you can apply the shield's bonus as normal."
-      },
-      {
-        "name": "Shell Defense",
-        "desc": "You can withdraw into your shell as an action. Until you emerge, you gain a +4 bonus to AC and you have advantage on Strength and Constitution saving throws. While in your shell you are prone, your speed is 0 and can't increase, you have disadvantage on Dexterity saving throws, you can't take reactions, and the only action you can take is a bonus action to emerge from your shell."
-      },
-      {
-        "name": "Survival Instinct",
-        "desc": "You gain proficiency in the Survival skill."
-      }
-    ],
-    "modifiers": [
-      {
-        "type": "ability_score",
-        "ability": "Strength",
-        "value": 2
-      },
-      {
-        "type": "ability_score",
-        "ability": "Wisdom",
-        "value": 1
-      }
-    ]
   }
 ]

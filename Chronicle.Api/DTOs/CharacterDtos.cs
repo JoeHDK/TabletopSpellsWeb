@@ -127,6 +127,7 @@ public class UpdateCharacterRequest
     public string? ConcentrationSpell { get; set; }
     public string? Race { get; set; }
     public Dictionary<string, int>? RaceChoices { get; set; }
+    public Class? CharacterClass { get; set; }
 }
 
 public class UpdateHpRequest

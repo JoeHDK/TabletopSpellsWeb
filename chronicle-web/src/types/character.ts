@@ -91,6 +91,7 @@ export interface UpdateCharacterRequest {
   name?: string
   level?: number
   subclass?: string
+  characterClass?: CharacterClass
   race?: string
   raceChoices?: Record<string, number>
   abilityScores?: Record<string, number>
