@@ -536,7 +536,7 @@ function SortableSection({
   )
 }
 
-export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
+export default function StatsPage({ embedded, editMode: editModeProp, onSetEditMode }: { embedded?: boolean; editMode?: boolean; onSetEditMode?: (v: boolean) => void } = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -671,7 +671,12 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const { preferences, updatePreferences } = useUserPreferences()
   const [sectionOrder, setSectionOrder] = useState<StatsSectionId[]>(DEFAULT_SECTION_ORDER)
   const [collapsedSections, setCollapsedSections] = useState<string[]>([])
-  const [editMode, setEditMode] = useState(false)
+  const [editModeInternal, setEditModeInternal] = useState(false)
+  const editMode = editModeProp !== undefined ? editModeProp : editModeInternal
+  const setEditMode = (v: boolean) => {
+    if (onSetEditMode) onSetEditMode(v)
+    else setEditModeInternal(v)
+  }
 
   useEffect(() => {
     if (!preferences) return
@@ -1457,17 +1462,9 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       )}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-5 space-y-3">
-          <div className="flex justify-end">
-            {editMode ? (
-              <button onClick={() => setEditMode(false)} className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-medium">
-                ✓ Done
-              </button>
-            ) : (
-              <button onClick={() => setEditMode(true)} className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors">
-                ✎ Edit Layout
-              </button>
-            )}
-          </div>
+          {!embedded && (
+
+          )}
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
               {sectionOrder.map(sectionId => {

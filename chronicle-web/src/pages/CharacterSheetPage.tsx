@@ -28,6 +28,8 @@ export default function CharacterSheetPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<MainTab>('stats')
   const [spellSubTab, setSpellSubTab] = useState<SpellSubTab>('list')
+  const [editLayout, setEditLayout] = useState(false)
+  const [statsEditMode, setStatsEditMode] = useState(false)
 
   const { data: character, isLoading } = useQuery({
     queryKey: ['character', id],
@@ -83,12 +85,25 @@ export default function CharacterSheetPage() {
           aria-label="Back to characters"
           className="text-gray-400 hover:text-white shrink-0"
         >←</button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-lg font-bold truncate">{character.name}</h1>
           <p className="text-xs text-gray-400">
             {race ? `${race.name} ` : ''}{character.characterClass} • Level {character.level}
           </p>
         </div>
+        {tab === 'stats' && (
+          statsEditMode ? (
+            <button
+              onClick={() => setStatsEditMode(false)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors font-medium shrink-0"
+            >✓ Done</button>
+          ) : (
+            <button
+              onClick={() => setStatsEditMode(true)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors shrink-0"
+            >✎ Layout</button>
+          )
+        )}
       </header>
 
       {/* Main tab bar */}
@@ -130,7 +145,7 @@ export default function CharacterSheetPage() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto">
-        {tab === 'stats' && <StatsPage embedded />}
+        {tab === 'stats' && <StatsPage embedded editMode={statsEditMode} onSetEditMode={setStatsEditMode} />}
         {tab === 'spells' && spellSubTab === 'list' && <SpellListPage embedded />}
         {tab === 'spells' && spellSubTab === 'perday' && <SpellsPerDayPage embedded />}
         {tab === 'spells' && spellSubTab === 'search' && <SearchSpellsPage embedded />}
