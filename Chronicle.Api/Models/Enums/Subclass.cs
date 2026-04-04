@@ -30,7 +30,7 @@ public enum Subclass
     PaladinOathOfCompulsion, PaladinOathOfDespair,
     // Ranger
     RangerHunter, RangerBeastMaster, RangerGloomStalker, RangerMonk, RangerLandStride,
-    RangerFeyWanderer, RangerSwiftBlade, RangerSoulknife,
+    RangerFeyWanderer, RangerSwiftBlade, RangerSoulknife, RangerMonsterSlayer,
     // Rogue
     RogueAssassin, RogueThief, RogueTrickster, RogueArcaneConundrum, RogueSoulknife,
     RogueShadowdancer, RogueInquisitive, RogueSwashbuckler, RogueAcrobat,
