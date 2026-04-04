@@ -8077,5 +8077,83 @@
     "is_passive": true,
     "modifiers": [],
     "resource_key": null
+  },
+  {
+    "index": "armorer-tools-of-the-trade",
+    "name": "Tools of the Trade",
+    "class": "artificer",
+    "subclass": "armorer",
+    "min_level": 3,
+    "desc": [
+      "When you adopt this specialization at 3rd level, you gain proficiency with heavy armor. You also gain proficiency with smith's tools. If you already have this tool proficiency, you gain proficiency with one other type of artisan's tools of your choice."
+    ],
+    "is_passive": true,
+    "modifiers": [],
+    "resource_key": null
+  },
+  {
+    "index": "armorer-arcane-armor",
+    "name": "Arcane Armor",
+    "class": "artificer",
+    "subclass": "armorer",
+    "min_level": 3,
+    "desc": [
+      "Beginning at 3rd level, your metallurgical pursuits have led to you making armor a conduit for your magic. As an action, you can turn a suit of armor you are wearing into Arcane Armor, provided you have smith's tools in hand. You gain the following benefits while wearing this armor: if the armor normally has a Strength requirement, the arcane armor lacks this requirement for you; you can use the arcane armor as a spellcasting focus for your artificer spells; the armor attaches to you and can't be removed against your will; and you can doff or don the armor as an action. The armor continues to be Arcane Armor until you don another suit of armor or you die."
+    ],
+    "is_passive": true,
+    "modifiers": [],
+    "resource_key": null
+  },
+  {
+    "index": "armorer-armor-model",
+    "name": "Armor Model",
+    "class": "artificer",
+    "subclass": "armorer",
+    "min_level": 3,
+    "desc": [
+      "Beginning at 3rd level, you can customize your Arcane Armor. When you do so, choose one of the following armor models: Guardian or Infiltrator. The model you choose gives you special benefits while you wear it. Each model includes a special weapon. When you attack with that weapon, you can use your Intelligence modifier, instead of Strength or Dexterity modifier, for the attack and damage rolls. Guardian: Thunder Gauntlets (1d8 thunder, disadvantage on attacks against others if you are within 5 ft), Defensive Field (bonus action: gain temp HP equal to your level, usable proficiency bonus times per long rest). Infiltrator: Lightning Launcher (ranged 90/300 ft, 1d6 lightning, once per turn extra 1d6 lightning), Powered Steps (speed +5 ft), Dampening Field (advantage on Dexterity (Stealth) checks, cancels disadvantage from armor). You can change the model whenever you finish a short or long rest, provided you have smith's tools in hand."
+    ],
+    "is_passive": true,
+    "modifiers": [],
+    "resource_key": null
+  },
+  {
+    "index": "armorer-extra-attack",
+    "name": "Extra Attack",
+    "class": "artificer",
+    "subclass": "armorer",
+    "min_level": 5,
+    "desc": [
+      "Starting at 5th level, you can attack twice, rather than once, whenever you take the Attack action on your turn."
+    ],
+    "is_passive": true,
+    "modifiers": [],
+    "resource_key": null
+  },
+  {
+    "index": "armorer-armor-modifications",
+    "name": "Armor Modifications",
+    "class": "artificer",
+    "subclass": "armorer",
+    "min_level": 9,
+    "desc": [
+      "At 9th level, you learn how to use your Infuse Item infusion with your Arcane Armor. That armor now counts as separate items for the purposes of your Infuse Items feature: armor (the chest piece), boots, helmet, and the armor's special weapon. Each of those items can bear one of your infusions, and the infusions transfer over if you change your armor model with the Armor Model feature. In addition, the maximum number of items you can infuse at once increases by 2, but those extra items must be part of your Arcane Armor."
+    ],
+    "is_passive": true,
+    "modifiers": [],
+    "resource_key": null
+  },
+  {
+    "index": "armorer-perfected-armor",
+    "name": "Perfected Armor",
+    "class": "artificer",
+    "subclass": "armorer",
+    "min_level": 15,
+    "desc": [
+      "At 15th level, your Arcane Armor gains additional benefits based on its model. Guardian: When a Huge or smaller creature you can see ends its turn within 30 feet of you, you can use your reaction to magically force it to make a Strength saving throw against your spell save DC. On a failed save, you pull the creature up to 25 feet directly to you, and it is restrained until the start of its next turn. Infiltrator: Any creature that takes lightning damage from your Lightning Launcher glimmers with magical light until the start of your next turn. The glimmering creature sheds dim light in a 5-foot radius, and it has disadvantage on attack rolls against you, as the light jolts it if it attacks you. In addition, the next attack roll against it has advantage, and if that attack hits, the target takes an extra 1d6 lightning damage."
+    ],
+    "is_passive": true,
+    "modifiers": [],
+    "resource_key": null
   }
 ]
