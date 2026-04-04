@@ -822,6 +822,24 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
   const subclassList = SUBCLASSES[character.characterClass] ?? []
 
+  // Expertise: all proficient skills across all sources (for the skill picker)
+  const bgSkillsForExpertise = character.background ? (BACKGROUND_SKILLS[character.background] ?? []) : []
+  const allProficientSkills = Array.from(new Set([
+    ...d.skillProficiencies,
+    ...(character.classSkillProficiencies ?? []),
+    ...bgSkillsForExpertise,
+  ])).sort()
+  const expertiseFeatureIndices = new Set(['rogue-expertise', 'rogue-expertise-2', 'bard-expertise'])
+  const totalExpertiseSlots = classFeatures.filter(f => expertiseFeatureIndices.has(f.index)).length * 2
+  const toggleExpertise = (skill: string) => {
+    const already = d.skillExpertise.includes(skill)
+    patch({
+      skillExpertise: already
+        ? d.skillExpertise.filter(s => s !== skill)
+        : [...d.skillExpertise, skill],
+    })
+  }
+
   const hpPct = maxHpWithFeats > 0 ? Math.max(0, Math.min(100, (d.currentHp / maxHpWithFeats) * 100)) : 0
   const hpColour = hpPct > 50 ? 'bg-green-500' : hpPct > 25 ? 'bg-amber-500' : 'bg-red-500'
 
@@ -1191,7 +1209,13 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
         {/* Class & Subclass Abilities */}
         {character.gameType === 'dnd5e' && (
-          <ClassAbilitiesSection classFeatures={classFeatures} />
+          <ClassAbilitiesSection
+            classFeatures={classFeatures}
+            skillExpertise={d.skillExpertise}
+            allProficientSkills={allProficientSkills}
+            totalExpertiseSlots={totalExpertiseSlots}
+            onToggleExpertise={toggleExpertise}
+          />
         )}
 
         {/* Attacks */}

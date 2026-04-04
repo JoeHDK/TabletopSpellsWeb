@@ -1,8 +1,15 @@
 import { useState } from 'react'
 import type { ClassFeature } from '../../types'
 
+// Features that grant skill expertise (2 slots each)
+const EXPERTISE_FEATURE_INDICES = new Set(['rogue-expertise', 'rogue-expertise-2', 'bard-expertise'])
+
 interface ClassAbilitiesSectionProps {
   classFeatures: ClassFeature[]
+  skillExpertise?: string[]
+  allProficientSkills?: string[]
+  totalExpertiseSlots?: number
+  onToggleExpertise?: (skill: string) => void
 }
 
 function deduplicateFeatures(features: ClassFeature[]): ClassFeature[] {
@@ -29,7 +36,7 @@ function deduplicateFeatures(features: ClassFeature[]): ClassFeature[] {
   return [...kept, ...replacementSeen.values()].sort((a, b) => a.min_level - b.min_level || a.name.localeCompare(b.name))
 }
 
-export function ClassAbilitiesSection({ classFeatures }: ClassAbilitiesSectionProps) {
+export function ClassAbilitiesSection({ classFeatures, skillExpertise = [], allProficientSkills = [], totalExpertiseSlots = 0, onToggleExpertise }: ClassAbilitiesSectionProps) {
   const [cardOpen, setCardOpen] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
@@ -87,6 +94,38 @@ export function ClassAbilitiesSection({ classFeatures }: ClassAbilitiesSectionPr
                           {f.desc.map((para, i) => (
                             <p key={i} className="text-xs text-gray-400 leading-relaxed">{para}</p>
                           ))}
+                        </div>
+                      )}
+                      {EXPERTISE_FEATURE_INDICES.has(f.index) && onToggleExpertise && allProficientSkills.length > 0 && (
+                        <div className="px-3 pb-3 pt-1 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">Choose proficient skills for expertise</span>
+                            <span className={`text-xs font-semibold ${skillExpertise.length >= totalExpertiseSlots && totalExpertiseSlots > 0 ? 'text-amber-400' : 'text-gray-400'}`}>
+                              {skillExpertise.length}/{totalExpertiseSlots}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {allProficientSkills.map(skill => {
+                              const isSelected = skillExpertise.includes(skill)
+                              const atLimit = skillExpertise.length >= totalExpertiseSlots && !isSelected
+                              return (
+                                <button
+                                  key={skill}
+                                  onClick={() => !atLimit && onToggleExpertise(skill)}
+                                  disabled={atLimit}
+                                  className={`text-xs px-2 py-1 rounded-lg border transition-colors ${
+                                    isSelected
+                                      ? 'bg-cyan-900/60 border-cyan-500 text-cyan-300'
+                                      : atLimit
+                                      ? 'bg-gray-800/40 border-gray-700 text-gray-600 cursor-not-allowed'
+                                      : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-cyan-700 hover:text-cyan-300'
+                                  }`}
+                                >
+                                  {isSelected && <span className="mr-1">✓</span>}{skill}
+                                </button>
+                              )
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
