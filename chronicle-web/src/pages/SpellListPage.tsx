@@ -76,6 +76,7 @@ function ArcaneSpellList({ characterId, character, embedded }: { characterId: st
     onSuccess: (_void, spell) => {
       const key = spell.id ?? spell.name!
       qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => old?.filter(p => p.spellId !== key) ?? [])
+      qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
       setSelectedSpell(null)
     },
   })
@@ -93,11 +94,14 @@ function ArcaneSpellList({ characterId, character, embedded }: { characterId: st
         isDomainSpell: existing?.isDomainSpell ?? false,
       })
     },
-    onSuccess: (updated) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
-      if (!old) return [updated]
-      const exists = old.some(p => p.spellId === updated.spellId)
-      return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
-    }),
+    onSuccess: (updated) => {
+      qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
+        if (!old) return [updated]
+        const exists = old.some(p => p.spellId === updated.spellId)
+        return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+      })
+      qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
+    },
   })
 
   const castMutation = useMutation({
@@ -121,6 +125,7 @@ function ArcaneSpellList({ characterId, character, embedded }: { characterId: st
         qc.setQueryData<SpellsPerDay[]>(['spellsPerDay', characterId], old =>
           old?.map(s => s.spellLevel === slotLevel ? { ...s, usedSlots: s.usedSlots + 1 } : s) ?? []
         )
+        qc.invalidateQueries({ queryKey: ['spellsPerDay', characterId] })
       }
       setCastingSpell(null)
       setSelectedSpell(null)
@@ -358,6 +363,7 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
         const exists = old.some(p => p.spellId === updated.spellId)
         return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
       })
+      qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
       setSelectedSpell(null)
     },
   })
@@ -375,11 +381,14 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
         isDomainSpell: existing?.isDomainSpell ?? false,
       })
     },
-    onSuccess: (updated) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
-      if (!old) return [updated]
-      const exists = old.some(p => p.spellId === updated.spellId)
-      return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
-    }),
+    onSuccess: (updated) => {
+      qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
+        if (!old) return [updated]
+        const exists = old.some(p => p.spellId === updated.spellId)
+        return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+      })
+      qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
+    },
   })
 
   const alwaysPreparedMutation = useMutation({
@@ -396,11 +405,14 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
         isDomainSpell: !currentlyAlways, // treat as domain/oath spell when marking always prepared
       })
     },
-    onSuccess: (updated) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
-      if (!old) return [updated]
-      const exists = old.some(p => p.spellId === updated.spellId)
-      return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
-    }),
+    onSuccess: (updated) => {
+      qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
+        if (!old) return [updated]
+        const exists = old.some(p => p.spellId === updated.spellId)
+        return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+      })
+      qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
+    },
   })
 
   const castMutation = useMutation({
@@ -424,6 +436,7 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
         qc.setQueryData<SpellsPerDay[]>(['spellsPerDay', characterId], old =>
           old?.map(s => s.spellLevel === slotLevel ? { ...s, usedSlots: s.usedSlots + 1 } : s) ?? []
         )
+        qc.invalidateQueries({ queryKey: ['spellsPerDay', characterId] })
       }
       setCastingSpell(null)
       setSelectedSpell(null)

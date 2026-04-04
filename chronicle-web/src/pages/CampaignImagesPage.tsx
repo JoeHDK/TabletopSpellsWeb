@@ -138,6 +138,7 @@ export default function CampaignImagesPage() {
       campaignImagesApi.upload(id!, file, caption || undefined),
     onSuccess: (image) => {
       qc.setQueryData<CampaignImage[]>(['campaign-images', id], (old = []) => [image, ...old])
+      qc.invalidateQueries({ queryKey: ['campaign-images', id] })
       setUploadCaption('')
       setUploadError('')
       if (fileRef.current) fileRef.current.value = ''
@@ -152,6 +153,7 @@ export default function CampaignImagesPage() {
       qc.setQueryData<CampaignImage[]>(['campaign-images', id], (old = []) =>
         old.map(img => img.id === updated.id ? updated : img)
       )
+      qc.invalidateQueries({ queryKey: ['campaign-images', id] })
       setPublishModal(null)
       setEditCaption(null)
     },
@@ -163,6 +165,7 @@ export default function CampaignImagesPage() {
       qc.setQueryData<CampaignImage[]>(['campaign-images', id], (old = []) =>
         old.filter(img => img.id !== imageId)
       )
+      qc.invalidateQueries({ queryKey: ['campaign-images', id] })
     },
   })
 

@@ -100,6 +100,7 @@ export default function CharacteristicsPage({ embedded }: { embedded?: boolean }
       if (!id) return
       const updated = await charactersApi.updateCharacteristics(id, { [key]: value })
       qc.setQueryData<Character>(['character', id], updated)
+      qc.invalidateQueries({ queryKey: ['character', id] })
     },
     [id, qc],
   )

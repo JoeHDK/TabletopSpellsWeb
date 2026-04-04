@@ -26,7 +26,11 @@ export default function SpellsPerDayPage({ embedded }: { embedded?: boolean } = 
   const updateMaxMutation = useMutation({
     mutationFn: (newMax: Record<number, number>) =>
       charactersApi.update(id!, { maxSpellsPerDay: newMax }),
-    onSuccess: (updatedCharacter) => qc.setQueryData<Character>(['character', id], updatedCharacter),
+    onSuccess: (updatedCharacter) => {
+      qc.setQueryData<Character>(['character', id], updatedCharacter)
+      qc.invalidateQueries({ queryKey: ['character', id] })
+      qc.invalidateQueries({ queryKey: ['spellsPerDay', id] })
+    },
   })
 
   const maxSlotMap = character?.maxSpellsPerDay ?? {}

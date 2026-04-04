@@ -82,11 +82,14 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
         isFavorite: false,
         isDomainSpell: false,
       }),
-    onSuccess: (updated) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
-      if (!old) return [updated]
-      const exists = old.some(p => p.spellId === updated.spellId)
-      return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
-    }),
+    onSuccess: (updated) => {
+      qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
+        if (!old) return [updated]
+        const exists = old.some(p => p.spellId === updated.spellId)
+        return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+      })
+      qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
+    },
   })
 
   const filteredCantripPicker = allCantrips.filter(
@@ -109,7 +112,10 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
         const exists = old.some(p => p.spellId === updated.spellId)
         return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
       }))
-    )).then(() => { setSelectedIds(new Set()); setSelecting(false) })
+    )).then(() => {
+      qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
+      setSelectedIds(new Set()); setSelecting(false)
+    })
   }
 
   return (
@@ -302,11 +308,14 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
         isFavorite: false,
         isDomainSpell: false,
       }),
-    onSuccess: (updated) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
-      if (!old) return [updated]
-      const exists = old.some(p => p.spellId === updated.spellId)
-      return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
-    }),
+    onSuccess: (updated) => {
+      qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
+        if (!old) return [updated]
+        const exists = old.some(p => p.spellId === updated.spellId)
+        return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+      })
+      qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
+    },
   })
 
   // Prepared count excludes cantrips
@@ -335,7 +344,10 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
         const exists = old.some(p => p.spellId === updated.spellId)
         return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
       }))
-    )).then(() => { setSelectedIds(new Set()); setSelecting(false) })
+    )).then(() => {
+      qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
+      setSelectedIds(new Set()); setSelecting(false)
+    })
   }
 
   return (

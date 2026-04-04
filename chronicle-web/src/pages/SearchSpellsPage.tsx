@@ -57,18 +57,24 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
         isDomainSpell: false,
       })
     },
-    onSuccess: (updated) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', id], old => {
-      if (!old) return [updated]
-      const exists = old.some(p => p.spellId === updated.spellId)
-      return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
-    }),
+    onSuccess: (updated) => {
+      qc.setQueryData<PreparedSpell[]>(['preparedSpells', id], old => {
+        if (!old) return [updated]
+        const exists = old.some(p => p.spellId === updated.spellId)
+        return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+      })
+      qc.invalidateQueries({ queryKey: ['preparedSpells', id] })
+    },
   })
 
   const removeMutation = useMutation({
     mutationFn: (spell: Spell) => preparedSpellsApi.delete(id!, spell.id ?? spell.name!),
-    onSuccess: (_void, spell) => qc.setQueryData<PreparedSpell[]>(['preparedSpells', id], old =>
-      old?.filter(p => p.spellId !== (spell.id ?? spell.name!)) ?? []
-    ),
+    onSuccess: (_void, spell) => {
+      qc.setQueryData<PreparedSpell[]>(['preparedSpells', id], old =>
+        old?.filter(p => p.spellId !== (spell.id ?? spell.name!)) ?? []
+      )
+      qc.invalidateQueries({ queryKey: ['preparedSpells', id] })
+    },
   })
 
   const filtered = useMemo(() => {

@@ -154,6 +154,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
     mutationFn: (req: AddInventoryItemRequest) => inventoryApi.add(id!, req),
     onSuccess: (newItem) => {
       qc.setQueryData<InventoryItem[]>(['inventory', id], old => [...(old ?? []), newItem])
+      qc.invalidateQueries({ queryKey: ['inventory', id] })
       setShowAdd(false)
       setForm(defaultForm())
       setAddingItem(null)
@@ -167,6 +168,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
       qc.setQueryData<InventoryItem[]>(['inventory', id], old =>
         old?.map(i => i.id === updatedItem.id ? updatedItem : i) ?? []
       )
+      qc.invalidateQueries({ queryKey: ['inventory', id] })
     },
   })
 
@@ -176,6 +178,7 @@ export default function InventoryPage({ embedded }: { embedded?: boolean } = {})
       qc.setQueryData<InventoryItem[]>(['inventory', id], old =>
         old?.filter(i => i.id !== itemId) ?? []
       )
+      qc.invalidateQueries({ queryKey: ['inventory', id] })
     },
   })
 

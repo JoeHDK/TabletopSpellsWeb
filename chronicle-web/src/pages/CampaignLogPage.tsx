@@ -180,6 +180,7 @@ export default function CampaignLogPage() {
       qc.setQueryData<CampaignLogEntry[]>(['campaign-log', id], (old = []) =>
         old.filter(e => e.id !== entryId)
       )
+      qc.invalidateQueries({ queryKey: ['campaign-log', id] })
     },
   })
 

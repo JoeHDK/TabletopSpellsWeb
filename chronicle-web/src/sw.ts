@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies'
+import { NetworkFirst, CacheFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 
 declare const self: ServiceWorkerGlobalScope
@@ -18,18 +18,38 @@ registerRoute(
   new NavigationRoute(createHandlerBoundToURL('index.html'))
 )
 
-// StaleWhileRevalidate for general API calls (serve cached, refresh in background)
-// Excludes: auth, notifications, push — these must always be fresh
+// NetworkFirst for all mutable user-data API calls — always tries network, falls back to
+// cache only when offline. Fixes stale-on-first-reload caused by StaleWhileRevalidate.
+// Excludes: auth, notifications, push (not cached), and static compendium routes below.
 registerRoute(
   ({ url }) =>
     url.pathname.startsWith('/api/') &&
     !url.pathname.startsWith('/api/spells/') &&
+    !url.pathname.startsWith('/api/races') &&
+    !url.pathname.startsWith('/api/backgrounds') &&
+    !url.pathname.startsWith('/api/feats') &&
+    !url.pathname.startsWith('/api/classes') &&
+    !url.pathname.startsWith('/api/beasts') &&
     !url.pathname.startsWith('/api/auth/') &&
     !url.pathname.startsWith('/api/notifications') &&
     !url.pathname.startsWith('/api/push/'),
-  new StaleWhileRevalidate({
+  new NetworkFirst({
     cacheName: 'api-cache',
     plugins: [new ExpirationPlugin({ maxAgeSeconds: 60 * 60 * 24 })],
+  })
+)
+
+// CacheFirst for static compendium data that rarely/never changes
+registerRoute(
+  ({ url }) =>
+    url.pathname.startsWith('/api/races') ||
+    url.pathname.startsWith('/api/backgrounds') ||
+    url.pathname.startsWith('/api/feats') ||
+    url.pathname.startsWith('/api/classes') ||
+    url.pathname.startsWith('/api/beasts'),
+  new CacheFirst({
+    cacheName: 'compendium-cache',
+    plugins: [new ExpirationPlugin({ maxAgeSeconds: 60 * 60 * 24 * 7 })],
   })
 )
 

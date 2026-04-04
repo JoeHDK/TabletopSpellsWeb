@@ -43,12 +43,18 @@ export default function CombatTrackerPage() {
 
   const startMutation = useMutation({
     mutationFn: () => encountersApi.create(id!),
-    onSuccess: (data) => qc.setQueryData(['encounter', id], data),
+    onSuccess: (data) => {
+      qc.setQueryData(['encounter', id], data)
+      qc.invalidateQueries({ queryKey: ['encounter', id] })
+    },
   })
 
   const endMutation = useMutation({
     mutationFn: () => encountersApi.delete(id!),
-    onSuccess: () => qc.setQueryData(['encounter', id], null),
+    onSuccess: () => {
+      qc.setQueryData(['encounter', id], null)
+      qc.invalidateQueries({ queryKey: ['encounter', id] })
+    },
   })
 
   const addCreatureMutation = useMutation({
@@ -73,13 +79,17 @@ export default function CombatTrackerPage() {
 
   const nextTurnMutation = useMutation({
     mutationFn: () => encountersApi.nextTurn(id!),
-    onSuccess: (data) => qc.setQueryData(['encounter', id], data),
+    onSuccess: (data) => {
+      qc.setQueryData(['encounter', id], data)
+      qc.invalidateQueries({ queryKey: ['encounter', id] })
+    },
   })
 
   const addPlayersMutation = useMutation({
     mutationFn: (characterIds: string[]) => encountersApi.addPlayers(id!, characterIds),
     onSuccess: (data) => {
       qc.setQueryData(['encounter', id], data)
+      qc.invalidateQueries({ queryKey: ['encounter', id] })
       setShowAddPlayers(false)
       setSelectedPlayerIds([])
     },
@@ -89,6 +99,7 @@ export default function CombatTrackerPage() {
     mutationFn: () => encountersApi.rollInitiative(id!),
     onSuccess: (data) => {
       qc.setQueryData(['encounter', id], data)
+      qc.invalidateQueries({ queryKey: ['encounter', id] })
       setRollingInitiative(false)
     },
     onMutate: () => setRollingInitiative(true),

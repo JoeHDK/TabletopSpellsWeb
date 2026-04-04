@@ -402,6 +402,7 @@ function ClassSkillsSelector({ characterId, characterClass, classSkillProficienc
     },
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', characterId], updated)
+      qc.invalidateQueries({ queryKey: ['character', characterId] })
     },
   })
 
@@ -594,6 +595,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     mutationFn: (req: UpdateCharacterRequest) => charactersApi.update(id!, req),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', id], updated)
+      qc.invalidateQueries({ queryKey: ['character', id] })
     },
   })
 
@@ -602,6 +604,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       charactersApi.updateHp(id!, currentHp, maxHp),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', id], updated)
+      qc.invalidateQueries({ queryKey: ['character', id] })
     },
   })
 
@@ -609,6 +612,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     mutationFn: (file: File) => charactersApi.uploadAvatar(id!, file),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', id], updated)
+      qc.invalidateQueries({ queryKey: ['character', id] })
     },
   })
 
@@ -617,6 +621,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       beastsApi.updateWildShape(id!, req),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', id], updated)
+      qc.invalidateQueries({ queryKey: ['character', id] })
     },
   })
 
@@ -631,6 +636,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     mutationFn: (req: AddAttackRequest) => attacksApi.add(id!, req),
     onSuccess: (newAttack) => {
       qc.setQueryData<CharacterAttack[]>(['attacks', id], old => [...(old ?? []), newAttack])
+      qc.invalidateQueries({ queryKey: ['attacks', id] })
       setShowAttackForm(false)
       setAttackForm(BLANK_ATTACK)
     },
@@ -640,6 +646,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       attacksApi.update(id!, attackId, req),
     onSuccess: (updated) => {
       qc.setQueryData<CharacterAttack[]>(['attacks', id], old => old?.map(a => a.id === updated.id ? updated : a) ?? [])
+      qc.invalidateQueries({ queryKey: ['attacks', id] })
       setEditingAttack(null)
       setAttackForm(BLANK_ATTACK)
     },
@@ -648,6 +655,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     mutationFn: (attackId: string) => attacksApi.remove(id!, attackId),
     onSuccess: (_void, attackId) => {
       qc.setQueryData<CharacterAttack[]>(['attacks', id], old => old?.filter(a => a.id !== attackId) ?? [])
+      qc.invalidateQueries({ queryKey: ['attacks', id] })
     },
   })
 
