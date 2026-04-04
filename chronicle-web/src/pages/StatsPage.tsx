@@ -854,43 +854,8 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
               {d.name} <span className="text-gray-600 text-sm font-normal">✏</span>
             </button>
           )}
-          {isDirty && (
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => { setDraft(null); setEditingName(false) }}
-                className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                Revert
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={updateMutation.isPending || hpMutation.isPending}
-                className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                {updateMutation.isPending || hpMutation.isPending ? 'Saving…' : 'Save now'}
-              </button>
-            </div>
-          )}
         </header>
       )}
-      {embedded && isDirty && (
-        <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center justify-end gap-2">
-          <button
-            onClick={() => { setDraft(null); setEditingName(false) }}
-            className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            Revert
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={updateMutation.isPending || hpMutation.isPending}
-            className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            {updateMutation.isPending || hpMutation.isPending ? 'Saving…' : 'Save now'}
-          </button>
-        </div>
-      )}
-
       <div className="flex-1 overflow-y-auto">
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
 
