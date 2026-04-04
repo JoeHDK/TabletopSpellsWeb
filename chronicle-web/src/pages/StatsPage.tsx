@@ -271,6 +271,7 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices }: {
     mutationFn: (raceChoices: Record<string, number>) => charactersApi.update(characterId, { raceChoices }),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', characterId], updated)
+      qc.invalidateQueries({ queryKey: ['character', characterId] })
     },
   })
 
@@ -300,7 +301,7 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices }: {
           <option key={r.index} value={r.index}>{r.name}</option>
         ))}
       </select>
-      {choiceCount > 0 && (
+      {choiceCount > 0 && chosenKeys.length < choiceCount && (
         <div className="mt-1">
           <div className="text-xs text-gray-400 mb-1">
             Choose {choiceCount} ability score{choiceCount > 1 ? 's' : ''} (+{choiceModifier?.value ?? 1} each):

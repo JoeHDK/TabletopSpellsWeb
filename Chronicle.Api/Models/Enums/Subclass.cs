@@ -49,5 +49,7 @@ public enum Subclass
     // Artificer
     ArtificerAlchemist, ArtificerArtillerist, ArtificerBattlesmith, ArtificerRune,
     ArtificerRitual, ArtificerFiend, ArtificerClock,
-    None
+    None,
+    // Added post-launch
+    ArtificerArmorer,
 }
