@@ -2,14 +2,14 @@ import type { InventorySlot, ArmorType } from '../types/index'
 
 export const SLOTS: InventorySlot[] = [
   'Head', 'Chest', 'Legs', 'Hands', 'Feet',
-  'MainHand', 'OffHand', 'Neck', 'Ring1', 'Ring2', 'Back',
+  'MainHand', 'OffHand', 'RangedMain', 'RangedOff', 'Neck', 'Ring1', 'Ring2', 'Back',
   // Legacy slots kept for backwards-compat items
   'Armor', 'Weapon', 'Offhand', 'Accessory',
 ]
 
 export const EQUIPPED_PANEL_SLOTS: InventorySlot[] = [
   'Head', 'Chest', 'Legs', 'Hands', 'Feet',
-  'MainHand', 'OffHand', 'Neck', 'Ring1', 'Ring2', 'Back',
+  'MainHand', 'OffHand', 'RangedMain', 'RangedOff', 'Neck', 'Ring1', 'Ring2', 'Back',
 ]
 
 export const ARMOR_TYPES: ArmorType[] = ['None', 'Light', 'Medium', 'Heavy']
@@ -29,6 +29,8 @@ export const SLOT_ICON: Record<InventorySlot, string> = {
   Feet: '👟',
   MainHand: '⚔️',
   OffHand: '🗡',
+  RangedMain: '🏹',
+  RangedOff: '🪃',
   Neck: '📿',
   Ring1: '💍',
   Ring2: '💍',
@@ -48,6 +50,8 @@ export const SLOT_LABEL: Record<InventorySlot, string> = {
   Feet: 'Feet',
   MainHand: 'Main Hand',
   OffHand: 'Off-Hand',
+  RangedMain: 'Ranged Main',
+  RangedOff: 'Ranged Off-Hand',
   Neck: 'Neck',
   Ring1: 'Ring 1',
   Ring2: 'Ring 2',

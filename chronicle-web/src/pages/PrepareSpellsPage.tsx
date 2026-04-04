@@ -44,6 +44,8 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
   const [search, setSearch] = useState('')
   const [showCantripPicker, setShowCantripPicker] = useState(false)
   const [cantripSearch, setCantripSearch] = useState('')
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const { data: allSpells = [] } = useQuery({
     queryKey: ['spells', character.gameType],
@@ -91,6 +93,25 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
     (s) => !cantripSearch || s.name?.toLowerCase().includes(cantripSearch.toLowerCase())
   )
 
+  const toggleSelect = (key: string) => setSelectedIds(prev => {
+    const next = new Set(prev)
+    next.has(key) ? next.delete(key) : next.add(key)
+    return next
+  })
+
+  const batchPrepare = (prepare: boolean) => {
+    const spells = filteredLeveled.filter(s => selectedIds.has(s.id ?? s.name!))
+    Promise.all(spells.map(spell =>
+      preparedSpellsApi.upsert(characterId, spell.id ?? spell.name!, {
+        spellId: spell.id ?? spell.name!, isPrepared: prepare, isAlwaysPrepared: false, isFavorite: false, isDomainSpell: false,
+      }).then(updated => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
+        if (!old) return [updated]
+        const exists = old.some(p => p.spellId === updated.spellId)
+        return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+      }))
+    )).then(() => { setSelectedIds(new Set()); setSelecting(false) })
+  }
+
   return (
     <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
       {!embedded && (
@@ -100,10 +121,14 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
             <h1 className="text-lg font-bold">Prepare Spells</h1>
             <p className="text-xs text-gray-400">{preparedCount} / {maxPrepared} prepared</p>
           </div>
+          <button
+            onClick={() => { setSelecting(v => !v); setSelectedIds(new Set()) }}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${selecting ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-gray-600 text-gray-400 hover:text-white'}`}
+          >{selecting ? 'Cancel' : 'Select'}</button>
         </header>
       )}
 
-      <div className="flex-1 overflow-y-auto pb-4">
+      <div className={`flex-1 overflow-y-auto ${selecting && selectedIds.size > 0 ? 'pb-20' : 'pb-4'}`}>
         {/* Known Cantrips section */}
         <section className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between mb-2">
@@ -157,11 +182,28 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
                 spell={spell}
                 isPrepared={isPrepared}
                 onToggle={() => toggleMutation.mutate(spell)}
+                selecting={selecting}
+                isSelected={selectedIds.has(key)}
+                onSelectToggle={() => toggleSelect(key)}
               />
             )
           })}
         </div>
       </div>
+
+      {/* Batch action bar */}
+      {selecting && selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 px-4 py-3 flex gap-2 z-40">
+          <button
+            onClick={() => batchPrepare(true)}
+            className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium py-2 rounded-xl transition-colors"
+          >Prepare ({selectedIds.size})</button>
+          <button
+            onClick={() => batchPrepare(false)}
+            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium py-2 rounded-xl transition-colors"
+          >Unprepare ({selectedIds.size})</button>
+        </div>
+      )}
 
       {/* Cantrip picker modal */}
       {showCantripPicker && (
@@ -213,6 +255,8 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
   const [search, setSearch] = useState('')
   const [showCantripPicker, setShowCantripPicker] = useState(false)
   const [cantripSearch, setCantripSearch] = useState('')
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const { data: allSpells = [] } = useQuery({
     queryKey: ['spells', character.gameType],
@@ -275,6 +319,25 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
     (s) => !cantripSearch || s.name?.toLowerCase().includes(cantripSearch.toLowerCase())
   )
 
+  const toggleSelect = (key: string) => setSelectedIds(prev => {
+    const next = new Set(prev)
+    next.has(key) ? next.delete(key) : next.add(key)
+    return next
+  })
+
+  const batchPrepare = (prepare: boolean) => {
+    const spells = filtered.filter(s => selectedIds.has(s.id ?? s.name!))
+    Promise.all(spells.map(spell =>
+      preparedSpellsApi.upsert(characterId, spell.id ?? spell.name!, {
+        spellId: spell.id ?? spell.name!, isPrepared: prepare, isAlwaysPrepared: false, isFavorite: false, isDomainSpell: false,
+      }).then(updated => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
+        if (!old) return [updated]
+        const exists = old.some(p => p.spellId === updated.spellId)
+        return exists ? old.map(p => p.spellId === updated.spellId ? updated : p) : [...old, updated]
+      }))
+    )).then(() => { setSelectedIds(new Set()); setSelecting(false) })
+  }
+
   return (
     <div className={embedded ? 'bg-gray-950 text-white flex flex-col' : 'min-h-screen bg-gray-950 text-white flex flex-col'}>
       {!embedded && (
@@ -284,10 +347,14 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
             <h1 className="text-lg font-bold">Prepare Spells</h1>
             <p className="text-xs text-gray-400">{preparedCount} / {maxPrepared} prepared</p>
           </div>
+          <button
+            onClick={() => { setSelecting(v => !v); setSelectedIds(new Set()) }}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${selecting ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-gray-600 text-gray-400 hover:text-white'}`}
+          >{selecting ? 'Cancel' : 'Select'}</button>
         </header>
       )}
 
-      <div className="flex-1 overflow-y-auto pb-4">
+      <div className={`flex-1 overflow-y-auto ${selecting && selectedIds.size > 0 ? 'pb-20' : 'pb-4'}`}>
         {/* Known Cantrips section */}
         <section className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between mb-2">
@@ -373,12 +440,29 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
                   spell={spell}
                   isPrepared={isPrepared}
                   onToggle={() => toggleMutation.mutate(spell)}
+                  selecting={selecting}
+                  isSelected={selectedIds.has(key)}
+                  onSelectToggle={() => toggleSelect(key)}
                 />
               )
             })
           )}
         </div>
       </div>
+
+      {/* Batch action bar */}
+      {selecting && selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 px-4 py-3 flex gap-2 z-40">
+          <button
+            onClick={() => batchPrepare(true)}
+            className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium py-2 rounded-xl transition-colors"
+          >Prepare ({selectedIds.size})</button>
+          <button
+            onClick={() => batchPrepare(false)}
+            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium py-2 rounded-xl transition-colors"
+          >Unprepare ({selectedIds.size})</button>
+        </div>
+      )}
 
       {/* Cantrip picker modal */}
       {showCantripPicker && (
@@ -424,22 +508,37 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared row component
 // ─────────────────────────────────────────────────────────────────────────────
-function SpellToggleRow({ spell, isPrepared, onToggle }: {
+function SpellToggleRow({ spell, isPrepared, onToggle, selecting = false, isSelected = false, onSelectToggle }: {
   spell: Spell
   isPrepared: boolean
   onToggle: () => void
+  selecting?: boolean
+  isSelected?: boolean
+  onSelectToggle?: () => void
 }) {
+  const handleClick = () => {
+    if (selecting) onSelectToggle?.()
+    else onToggle()
+  }
   return (
     <button
-      onClick={onToggle}
-      aria-pressed={isPrepared}
+      onClick={handleClick}
+      aria-pressed={selecting ? isSelected : isPrepared}
       className={`w-full text-left rounded-xl px-4 py-3 transition-colors flex items-center gap-3 ${
-        isPrepared ? 'bg-indigo-900/60 border border-indigo-700' : 'bg-gray-900 hover:bg-gray-800'
+        selecting
+          ? isSelected ? 'bg-indigo-800/70 border border-indigo-500' : 'bg-gray-900 hover:bg-gray-800'
+          : isPrepared ? 'bg-indigo-900/60 border border-indigo-700' : 'bg-gray-900 hover:bg-gray-800'
       }`}
     >
-      <span className={`text-lg shrink-0 ${isPrepared ? 'text-indigo-300' : 'text-gray-600'}`}>
-        {isPrepared ? '✦' : '◇'}
-      </span>
+      {selecting ? (
+        <span className={`w-5 h-5 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-600'}`}>
+          {isSelected && <span className="text-xs leading-none">✓</span>}
+        </span>
+      ) : (
+        <span className={`text-lg shrink-0 ${isPrepared ? 'text-indigo-300' : 'text-gray-600'}`}>
+          {isPrepared ? '✦' : '◇'}
+        </span>
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="font-medium truncate">{spell.name}</p>
@@ -447,6 +546,9 @@ function SpellToggleRow({ spell, isPrepared, onToggle }: {
             <span className="shrink-0 text-[10px] text-amber-400 border border-amber-400/40 rounded px-1 py-0.5 leading-none">
               ritual
             </span>
+          )}
+          {!selecting && isPrepared && (
+            <span className="shrink-0 text-[10px] text-indigo-400 ml-auto">prepared</span>
           )}
         </div>
         <p className="text-xs text-gray-400">{spell.spell_level}</p>

@@ -690,9 +690,16 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
   const equippedSavingThrowBonus = inventory
     .filter(i => i.isEquipped)
     .reduce((s, i) => s + (i.savingThrowBonus ?? 0), 0)
-  const passivePerception = 10 + abilityMod('Wisdom') + featPassivePercBonus
-  const initiative = abilityMod('Dexterity') + featInitBonus
   const profBonusNum = Math.floor((d.level - 1) / 4) + 2
+  const hasJackOfAllTrades = classFeatures.some(f => f.index === 'bard-jack-of-all-trades')
+  const jackBonus = hasJackOfAllTrades ? Math.floor(profBonusNum / 2) : 0
+  const perceptionSkillBonus = d.skillExpertise.includes('Perception')
+    ? profBonusNum * 2
+    : d.skillProficiencies.includes('Perception')
+    ? profBonusNum
+    : jackBonus
+  const passivePerception = 10 + abilityMod('Wisdom') + perceptionSkillBonus + featPassivePercBonus
+  const initiative = abilityMod('Dexterity') + featInitBonus
   const maxHpWithFeats = d.maxHp + featHpPerLevel * d.level
 
   const toggleSaveProficiency = (key: string) => {
@@ -1016,7 +1023,9 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
               <p className="text-xs text-gray-400 mb-1">Passive Perception</p>
               <p className="text-xl font-bold">{passivePerception}</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                10 + WIS{featPassivePercBonus !== 0 ? ` +${featPassivePercBonus} feat` : ''}
+                10 + WIS
+                {d.skillExpertise.includes('Perception') ? ' + exp' : d.skillProficiencies.includes('Perception') ? ' + prof' : hasJackOfAllTrades ? ' + ½prof' : ''}
+                {featPassivePercBonus !== 0 ? ` +${featPassivePercBonus} feat` : ''}
               </p>
             </div>
             <div className="bg-gray-800 rounded-xl p-3 text-center">
@@ -1223,7 +1232,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                 const isFromBackground = bgSkills.includes(name)
                 const isFromClass = classSkills.includes(name)
                 const disabled = !isProficient && atSkillLimit
-                const total = abilityMod(ability) + (isExpert ? profBonusNum * 2 : isProficient ? profBonusNum : 0)
+                const total = abilityMod(ability) + (isExpert ? profBonusNum * 2 : isProficient ? profBonusNum : jackBonus)
                 const dotColour = isExpert
                   ? isFromBackground ? 'bg-amber-300 border-amber-300'
                   : isFromClass ? 'bg-purple-300 border-purple-300'
@@ -1232,6 +1241,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                   ? isFromBackground ? 'bg-amber-500 border-amber-500'
                   : isFromClass ? 'bg-purple-500 border-purple-500'
                   : 'bg-indigo-500 border-indigo-500'
+                  : hasJackOfAllTrades ? 'border-yellow-700 bg-yellow-900/40'
                   : 'border-gray-500'
                 const scoreColour = isExpert
                   ? isFromBackground ? 'text-amber-200'
@@ -1241,6 +1251,7 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
                   ? isFromBackground ? 'text-amber-300'
                   : isFromClass ? 'text-purple-300'
                   : 'text-indigo-300'
+                  : hasJackOfAllTrades ? 'text-yellow-600'
                   : 'text-gray-300'
                 return (
                   <button

@@ -103,13 +103,15 @@ export function AttacksSection({
   // Auto-generate attack profiles from equipped weapons
   const equippedWeapons = inventory.filter(i => i.isEquipped && (
     i.equippedSlot === 'Weapon' || i.equippedSlot === 'Offhand' ||
-    i.equippedSlot === 'MainHand' || i.equippedSlot === 'OffHand'
+    i.equippedSlot === 'MainHand' || i.equippedSlot === 'OffHand' ||
+    i.equippedSlot === 'RangedMain' || i.equippedSlot === 'RangedOff'
   ))
   const autoAttacks = equippedWeapons.map(item => {
     const isRanged = RANGED_RE.test(item.name) || RANGED_RE.test(item.notes ?? '')
+      || item.equippedSlot === 'RangedMain' || item.equippedSlot === 'RangedOff'
     const ability = isRanged ? 'Dexterity' : 'Strength'
     const aMod = Math.floor(((abilityScores[ability] ?? 10) - 10) / 2)
-    const isOffHand = item.equippedSlot === 'Offhand' || item.equippedSlot === 'OffHand'
+    const isOffHand = item.equippedSlot === 'Offhand' || item.equippedSlot === 'OffHand' || item.equippedSlot === 'RangedOff'
     const toHit = aMod + profBonusNum + (isOffHand ? -profBonusNum : 0)
     const extraDmg = (item.damageEntries ?? []).map(e => `+${e.dice} ${e.damageType}`).join('')
 

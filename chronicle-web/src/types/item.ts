@@ -2,6 +2,7 @@ export type InventorySlot =
   | 'Armor' | 'Weapon' | 'Offhand' | 'Accessory'
   | 'Head' | 'Chest' | 'Legs' | 'Hands' | 'Feet'
   | 'MainHand' | 'OffHand' | 'Neck' | 'Ring1' | 'Ring2' | 'Back'
+  | 'RangedMain' | 'RangedOff'
 
 export type ItemSource = 'SRD' | 'Custom'
 export type ArmorType = 'None' | 'Light' | 'Medium' | 'Heavy'
