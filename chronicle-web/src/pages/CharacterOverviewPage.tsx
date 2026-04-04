@@ -28,7 +28,7 @@ interface NavItem {
   to: string     // full route path for navigation
 }
 
-function SortableCard({ item, editMode, isLast, colSpan2 }: { item: NavItem; editMode: boolean; isLast: boolean; colSpan2: boolean }) {
+function SortableCard({ item, editMode, colSpan2 }: { item: NavItem; editMode: boolean; colSpan2: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.path })
   const style = { transform: CSS.Transform.toString(transform), transition }
 
@@ -184,7 +184,6 @@ export default function CharacterOverviewPage() {
                     key={item.path}
                     item={item}
                     editMode={true}
-                    isLast={idx === navItems.length - 1}
                     colSpan2={navItems.length % 2 !== 0 && idx === navItems.length - 1}
                   />
                 ))}
@@ -198,7 +197,6 @@ export default function CharacterOverviewPage() {
                 key={item.path}
                 item={item}
                 editMode={false}
-                isLast={idx === navItems.length - 1}
                 colSpan2={navItems.length % 2 !== 0 && idx === navItems.length - 1}
               />
             ))}
