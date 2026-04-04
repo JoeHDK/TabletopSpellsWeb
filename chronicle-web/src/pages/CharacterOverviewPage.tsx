@@ -87,21 +87,21 @@ export default function CharacterOverviewPage() {
     const make = (label: string, path: string) => ({ label, path, to: `/characters/${id}/${path}` })
     return character.isDivineCaster
       ? [
-          make('📊 Stats & Sheet', 'sheet'),
           make('📖 Spell List', 'spells'),
           make('🔮 Spells per day', 'spells-per-day'),
           make('📜 Log', 'spell-log'),
+          make('📊 Stats', 'stats'),
           make('✨ Features', 'features'),
           make('🎒 Inventory', 'inventory'),
           make('🎯 Feats', 'feats'),
         ]
       : [
-          make('📊 Stats & Sheet', 'sheet'),
           make('📖 Spell List', 'spells'),
           make('🔍 Search Spells', 'search-spells'),
           ...(isPreparingCaster(character.characterClass) ? [make('✨ Prepare Spells', 'prepare')] : []),
           make('🔮 Spells per day', 'spells-per-day'),
           make('📜 Log', 'spell-log'),
+          make('📊 Stats', 'stats'),
           make('✨ Features', 'features'),
           make('🎒 Inventory', 'inventory'),
           make('🎯 Feats', 'feats'),
