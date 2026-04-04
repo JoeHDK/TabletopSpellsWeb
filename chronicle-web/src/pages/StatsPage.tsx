@@ -13,10 +13,11 @@ import { spellsPerDayApi } from '../api/spells'
 import { racesApi } from '../api/races'
 import { backgroundsApi } from '../api/backgrounds'
 import EditableNumber from '../components/EditableNumber'
-import { resizeImage } from '../utils/resizeImage'
+// resizeImage import removed — avatar now goes through AvatarCropModal canvas pipeline
 import { lookupArmor } from '../utils/armorTable'
 import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race, EquipmentResource, CharacterClass } from '../types'
 import { AbilityScoresSection, SavingThrowsSection, AttacksSection, BLANK_ATTACK, ClassResourcesSection, ClassFeaturesSection, ClassAbilitiesSection, FeatsSection } from '../components/stats'
+import AvatarCropModal from '../components/stats/AvatarCropModal'
 import { CLASS_SAVING_THROWS, ABILITY_KEYS, ABILITY_SHORT } from '../components/stats/statsConstants'
 import { DndContext, closestCenter, PointerSensor, TouchSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
@@ -673,6 +674,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   const [editingName, setEditingName] = useState(false)
   const [editingConcentration, setEditingConcentration] = useState(false)
   const [concentrationInput, setConcentrationInput] = useState('')
+  const [pendingCropSrc, setPendingCropSrc] = useState<string | null>(null)
 
   const { preferences, updatePreferences } = useUserPreferences()
   const [sectionOrder, setSectionOrder] = useState<StatsSectionId[]>(DEFAULT_SECTION_ORDER)
@@ -794,13 +796,26 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     },
   })
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const resized = await resizeImage(file, 256, 0.85)
-      avatarMutation.mutate(resized)
+      const url = URL.createObjectURL(file)
+      setPendingCropSrc(url)
     }
     e.target.value = ''
+  }
+
+  const handleCropSave = async (dataUrl: string) => {
+    setPendingCropSrc(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    // Convert data URL to File
+    const res = await fetch(dataUrl)
+    const blob = await res.blob()
+    const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+    avatarMutation.mutate(file)
+  }
+
+  const handleCropCancel = () => {
+    setPendingCropSrc(prev => { if (prev) URL.revokeObjectURL(prev); return null })
   }
 
   // Auto-fill saving throws from class when a character first loads with no saves set
@@ -1013,53 +1028,29 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     switch (sectionId) {
       case 'identity':
         return (
-          <div className="px-4 pb-4 pt-1">
-            <div className="mb-3">
-              <p className="text-xs text-gray-400 mb-0.5">Name</p>
-              {editingName ? (
-                <input
-                  ref={nameRef}
-                  className="w-full bg-gray-800 text-white text-sm font-bold rounded-lg px-3 py-1.5 border border-indigo-500 focus:outline-none"
-                  value={d.name}
-                  onChange={e => patch({ name: e.target.value })}
-                  onBlur={() => setEditingName(false)}
-                  onKeyDown={e => e.key === 'Enter' && setEditingName(false)}
-                />
-              ) : (
-                <button
-                  className="text-sm font-bold hover:text-indigo-300 transition-colors text-left"
-                  onClick={() => setEditingName(true)}
-                >
-                  {d.name} <span className="text-gray-600 text-xs font-normal">✏</span>
-                </button>
-              )}
-            </div>
-            <div className="flex gap-4">
-              <div className="flex-1 space-y-3">
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Class</p>
-                    {character.gameType === 'dnd5e' ? (
-                      <select
-                        className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs font-medium"
-                        value={d.characterClass}
-                        onChange={e => {
-                          const cls = e.target.value as CharacterClass
-                          patch({ characterClass: cls, subclass: 'None' })
-                        }}
-                      >
-                        {DND5E_CLASSES.map(cls => (
-                          <option key={cls} value={cls}>{cls}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <p className="font-medium text-sm">{character.characterClass}</p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Level</p>
-                    <EditableNumber value={d.level} onChange={v => patch({ level: v })} min={1} max={20} label="Level" className="font-bold text-lg" />
-                  </div>
+          <div className="px-4 pb-4 pt-1 space-y-3">
+            {/* Top block: Name + Race + Level beside Avatar */}
+            <div className="flex gap-3 items-stretch">
+              <div className="flex-1 space-y-2">
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Name</p>
+                  {editingName ? (
+                    <input
+                      ref={nameRef}
+                      className="w-full bg-gray-800 text-white text-sm font-bold rounded-lg px-3 py-1.5 border border-indigo-500 focus:outline-none"
+                      value={d.name}
+                      onChange={e => patch({ name: e.target.value })}
+                      onBlur={() => setEditingName(false)}
+                      onKeyDown={e => e.key === 'Enter' && setEditingName(false)}
+                    />
+                  ) : (
+                    <button
+                      className="text-sm font-bold hover:text-indigo-300 transition-colors text-left"
+                      onClick={() => setEditingName(true)}
+                    >
+                      {d.name} <span className="text-gray-600 text-xs font-normal">✏</span>
+                    </button>
+                  )}
                 </div>
                 {character.gameType === 'dnd5e' && (
                   <div>
@@ -1067,49 +1058,85 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                     <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} />
                   </div>
                 )}
-                {character.gameType === 'dnd5e' && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Background</p>
-                    <BackgroundSelector characterId={character.id} currentBackground={character.background} currentSkillProficiencies={d.skillProficiencies} />
-                  </div>
-                )}
                 <div>
-                  <p className="text-xs text-gray-400 mb-1">Subclass</p>
-                  <select
-                    className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-                    value={d.subclass ?? 'None'}
-                    disabled={subclassList.length === 0}
-                    onChange={e => patch({ subclass: e.target.value })}
-                  >
-                    <option value="None">— None —</option>
-                    {subclassList.map(s => (
-                      <option key={s} value={s}>{formatSubclass(s, d.characterClass)}</option>
-                    ))}
-                  </select>
+                  <p className="text-xs text-gray-400 mb-0.5">Level</p>
+                  <EditableNumber value={d.level} onChange={v => patch({ level: v })} min={1} max={20} label="Level" className="font-bold text-lg" />
                 </div>
               </div>
-              <div className="flex flex-col items-center justify-center gap-2 shrink-0">
-                <label className="relative cursor-pointer group" title="Click to upload avatar">
-                  <div className="w-24 h-24 rounded-full bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
+              {/* Avatar — stretches to match left column height */}
+              <div className="flex flex-col items-center justify-center shrink-0">
+                <label className="relative cursor-pointer group h-full flex flex-col items-center justify-center" title="Click to upload avatar">
+                  <div className="w-20 h-full min-h-[80px] rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
                     {character.avatarBase64 ? (
                       <img src={character.avatarBase64} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-4xl select-none">🧙</span>
                     )}
                     {avatarMutation.isPending && (
-                      <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center">
                         <span className="text-xs text-white">...</span>
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-full transition-colors flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-xl transition-colors flex items-center justify-center">
                       <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity font-medium">Change</span>
                     </div>
                   </div>
                   <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                 </label>
-                <p className="text-xs text-gray-600">Tap to change</p>
               </div>
             </div>
+
+            {/* Bottom block: Class → Subclass → Background */}
+            <div className="space-y-2">
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Class</p>
+                {character.gameType === 'dnd5e' ? (
+                  <select
+                    className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs font-medium"
+                    value={d.characterClass}
+                    onChange={e => {
+                      const cls = e.target.value as CharacterClass
+                      patch({ characterClass: cls, subclass: 'None' })
+                    }}
+                  >
+                    {DND5E_CLASSES.map(cls => (
+                      <option key={cls} value={cls}>{cls}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="font-medium text-sm">{character.characterClass}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Subclass</p>
+                <select
+                  className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                  value={d.subclass ?? 'None'}
+                  disabled={subclassList.length === 0}
+                  onChange={e => patch({ subclass: e.target.value })}
+                >
+                  <option value="None">— None —</option>
+                  {subclassList.map(s => (
+                    <option key={s} value={s}>{formatSubclass(s, d.characterClass)}</option>
+                  ))}
+                </select>
+              </div>
+              {character.gameType === 'dnd5e' && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Background</p>
+                  <BackgroundSelector characterId={character.id} currentBackground={character.background} currentSkillProficiencies={d.skillProficiencies} />
+                </div>
+              )}
+            </div>
+
+            {/* Avatar crop modal */}
+            {pendingCropSrc && (
+              <AvatarCropModal
+                imageSrc={pendingCropSrc}
+                onSave={handleCropSave}
+                onCancel={handleCropCancel}
+              />
+            )}
           </div>
         )
 
