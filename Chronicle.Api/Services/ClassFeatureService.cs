@@ -37,7 +37,7 @@ public class ClassFeatureService
             .Where(f =>
                 f.Class == normalClass &&
                 f.MinLevel <= level &&
-                (f.Subclass == null || f.Subclass == normalSubclass))
+                (f.Subclass == null || (normalSubclass != null && normalSubclass.Contains(f.Subclass))))
             .ToList();
     }
 
