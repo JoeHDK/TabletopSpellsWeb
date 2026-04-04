@@ -589,7 +589,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
     if (editingName) nameRef.current?.focus()
   }, [editingName])
 
-  const isDirty = draft !== null
 
   const updateMutation = useMutation({
     mutationFn: (req: UpdateCharacterRequest) => charactersApi.update(id!, req),
