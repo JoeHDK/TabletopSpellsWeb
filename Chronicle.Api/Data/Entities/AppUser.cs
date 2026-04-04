@@ -9,6 +9,7 @@ public class AppUser : IdentityUser
     public bool IsDm { get; set; }
     public string? RefreshTokenHash { get; set; }
     public DateTime? RefreshTokenExpiresAt { get; set; }
+    public string? OverviewCardOrderJson { get; set; }
     public ICollection<CharacterEntity> Characters { get; set; } = new List<CharacterEntity>();
     public ICollection<CustomItemEntity> CustomItems { get; set; } = new List<CustomItemEntity>();
     public ICollection<GameMemberEntity> GameMemberships { get; set; } = new List<GameMemberEntity>();

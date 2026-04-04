@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
 using Chronicle.Api.DTOs;
@@ -234,5 +235,36 @@ public class UsersController : ControllerBase
         });
 
         return Ok(results);
+    }
+
+    [HttpGet("me/preferences")]
+    public async Task<ActionResult<UserPreferencesDto>> GetPreferences()
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == CurrentUserId);
+        if (user == null) return NotFound();
+
+        var order = user.OverviewCardOrderJson != null
+            ? JsonConvert.DeserializeObject<List<string>>(user.OverviewCardOrderJson) ?? new()
+            : new List<string>();
+
+        return Ok(new UserPreferencesDto { OverviewCardOrder = order });
+    }
+
+    [HttpPut("me/preferences")]
+    public async Task<ActionResult<UserPreferencesDto>> UpdatePreferences(UpdateUserPreferencesRequest req)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == CurrentUserId);
+        if (user == null) return NotFound();
+
+        if (req.OverviewCardOrder != null)
+            user.OverviewCardOrderJson = JsonConvert.SerializeObject(req.OverviewCardOrder);
+
+        await _db.SaveChangesAsync();
+
+        var order = user.OverviewCardOrderJson != null
+            ? JsonConvert.DeserializeObject<List<string>>(user.OverviewCardOrderJson) ?? new()
+            : new List<string>();
+
+        return Ok(new UserPreferencesDto { OverviewCardOrder = order });
     }
 }
