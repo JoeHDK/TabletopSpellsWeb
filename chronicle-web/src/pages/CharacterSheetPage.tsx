@@ -28,7 +28,6 @@ export default function CharacterSheetPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<MainTab>('stats')
   const [spellSubTab, setSpellSubTab] = useState<SpellSubTab>('list')
-  const [editLayout, setEditLayout] = useState(false)
   const [statsEditMode, setStatsEditMode] = useState(false)
 
   const { data: character, isLoading } = useQuery({
