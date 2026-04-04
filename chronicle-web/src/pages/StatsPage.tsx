@@ -1053,20 +1053,22 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                   )}
                 </div>
                 {character.gameType === 'dnd5e' && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Race</p>
-                    <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} />
+                  <div className="flex gap-2 items-end">
+                    <div className="w-3/4">
+                      <p className="text-xs text-gray-400 mb-1">Race</p>
+                      <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-400 mb-0.5">Level</p>
+                      <EditableNumber value={d.level} onChange={v => patch({ level: v })} min={1} max={20} label="Level" className="font-bold text-lg" />
+                    </div>
                   </div>
                 )}
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Level</p>
-                  <EditableNumber value={d.level} onChange={v => patch({ level: v })} min={1} max={20} label="Level" className="font-bold text-lg" />
-                </div>
               </div>
               {/* Avatar — stretches to match left column height */}
               <div className="flex flex-col items-center justify-center shrink-0">
                 <label className="relative cursor-pointer group h-full flex flex-col items-center justify-center" title="Click to upload avatar">
-                  <div className="w-20 h-full min-h-[80px] rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
+                  <div className="w-40 h-full min-h-[80px] rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
                     {character.avatarBase64 ? (
                       <img src={character.avatarBase64} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
@@ -1086,40 +1088,42 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
               </div>
             </div>
 
-            {/* Bottom block: Class → Subclass → Background */}
+            {/* Bottom block: Class + Subclass row → Background */}
             <div className="space-y-2">
-              <div>
-                <p className="text-xs text-gray-400 mb-0.5">Class</p>
-                {character.gameType === 'dnd5e' ? (
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400 mb-0.5">Class</p>
+                  {character.gameType === 'dnd5e' ? (
+                    <select
+                      className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs font-medium"
+                      value={d.characterClass}
+                      onChange={e => {
+                        const cls = e.target.value as CharacterClass
+                        patch({ characterClass: cls, subclass: 'None' })
+                      }}
+                    >
+                      {DND5E_CLASSES.map(cls => (
+                        <option key={cls} value={cls}>{cls}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="font-medium text-sm">{character.characterClass}</p>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400 mb-1">Subclass</p>
                   <select
-                    className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs font-medium"
-                    value={d.characterClass}
-                    onChange={e => {
-                      const cls = e.target.value as CharacterClass
-                      patch({ characterClass: cls, subclass: 'None' })
-                    }}
+                    className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                    value={d.subclass ?? 'None'}
+                    disabled={subclassList.length === 0}
+                    onChange={e => patch({ subclass: e.target.value })}
                   >
-                    {DND5E_CLASSES.map(cls => (
-                      <option key={cls} value={cls}>{cls}</option>
+                    <option value="None">— None —</option>
+                    {subclassList.map(s => (
+                      <option key={s} value={s}>{formatSubclass(s, d.characterClass)}</option>
                     ))}
                   </select>
-                ) : (
-                  <p className="font-medium text-sm">{character.characterClass}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 mb-1">Subclass</p>
-                <select
-                  className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-                  value={d.subclass ?? 'None'}
-                  disabled={subclassList.length === 0}
-                  onChange={e => patch({ subclass: e.target.value })}
-                >
-                  <option value="None">— None —</option>
-                  {subclassList.map(s => (
-                    <option key={s} value={s}>{formatSubclass(s, d.characterClass)}</option>
-                  ))}
-                </select>
+                </div>
               </div>
               {character.gameType === 'dnd5e' && (
                 <div>
