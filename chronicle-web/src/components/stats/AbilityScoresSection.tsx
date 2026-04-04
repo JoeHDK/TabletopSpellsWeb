@@ -13,7 +13,6 @@ interface AbilityScoresSectionProps {
   getRacialBonus: (key: string) => number
   getAsiBonus: (key: string) => number
   patch: (fields: Partial<UpdateCharacterRequest & { currentHp?: number; maxHp?: number }>) => void
-  isDirty: boolean
 }
 
 export function AbilityScoresSection({
@@ -23,7 +22,6 @@ export function AbilityScoresSection({
   getRacialBonus,
   getAsiBonus,
   patch,
-  isDirty,
 }: AbilityScoresSectionProps) {
   const [pointBuyMode, setPointBuyMode] = useState(false)
   const [abilityBreakdownKey, setAbilityBreakdownKey] = useState<string | null>(null)
@@ -164,9 +162,6 @@ export function AbilityScoresSection({
                   <span className="text-white text-base">{total} <span className="text-indigo-400 font-normal text-xs">({getAbilityModStr(total)})</span></span>
                 </div>
               </div>
-              {isDirty && (
-                <p className="text-xs text-amber-400 text-center">Don't forget to save your changes.</p>
-              )}
             </div>
           </div>
         )

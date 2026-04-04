@@ -724,11 +724,8 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
 
   const acInfo = calculateAC(character.characterClass, totalScores, inventory, d.baseArmorClass, charFeats, classFeatures)
 
-  const patch = (fields: Partial<typeof d>) => setDraft(prev => ({ ...prev, ...fields }))
-
-  const handleSave = useCallback(async () => {
-    if (!draft) return
-    const { currentHp, maxHp, ...charUpdate } = draft
+  const save = useCallback(async (pendingDraft: NonNullable<typeof draft>) => {
+    const { currentHp, maxHp, ...charUpdate } = pendingDraft
     const tasks: Promise<unknown>[] = []
     if (Object.keys(charUpdate).length > 0) tasks.push(updateMutation.mutateAsync(charUpdate))
     if (currentHp !== undefined || maxHp !== undefined) {
@@ -742,16 +739,15 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
       setDraft(null)
       setEditingName(false)
     } catch {
-      // Errors are surfaced via updateMutation.isError / hpMutation.isError; draft kept for retry
+      // Errors surfaced via mutation.isError; draft kept so a retry is possible
     }
-  }, [draft, character, updateMutation, hpMutation]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [character, updateMutation, hpMutation]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save 1.5 s after the last edit
-  useEffect(() => {
-    if (!isDirty) return
-    const timer = setTimeout(() => { handleSave() }, 1500)
-    return () => clearTimeout(timer)
-  }, [draft]) // eslint-disable-line react-hooks/exhaustive-deps
+  const patch = (fields: Partial<typeof d>) => {
+    const newDraft = { ...(draft ?? {}), ...fields }
+    setDraft(newDraft)
+    save(newDraft)
+  }
 
   const abilityMod = (key: string) => Math.floor((totalAbilityScore(key) - 10) / 2)
   const featInitBonus = getFeatModifier(charFeats, 'initiative')
@@ -1234,7 +1230,6 @@ export default function StatsPage({ embedded }: { embedded?: boolean } = {}) {
               getRacialBonus={getRacialBonus}
               getAsiBonus={getAsiBonus}
               patch={patch}
-              isDirty={isDirty}
             />
 
             <SavingThrowsSection
