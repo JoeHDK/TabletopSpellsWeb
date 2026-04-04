@@ -149,7 +149,7 @@ const SUBCLASSES:Record<string, string[]> = {
   Sorcerer: ['SorcererDraconicBloodline','SorcererWildMagic','SorcererStormSorcery','SorcererShadowMagic','SorcererDivineSource','SorcererAbberantMind'],
   Warlock: ['WarlockArchfey','WarlockFiend','WarlockGreatOldOne','WarlockCelestial','WarlockHexblade','WarlockUndying'],
   Wizard: ['WizardAbjuration','WizardConjuration','WizardDivination','WizardEnchantment','WizardEvocation','WizardIllusion','WizardNecromancy','WizardTransmutation','WizardChronoturgy','WizardGravityMastery','WizardWar','WizardBladesingers'],
-  Artificer: ['ArtificerAlchemist','ArtificerArtillerist','ArtificerBattlesmith'],
+  Artificer: ['ArtificerAlchemist','ArtificerArtillerist','ArtificerBattleSmith','ArtificerArmorer'],
 }
 
 /** Convert "WizardEvocation" → "Evocation", "BardCollegeOfLore" → "College Of Lore" */
