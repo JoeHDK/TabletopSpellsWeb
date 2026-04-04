@@ -37,6 +37,7 @@ interface AttacksSectionProps {
   onDeleteAttack: (attackId: string) => void
   addAttackPending: boolean
   updateAttackPending: boolean
+  bare?: boolean
 }
 
 export function AttacksSection({
@@ -58,6 +59,7 @@ export function AttacksSection({
   onDeleteAttack,
   addAttackPending,
   updateAttackPending,
+  bare,
 }: AttacksSectionProps) {
   const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
 
@@ -75,6 +77,27 @@ export function AttacksSection({
       const dmgStr = `${atk.dice}${statMod !== 0 ? fmtMod(statMod) : ''} ${atk.type}`
       return { id: `beast-${i}`, name: atk.name, toHit, dmgStr }
     })
+    if (bare) return (
+      <div className="px-4 pb-4">
+        <div className="flex items-center justify-end mb-3">
+          <span className="text-[10px] text-amber-400">{activeBeast.name} form</span>
+        </div>
+        <div className="space-y-2">
+          {beastAttacks.map(atk => (
+            <div key={atk.id} className="bg-gray-800 rounded-xl px-3 py-2.5 flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{atk.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{atk.dmgStr}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-xs text-gray-400">To Hit</p>
+                <p className="font-bold text-sm text-indigo-300">{fmtMod(atk.toHit)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
     return (
       <section className="bg-gray-900 rounded-2xl p-4">
         <div className="flex items-center justify-between mb-3">
@@ -158,18 +181,8 @@ export function AttacksSection({
     return { ...atk, toHit, dmgStr }
   })
 
-  return (
-    <section className="bg-gray-900 rounded-2xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Attacks</h2>
-        {!showAttackForm && !editingAttack && (
-          <button
-            onClick={() => { setAttackForm(BLANK_ATTACK); setShowAttackForm(true) }}
-            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-          >+ Add</button>
-        )}
-      </div>
-
+  const attacksBody = (
+    <>
       {/* Sneak Attack badge for Rogues */}
       {sneakAttackDice > 0 && (
         <div className="mb-3 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 flex items-start gap-2">
@@ -299,6 +312,38 @@ export function AttacksSection({
           </div>
         </div>
       )}
+    </>
+  )
+
+  if (bare) return (
+    <div>
+      <div className="flex justify-end px-4 pt-2">
+        {!showAttackForm && !editingAttack && (
+          <button
+            onClick={() => { setAttackForm(BLANK_ATTACK); setShowAttackForm(true) }}
+            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+          >+ Add</button>
+        )}
+      </div>
+      <div className="px-4 pb-4">
+        {attacksBody}
+      </div>
+    </div>
+  )
+
+  return (
+    <section className="bg-gray-900 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Attacks</h2>
+        {!showAttackForm && !editingAttack && (
+          <button
+            onClick={() => { setAttackForm(BLANK_ATTACK); setShowAttackForm(true) }}
+            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+          >+ Add</button>
+        )}
+      </div>
+      {attacksBody}
     </section>
   )
 }
+

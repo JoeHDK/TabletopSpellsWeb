@@ -2,6 +2,8 @@ import api from './client'
 
 export interface UserPreferences {
   overviewCardOrder: string[]
+  statsSectionOrder: string[]
+  statsSectionCollapsed: string[]
 }
 
 export const usersApi = {

@@ -45,15 +45,17 @@ interface ClassFeaturesSectionProps {
   allBeasts: Beast[]
   onWildShapeAction: (req: WildShapeRequest) => void
   wildShapePending: boolean
+  bare?: boolean
 }
 
-export function ClassFeaturesSection({ character, allBeasts, onWildShapeAction, wildShapePending }: ClassFeaturesSectionProps) {
+export function ClassFeaturesSection({ character, allBeasts, onWildShapeAction, wildShapePending, bare }: ClassFeaturesSectionProps) {
   const [showBeastPicker, setShowBeastPicker] = useState(false)
   const [showBeastStats, setShowBeastStats] = useState(false)
 
   if (resolveClassName(character.characterClass) !== 'druid') return null
 
   if (character.level < 2) {
+    if (bare) return <p className="p-4 text-sm text-gray-400">Available at level 2.</p>
     return (
       <section className="bg-gray-900 rounded-2xl p-4">
         <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">Wild Shape</h2>
@@ -69,18 +71,8 @@ export function ClassFeaturesSection({ character, allBeasts, onWildShapeAction, 
   const beastHpPct = (character.wildShapeBeastCurrentHp ?? 0) / (character.wildShapeBeastMaxHp ?? 1) * 100
   const beastHpColor = beastHpPct > 50 ? 'bg-green-500' : beastHpPct > 25 ? 'bg-amber-500' : 'bg-red-500'
 
-  return (
-    <section className="bg-gray-900 rounded-2xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Wild Shape</h2>
-        <div className="flex gap-1">
-          {Array.from({ length: Math.min(maxUses, 4) }).map((_, i) => (
-            <span key={i} className={`w-3 h-3 rounded-full border-2 ${i < uses ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
-          ))}
-          {maxUses === Infinity && <span className="text-xs text-indigo-400">∞</span>}
-        </div>
-      </div>
-
+  const bodyContent = (
+    <>
       {!inForm ? (
         <div className="flex gap-2">
           <button
@@ -232,6 +224,33 @@ export function ClassFeaturesSection({ character, allBeasts, onWildShapeAction, 
       <p className="text-xs text-gray-600 text-center">
         Max CR {crLabel(limits.maxCr)}{!limits.allowFly ? ' · No fly' : ''}{!limits.allowSwim ? ' · No swim' : ''}
       </p>
+    </>
+  )
+
+  if (bare) return (
+    <div className="p-4 space-y-3">
+      <div className="flex justify-end gap-1">
+        {Array.from({ length: Math.min(maxUses, 4) }).map((_, i) => (
+          <span key={i} className={`w-3 h-3 rounded-full border-2 ${i < uses ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
+        ))}
+        {maxUses === Infinity && <span className="text-xs text-indigo-400">∞</span>}
+      </div>
+      {bodyContent}
+    </div>
+  )
+
+  return (
+    <section className="bg-gray-900 rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Wild Shape</h2>
+        <div className="flex gap-1">
+          {Array.from({ length: Math.min(maxUses, 4) }).map((_, i) => (
+            <span key={i} className={`w-3 h-3 rounded-full border-2 ${i < uses ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500'}`} />
+          ))}
+          {maxUses === Infinity && <span className="text-xs text-indigo-400">∞</span>}
+        </div>
+      </div>
+      {bodyContent}
     </section>
   )
 }

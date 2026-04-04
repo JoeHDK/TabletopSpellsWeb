@@ -246,8 +246,14 @@ public class UsersController : ControllerBase
         var order = user.OverviewCardOrderJson != null
             ? JsonConvert.DeserializeObject<List<string>>(user.OverviewCardOrderJson) ?? new()
             : new List<string>();
+        var statsOrder = user.StatsSectionOrderJson != null
+            ? JsonConvert.DeserializeObject<List<string>>(user.StatsSectionOrderJson) ?? new()
+            : new List<string>();
+        var statsCollapsed = user.StatsSectionCollapsedJson != null
+            ? JsonConvert.DeserializeObject<List<string>>(user.StatsSectionCollapsedJson) ?? new()
+            : new List<string>();
 
-        return Ok(new UserPreferencesDto { OverviewCardOrder = order });
+        return Ok(new UserPreferencesDto { OverviewCardOrder = order, StatsSectionOrder = statsOrder, StatsSectionCollapsed = statsCollapsed });
     }
 
     [HttpPut("me/preferences")]
@@ -258,13 +264,23 @@ public class UsersController : ControllerBase
 
         if (req.OverviewCardOrder != null)
             user.OverviewCardOrderJson = JsonConvert.SerializeObject(req.OverviewCardOrder);
+        if (req.StatsSectionOrder != null)
+            user.StatsSectionOrderJson = JsonConvert.SerializeObject(req.StatsSectionOrder);
+        if (req.StatsSectionCollapsed != null)
+            user.StatsSectionCollapsedJson = JsonConvert.SerializeObject(req.StatsSectionCollapsed);
 
         await _db.SaveChangesAsync();
 
         var order = user.OverviewCardOrderJson != null
             ? JsonConvert.DeserializeObject<List<string>>(user.OverviewCardOrderJson) ?? new()
             : new List<string>();
+        var statsOrder = user.StatsSectionOrderJson != null
+            ? JsonConvert.DeserializeObject<List<string>>(user.StatsSectionOrderJson) ?? new()
+            : new List<string>();
+        var statsCollapsed = user.StatsSectionCollapsedJson != null
+            ? JsonConvert.DeserializeObject<List<string>>(user.StatsSectionCollapsedJson) ?? new()
+            : new List<string>();
 
-        return Ok(new UserPreferencesDto { OverviewCardOrder = order });
+        return Ok(new UserPreferencesDto { OverviewCardOrder = order, StatsSectionOrder = statsOrder, StatsSectionCollapsed = statsCollapsed });
     }
 }

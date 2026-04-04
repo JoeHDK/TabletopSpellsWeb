@@ -77,6 +77,7 @@ interface ClassResourcesSectionProps {
   resourcePending: boolean
   onEquipResAction: (args: { action: 'use' | 'restore' | 'rest-short' | 'rest-long'; usageId?: string }) => void
   equipResPending: boolean
+  bare?: boolean
 }
 
 function bardicInspirationDie(level: number): string {
@@ -95,8 +96,171 @@ export function ClassResourcesSection({
   resourcePending,
   onEquipResAction,
   equipResPending,
+  bare,
 }: ClassResourcesSectionProps) {
   const [resourceInfoKey, setResourceInfoKey] = useState<string | null>(null)
+
+  if (bare) return (
+    <>
+      <div className="px-4 pb-4 space-y-4">
+        {classResources.map((res: ClassResource) => {
+          const subFeatures = classFeatures.filter(f => f.resource_key === res.resourceKey)
+          return (
+            <div key={res.resourceKey} className="space-y-2">
+              <div className="flex items-center gap-3">
+                <button
+                  className="flex-1 text-sm text-gray-200 text-left hover:text-indigo-300 transition-colors"
+                  onClick={() => RESOURCE_DESCRIPTIONS[res.resourceKey] && setResourceInfoKey(res.resourceKey)}
+                  title={RESOURCE_DESCRIPTIONS[res.resourceKey] ? 'Tap for description' : undefined}
+                >
+                  {res.name}
+                  {res.resourceKey === 'bardic_inspiration' && (
+                    <span className="ml-1 text-indigo-400 text-xs">({bardicInspirationDie(characterLevel)})</span>
+                  )}
+                  {RESOURCE_DESCRIPTIONS[res.resourceKey] && (
+                    <span className="ml-1 text-gray-600 text-xs">ℹ</span>
+                  )}
+                </button>
+                <div className="flex items-center gap-1">
+                  {res.isHpPool ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onResourceAction({ action: 'use', key: res.resourceKey, amount: 5 })}
+                        disabled={res.usesRemaining <= 0 || resourcePending}
+                        className="text-xs w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white transition-colors"
+                      >−5</button>
+                      <span className="text-sm font-bold text-white w-16 text-center">
+                        {res.usesRemaining}<span className="text-gray-500">/{res.maxUses}</span>
+                      </span>
+                      <button
+                        onClick={() => onResourceAction({ action: 'restore', key: res.resourceKey, amount: 5 })}
+                        disabled={res.usesRemaining >= res.maxUses || resourcePending}
+                        className="text-xs w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white transition-colors"
+                      >+5</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => onResourceAction({ action: 'use', key: res.resourceKey })}
+                        disabled={res.usesRemaining <= 0 || resourcePending}
+                        className="text-xs w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white transition-colors"
+                      >−</button>
+                      <div className="flex gap-1">
+                        {res.maxUses <= 10 ? (
+                          Array.from({ length: res.maxUses }).map((_, i) => (
+                            <span
+                              key={i}
+                              className={`w-3 h-3 rounded-full border-2 transition-colors ${i < res.usesRemaining ? 'bg-indigo-500 border-indigo-400' : 'border-gray-500'}`}
+                            />
+                          ))
+                        ) : (
+                          <span className="text-sm font-bold text-white">
+                            {res.usesRemaining}<span className="text-gray-500">/{res.maxUses}</span>
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => onResourceAction({ action: 'restore', key: res.resourceKey })}
+                        disabled={res.usesRemaining >= res.maxUses || resourcePending}
+                        className="text-xs w-7 h-7 flex items-center justify-center rounded-lg bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white transition-colors"
+                      >+</button>
+                    </div>
+                  )}
+                </div>
+                <span className={`text-xs px-1.5 py-0.5 rounded ${res.resetOn === 'short_rest' ? 'bg-amber-900/50 text-amber-400' : 'bg-indigo-900/50 text-indigo-400'}`}>
+                  {res.resetOn === 'short_rest' ? 'Short' : 'Long'}
+                </span>
+              </div>
+              {subFeatures.length > 0 && (
+                <details className="group pl-2">
+                  <summary className="cursor-pointer list-none text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                    <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+                    {subFeatures.length} {subFeatures.length === 1 ? 'option' : 'options'}
+                  </summary>
+                  <div className="mt-1.5 space-y-1.5">
+                    {subFeatures.map(f => (
+                      <details key={f.index} className="group/inner">
+                        <summary className="flex items-center gap-2 cursor-pointer list-none px-2 py-1.5 rounded-lg hover:bg-gray-800 transition-colors">
+                          <span className="flex-1 text-xs text-gray-300">{f.name}</span>
+                          <span className="text-gray-600 group-open/inner:rotate-90 transition-transform text-xs">▶</span>
+                        </summary>
+                        <div className="mt-1 px-2 pb-1 space-y-1">
+                          {f.desc.map((p, i) => (
+                            <p key={i} className="text-xs text-gray-400 leading-relaxed">{p}</p>
+                          ))}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+          )
+        })}
+        {equipmentResources.length > 0 && (
+          <div className="border-t border-gray-800/60 pt-3 space-y-3">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Equipment</p>
+            {equipmentResources.map(res => {
+              const dots = Array.from({ length: res.maxUses }, (_, i) => i < res.usesRemaining)
+              return (
+                <div key={res.id} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 truncate">{res.itemName}</p>
+                      <p className="text-sm font-medium truncate">{res.abilityName}</p>
+                    </div>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                      res.resetOn === 'short_rest'
+                        ? 'bg-amber-900/50 text-amber-300'
+                        : 'bg-indigo-900/50 text-indigo-300'
+                    }`}>
+                      {res.resetOn === 'short_rest' ? 'Short' : 'Long'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onEquipResAction({ action: 'use', usageId: res.id })}
+                      disabled={res.usesRemaining === 0 || equipResPending}
+                      className="text-xs px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-30 transition-colors"
+                    >Use</button>
+                    <div className="flex gap-1 flex-wrap">
+                      {dots.map((filled, i) => (
+                        <span
+                          key={i}
+                          className={`w-3 h-3 rounded-full border transition-colors ${
+                            filled ? 'bg-indigo-500 border-indigo-400' : 'bg-transparent border-gray-600'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-500 ml-auto">{res.usesRemaining}/{res.maxUses}</span>
+                    {res.usesRemaining < res.maxUses && (
+                      <button
+                        onClick={() => onEquipResAction({ action: 'restore', usageId: res.id })}
+                        disabled={equipResPending}
+                        className="text-xs px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-30 transition-colors"
+                      >+1</button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+      {resourceInfoKey && RESOURCE_DESCRIPTIONS[resourceInfoKey] && (
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setResourceInfoKey(null)}>
+          <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="text-base font-bold">{RESOURCE_DESCRIPTIONS[resourceInfoKey].title}</h2>
+              <button onClick={() => setResourceInfoKey(null)} className="text-gray-400 hover:text-white text-xl leading-none shrink-0">✕</button>
+            </div>
+            <p className="text-sm text-gray-300 leading-relaxed">{RESOURCE_DESCRIPTIONS[resourceInfoKey].desc}</p>
+          </div>
+        </div>
+      )}
+    </>
+  )
 
   if (classResources.length === 0 && equipmentResources.length === 0) return null
 
