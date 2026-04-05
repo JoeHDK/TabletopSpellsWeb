@@ -1201,8 +1201,8 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                 )}
               </div>
 
-              {/* Avatar column — fixed square circle */}
-              <div className="shrink-0">
+              {/* Avatar column — fixed square circle, bottom-aligned with fields */}
+              <div className="shrink-0 self-end">
                 <label className="relative cursor-pointer group block w-44 h-44" title="Click to upload avatar">
                   <div className="w-full h-full rounded-full bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
                     {character.avatarBase64 ? (
