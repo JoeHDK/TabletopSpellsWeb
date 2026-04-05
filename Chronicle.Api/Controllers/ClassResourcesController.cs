@@ -190,6 +190,14 @@ public class ClassResourcesController(AppDbContext db, ClassResourceSeedService 
             }
         }
 
+        // Remove any resources that no longer belong to the current class/level
+        var expectedKeys = expected.Select(r => r.ResourceKey).ToHashSet();
+        var stale = await db.ClassResources
+            .Where(r => r.CharacterId == characterId && !expectedKeys.Contains(r.ResourceKey))
+            .ToListAsync();
+        if (stale.Count > 0)
+            db.ClassResources.RemoveRange(stale);
+
         await db.SaveChangesAsync();
 
         var all = await db.ClassResources

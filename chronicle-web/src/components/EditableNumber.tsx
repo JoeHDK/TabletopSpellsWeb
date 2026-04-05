@@ -12,12 +12,14 @@ interface Props {
 }
 
 const POPUP_WIDTH = 128 // w-32
+const POPUP_HEIGHT = 130 // approx height: label + input + footer + padding
 const SCREEN_MARGIN = 8
 
 export default function EditableNumber({ value, onChange, min, max, className = '', label }: Props) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
   const [offsetX, setOffsetX] = useState(0) // px adjustment from default centred position
+  const [flipDown, setFlipDown] = useState(false) // true when there's not enough space above
   const inputRef = useRef<HTMLInputElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -25,13 +27,16 @@ export default function EditableNumber({ value, onChange, min, max, className = 
   const openPopup = () => {
     setDraft(String(value))
     setOffsetX(0)
+    setFlipDown(false)
     setOpen(true)
   }
 
-  // After popup mounts, measure and clamp so it never clips the viewport
+  // After popup mounts, clamp horizontally and flip vertically if needed
   useLayoutEffect(() => {
     if (!open || !wrapRef.current) return
     const wrapRect = wrapRef.current.getBoundingClientRect()
+
+    // Horizontal clamping
     const centreX = wrapRect.left + wrapRect.width / 2
     const defaultLeft = centreX - POPUP_WIDTH / 2
     const clampedLeft = Math.max(
@@ -39,6 +44,9 @@ export default function EditableNumber({ value, onChange, min, max, className = 
       Math.min(defaultLeft, window.innerWidth - POPUP_WIDTH - SCREEN_MARGIN),
     )
     setOffsetX(clampedLeft - defaultLeft)
+
+    // Vertical flip: if not enough space above, show below
+    setFlipDown(wrapRect.top < POPUP_HEIGHT + SCREEN_MARGIN)
   }, [open])
 
   useEffect(() => {
@@ -92,12 +100,12 @@ export default function EditableNumber({ value, onChange, min, max, className = 
       {open && (
         <div
           ref={popupRef}
-          className="absolute z-50 bottom-full mb-2 bg-gray-800 border border-gray-600 rounded-xl shadow-2xl p-3 w-32"
+          className={`absolute z-50 ${flipDown ? 'top-full mt-2' : 'bottom-full mb-2'} bg-gray-800 border border-gray-600 rounded-xl shadow-2xl p-3 w-32`}
           style={{ left: '50%', transform: `translateX(calc(-50% + ${offsetX}px))` }}
         >
-          {/* Arrow — always points at the trigger */}
+          {/* Arrow — points toward the trigger */}
           <div
-            className="absolute -bottom-1.5 w-3 h-3 bg-gray-800 border-r border-b border-gray-600 rotate-45"
+            className={`absolute w-3 h-3 bg-gray-800 border-gray-600 rotate-45 ${flipDown ? '-top-1.5 border-l border-t' : '-bottom-1.5 border-r border-b'}`}
             style={{ left: arrowLeft, transform: `translateX(-50%) rotate(45deg)` }}
           />
           {label && <p className="text-xs text-gray-400 mb-1.5 text-center">{label}</p>}
