@@ -19,36 +19,32 @@ public enum Subclass
     DruidCircleOfTheShepherd, DruidCircleOfWildFire, DruidCircleOfStar, DruidCircleOfTheTaiga,
     // Fighter
     FighterChampion, FighterBattleMaster, FighterEldritchKnight, FighterArcaneArcher,
-    FighterCavalier, FighterCensus, FighterRune, FighterPsiWarrior, FighterBeast, FighterRoninSoul,
+    FighterCavalier, FighterRune, FighterPsiWarrior,
     // Monk
     MonkWayOfTheOpenHand, MonkWayOfTheLongDeath, MonkWayOfTheFourElements, MonkWayOfShadow,
-    MonkWayOfTheSunSoul, MonkWayOfMercy, MonkWayOfTheKensei, MonkWayOfTranscendence,
-    MonkWayOfTheAstralSelf, MonkWayOfTheCobalt, MonkWayOfTheQuivering,
+    MonkWayOfTheSunSoul, MonkWayOfMercy, MonkWayOfTheKensei,
+    MonkWayOfTheAstralSelf,
     // Paladin
     PaladinOathOfDevotion, PaladinOathOfTheAncients, PaladinOathOfVengeance, PaladinOathOfConquest,
     PaladinOathOfRedemption, PaladinOathOfTheeWatchers, PaladinOathOfTheCrown,
-    PaladinOathOfCompulsion, PaladinOathOfDespair,
     // Ranger
-    RangerHunter, RangerBeastMaster, RangerGloomStalker, RangerMonk, RangerLandStride,
-    RangerFeyWanderer, RangerSwiftBlade, RangerSoulknife, RangerMonsterSlayer,
+    RangerHunter, RangerBeastMaster, RangerGloomStalker,
+    RangerFeyWanderer, RangerSwiftBlade, RangerMonsterSlayer,
     // Rogue
     RogueAssassin, RogueThief, RogueTrickster, RogueArcaneConundrum, RogueSoulknife,
-    RogueShadowdancer, RogueInquisitive, RogueSwashbuckler, RogueAcrobat,
+    RogueShadowdancer, RogueInquisitive, RogueSwashbuckler,
     // Sorcerer
     SorcererDraconicBloodline, SorcererWildMagic, SorcererStormSorcery, SorcererShadowMagic,
-    SorcererDivineSource, SorcererSilverforest, SorcererRuneScarred,
-    SorcererSessionOfTheClockworkSoul, SorcererAbberantMind, SorcererSpiritual,
-    SorcererPhoenix, SorcererTortle,
+    SorcererDivineSource, SorcererSessionOfTheClockworkSoul, SorcererAbberantMind,
     // Warlock
     WarlockArchfey, WarlockFiend, WarlockGreatOldOne, WarlockCelestial, WarlockHexblade,
-    WarlockUndying, WarlockGenies, WarlockRaven, WarlockSeeker, WarlockChaos, WarlockLuck,
+    WarlockUndying, WarlockGenies,
     // Wizard
     WizardAbjuration, WizardConjuration, WizardDivination, WizardEnchantment, WizardEvocation,
     WizardIllusion, WizardNecromancy, WizardTransmutation, WizardChronoturgy,
-    WizardGravityMastery, WizardWar, WizardBladesingers, WizardAlchemist, WizardTheurgy,
+    WizardGravityMastery, WizardWar, WizardBladesingers,
     // Artificer
-    ArtificerAlchemist, ArtificerArtillerist, ArtificerBattlesmith, ArtificerRune,
-    ArtificerRitual, ArtificerFiend, ArtificerClock,
+    ArtificerAlchemist, ArtificerArtillerist, ArtificerBattlesmith,
     None,
     // Added post-launch
     ArtificerArmorer,
