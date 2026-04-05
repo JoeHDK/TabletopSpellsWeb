@@ -168,6 +168,9 @@ export interface Feat {
   desc: string[]
   prerequisites: FeatPrerequisite[]
   modifiers: FeatModifier[]
+  required_class?: string
+  required_subclass?: string
+  required_min_level?: number
 }
 
 export interface CharacterFeat {
@@ -180,12 +183,16 @@ export interface CharacterFeat {
   notes?: string
   takenAtLevel?: number
   createdAt: string
+  isCustom?: boolean
 }
 
 export interface AddCharacterFeatRequest {
-  featIndex: string
+  featIndex?: string
   notes?: string
   takenAtLevel?: number
+  isCustom?: boolean
+  customName?: string
+  customDescription?: string
 }
 
 export interface ClassFeatureModifier {

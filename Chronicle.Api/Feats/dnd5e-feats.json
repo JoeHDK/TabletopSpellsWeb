@@ -10,7 +10,10 @@
     ],
     "prerequisites": [],
     "modifiers": [
-      { "type": "initiative", "value": 5 }
+      {
+        "type": "initiative",
+        "value": 5
+      }
     ]
   },
   {
@@ -67,7 +70,11 @@
       "When you are wielding a finesse weapon with which you are proficient and another creature hits you with a melee attack, you can use your reaction to add your proficiency bonus to your AC for that attack, potentially causing the attack to miss you."
     ],
     "prerequisites": [
-      { "type": "ability_score", "ability": "Dexterity", "minimum_score": 13 }
+      {
+        "type": "ability_score",
+        "ability": "Dexterity",
+        "minimum_score": 13
+      }
     ],
     "modifiers": []
   },
@@ -82,7 +89,11 @@
     ],
     "prerequisites": [],
     "modifiers": [
-      { "type": "ac", "value": 1, "condition": "dual_wielding" }
+      {
+        "type": "ac",
+        "value": 1,
+        "condition": "dual_wielding"
+      }
     ]
   },
   {
@@ -118,7 +129,10 @@
       "You can select this feat multiple times. Each time you do so, you must choose a different damage type."
     ],
     "prerequisites": [
-      { "type": "ability", "ability": "Spellcasting" }
+      {
+        "type": "ability",
+        "ability": "Spellcasting"
+      }
     ],
     "modifiers": []
   },
@@ -131,7 +145,11 @@
       "- You can use your action to try to pin a creature grappled by you. To do so, make another grapple check. If you succeed, you and the creature are both restrained until the grapple ends."
     ],
     "prerequisites": [
-      { "type": "ability_score", "ability": "Strength", "minimum_score": 13 }
+      {
+        "type": "ability_score",
+        "ability": "Strength",
+        "minimum_score": 13
+      }
     ],
     "modifiers": []
   },
@@ -166,7 +184,10 @@
       "- You gain proficiency with heavy armor."
     ],
     "prerequisites": [
-      { "type": "proficiency", "proficiency": "Medium Armor" }
+      {
+        "type": "proficiency",
+        "proficiency": "Medium Armor"
+      }
     ],
     "modifiers": []
   },
@@ -179,10 +200,22 @@
       "- While you are wearing heavy armor, bludgeoning, piercing, and slashing damage that you take from nonmagical weapons is reduced by 3."
     ],
     "prerequisites": [
-      { "type": "proficiency", "proficiency": "Heavy Armor" }
+      {
+        "type": "proficiency",
+        "proficiency": "Heavy Armor"
+      }
     ],
     "modifiers": [
-      { "type": "damage_reduction", "value": 3, "condition": "heavy_armor_equipped", "damageTypes": ["bludgeoning", "piercing", "slashing"] }
+      {
+        "type": "damage_reduction",
+        "value": 3,
+        "condition": "heavy_armor_equipped",
+        "damageTypes": [
+          "bludgeoning",
+          "piercing",
+          "slashing"
+        ]
+      }
     ]
   },
   {
@@ -193,7 +226,11 @@
       "Each creature can gain temporary hit points equal to your level + your Charisma modifier. A creature can't gain temporary hit points from this feat again until it has finished a short or long rest."
     ],
     "prerequisites": [
-      { "type": "ability_score", "ability": "Charisma", "minimum_score": 13 }
+      {
+        "type": "ability_score",
+        "ability": "Charisma",
+        "minimum_score": 13
+      }
     ],
     "modifiers": []
   },
@@ -290,10 +327,16 @@
       "- When you wear medium armor, you can add 3, rather than 2, to your AC if you have a Dexterity of 16 or higher."
     ],
     "prerequisites": [
-      { "type": "proficiency", "proficiency": "Medium Armor" }
+      {
+        "type": "proficiency",
+        "proficiency": "Medium Armor"
+      }
     ],
     "modifiers": [
-      { "type": "medium_armor_max_dex", "value": 3 }
+      {
+        "type": "medium_armor_max_dex",
+        "value": 3
+      }
     ]
   },
   {
@@ -307,7 +350,10 @@
     ],
     "prerequisites": [],
     "modifiers": [
-      { "type": "movement", "value": 10 }
+      {
+        "type": "movement",
+        "value": 10
+      }
     ]
   },
   {
@@ -319,7 +365,10 @@
       "- You gain proficiency with medium armor and shields."
     ],
     "prerequisites": [
-      { "type": "proficiency", "proficiency": "Light Armor" }
+      {
+        "type": "proficiency",
+        "proficiency": "Light Armor"
+      }
     ],
     "modifiers": []
   },
@@ -346,8 +395,14 @@
     ],
     "prerequisites": [],
     "modifiers": [
-      { "type": "passive_perception", "value": 5 },
-      { "type": "passive_investigation", "value": 5 }
+      {
+        "type": "passive_perception",
+        "value": 5
+      },
+      {
+        "type": "passive_investigation",
+        "value": 5
+      }
     ]
   },
   {
@@ -381,8 +436,16 @@
       "If you come across a spell in written form, such as a magical spell scroll or a wizard's spellbook, you might be able to add it to your ritual book."
     ],
     "prerequisites": [
-      { "type": "ability_score", "ability": "Intelligence", "minimum_score": 13 },
-      { "type": "ability_score_alt", "ability": "Wisdom", "minimum_score": 13 }
+      {
+        "type": "ability_score",
+        "ability": "Intelligence",
+        "minimum_score": 13
+      },
+      {
+        "type": "ability_score_alt",
+        "ability": "Wisdom",
+        "minimum_score": 13
+      }
     ],
     "modifiers": []
   },
@@ -450,7 +513,11 @@
       "- Dim light doesn't impose disadvantage on your Wisdom (Perception) checks relying on sight."
     ],
     "prerequisites": [
-      { "type": "ability_score", "ability": "Dexterity", "minimum_score": 13 }
+      {
+        "type": "ability_score",
+        "ability": "Dexterity",
+        "minimum_score": 13
+      }
     ],
     "modifiers": []
   },
@@ -464,7 +531,10 @@
       "- You learn one cantrip that requires an attack roll. Choose the cantrip from the bard, cleric, druid, sorcerer, warlock, or wizard spell list. Your spellcasting ability for this cantrip depends on the spell list you chose from."
     ],
     "prerequisites": [
-      { "type": "ability", "ability": "Spellcasting" }
+      {
+        "type": "ability",
+        "ability": "Spellcasting"
+      }
     ],
     "modifiers": []
   },
@@ -489,7 +559,10 @@
     ],
     "prerequisites": [],
     "modifiers": [
-      { "type": "hp_per_level", "value": 2 }
+      {
+        "type": "hp_per_level",
+        "value": 2
+      }
     ]
   },
   {
@@ -502,7 +575,10 @@
       "- When a hostile creature's movement provokes an opportunity attack from you, you can use your reaction to cast a spell at the creature, rather than making an opportunity attack. The spell must have a casting time of 1 action and must target only that creature."
     ],
     "prerequisites": [
-      { "type": "ability", "ability": "Spellcasting" }
+      {
+        "type": "ability",
+        "ability": "Spellcasting"
+      }
     ],
     "modifiers": []
   },
@@ -526,5 +602,584 @@
     ],
     "prerequisites": [],
     "modifiers": []
+  },
+  {
+    "index": "artificer-boots-of-the-winding-path",
+    "name": "Infusion: Boots of the Winding Path",
+    "desc": [
+      "Prerequisite: Artificer level 4. While wearing these boots, a creature can teleport up to 15 feet as a bonus action to an unoccupied space the creature can see. The creature must have occupied that space at some point during the current turn."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 4
+  },
+  {
+    "index": "artificer-enhanced-arcane-focus",
+    "name": "Infusion: Enhanced Arcane Focus",
+    "desc": [
+      "A creature gains a +1 bonus to spell attack rolls while holding this arcane focus. While attuned to it at Artificer level 10 or higher, the bonus is +2."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 2
+  },
+  {
+    "index": "artificer-enhanced-defense",
+    "name": "Infusion: Enhanced Defense",
+    "desc": [
+      "A creature gains a +1 bonus to Armor Class while wearing this infused armor or carrying this infused shield. While attuned to it at Artificer level 10 or higher, the bonus is +2."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 2
+  },
+  {
+    "index": "artificer-enhanced-weapon",
+    "name": "Infusion: Enhanced Weapon",
+    "desc": [
+      "This magic weapon grants a +1 bonus to attack and damage rolls. While attuned to it at Artificer level 10 or higher, the bonus is +2."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 2
+  },
+  {
+    "index": "artificer-homunculus-servant",
+    "name": "Infusion: Homunculus Servant",
+    "desc": [
+      "You learn intricate methods for magically creating a special homunculus that serves you. The homunculus has a flying speed and can deliver spells for you as a reaction."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 2
+  },
+  {
+    "index": "artificer-mind-sharpener",
+    "name": "Infusion: Mind Sharpener",
+    "desc": [
+      "This infused item can send a jolt to the wearer to refocus their mind. The item has 4 charges. When the wearer fails a Constitution saving throw to maintain concentration on a spell, the wearer can use their reaction to expend 1 charge to succeed instead."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 2
+  },
+  {
+    "index": "artificer-replicate-magic-item",
+    "name": "Infusion: Replicate Magic Item",
+    "desc": [
+      "Using this infusion, you replicate a particular magic item. You can always have this infusion, and you can infuse more than one nonmagical item with it at the end of a long rest."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 2
+  },
+  {
+    "index": "artificer-repulsion-shield",
+    "name": "Infusion: Repulsion Shield",
+    "desc": [
+      "Prerequisite: Artificer level 6. A creature gains a +1 bonus to Armor Class while holding this shield. The shield has 4 charges. While holding it, the wielder can use a reaction after being hit by a melee attack to expend 1 charge and push the attacker up to 15 feet away."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 6
+  },
+  {
+    "index": "artificer-resistant-armor",
+    "name": "Infusion: Resistant Armor",
+    "desc": [
+      "Prerequisite: Artificer level 6. While wearing this armor, a creature has resistance to one of the following damage types: acid, cold, fire, force, lightning, necrotic, poison, psychic, radiant, or thunder."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 6
+  },
+  {
+    "index": "artificer-returning-weapon",
+    "name": "Infusion: Returning Weapon",
+    "desc": [
+      "This magic weapon grants a +1 bonus to attack and damage rolls and returns to the wielder's hand immediately after it is used to make a ranged attack."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 2
+  },
+  {
+    "index": "artificer-spell-refueling-ring",
+    "name": "Infusion: Spell-Refueling Ring",
+    "desc": [
+      "Prerequisite: Artificer level 6. While wearing this ring, the creature can recover one expended spell slot as an action. The recovered slot can be of 3rd level or lower. Once used, the ring can't be used again until the next dawn."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Artificer",
+    "required_min_level": 6
+  },
+  {
+    "index": "warlock-invocation-agonizing-blast",
+    "name": "Invocation: Agonizing Blast",
+    "desc": [
+      "Prerequisite: eldritch blast cantrip. When you cast eldritch blast, add your Charisma modifier to the damage it deals on a hit."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-armor-of-shadows",
+    "name": "Invocation: Armor of Shadows",
+    "desc": [
+      "You can cast mage armor on yourself at will, without expending a spell slot or material components."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-ascendant-step",
+    "name": "Invocation: Ascendant Step",
+    "desc": [
+      "Prerequisite: 9th level. You can cast levitate on yourself at will, without expending a spell slot or material components."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 9
+  },
+  {
+    "index": "warlock-invocation-beast-speech",
+    "name": "Invocation: Beast Speech",
+    "desc": [
+      "You can cast speak with animals at will, without expending a spell slot."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-beguiling-influence",
+    "name": "Invocation: Beguiling Influence",
+    "desc": [
+      "You gain proficiency in the Deception and Persuasion skills."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-devils-sight",
+    "name": "Invocation: Devil's Sight",
+    "desc": [
+      "You can see normally in darkness, both magical and nonmagical, to a distance of 120 feet."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-eldritch-mind",
+    "name": "Invocation: Eldritch Mind",
+    "desc": [
+      "You have advantage on Constitution saving throws that you make to maintain your concentration on a spell."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-eldritch-sight",
+    "name": "Invocation: Eldritch Sight",
+    "desc": [
+      "You can cast detect magic at will, without expending a spell slot."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-eldritch-smite",
+    "name": "Invocation: Eldritch Smite",
+    "desc": [
+      "Prerequisite: 5th level, Pact of the Blade. Once per turn when you hit a creature with your pact weapon, you can expend a warlock spell slot to deal an extra 1d8 force damage plus another 1d8 per level of the slot, and can knock the target prone if Huge or smaller."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 5
+  },
+  {
+    "index": "warlock-invocation-eldritch-spear",
+    "name": "Invocation: Eldritch Spear",
+    "desc": [
+      "Prerequisite: eldritch blast cantrip. When you cast eldritch blast, its range is 300 feet."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-eyes-of-the-rune-keeper",
+    "name": "Invocation: Eyes of the Rune Keeper",
+    "desc": [
+      "You can read all writing."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-fiendish-vigor",
+    "name": "Invocation: Fiendish Vigor",
+    "desc": [
+      "You can cast false life on yourself at will as a 1st-level spell, without expending a spell slot or material components."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-gaze-of-two-minds",
+    "name": "Invocation: Gaze of Two Minds",
+    "desc": [
+      "You can use your action to touch a willing humanoid and perceive through its senses until the end of your next turn. You can maintain this connection on subsequent turns with your action."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-lifedrinker",
+    "name": "Invocation: Lifedrinker",
+    "desc": [
+      "Prerequisite: 12th level, Pact of the Blade. When you hit a creature with your pact weapon, the creature takes extra necrotic damage equal to your Charisma modifier (minimum 1)."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 12
+  },
+  {
+    "index": "warlock-invocation-mask-of-many-faces",
+    "name": "Invocation: Mask of Many Faces",
+    "desc": [
+      "You can cast disguise self at will, without expending a spell slot."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-misty-visions",
+    "name": "Invocation: Misty Visions",
+    "desc": [
+      "You can cast silent image at will, without expending a spell slot or material components."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-one-with-shadows",
+    "name": "Invocation: One with Shadows",
+    "desc": [
+      "Prerequisite: 5th level. When you are in an area of dim light or darkness, you can use your action to become invisible until you move or take an action or a reaction."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 5
+  },
+  {
+    "index": "warlock-invocation-otherworldly-leap",
+    "name": "Invocation: Otherworldly Leap",
+    "desc": [
+      "Prerequisite: 9th level. You can cast jump on yourself at will, without expending a spell slot or material components."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 9
+  },
+  {
+    "index": "warlock-invocation-repelling-blast",
+    "name": "Invocation: Repelling Blast",
+    "desc": [
+      "Prerequisite: eldritch blast cantrip. When you hit a creature with eldritch blast, you can push the creature up to 10 feet away from you in a straight line."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-thirsting-blade",
+    "name": "Invocation: Thirsting Blade",
+    "desc": [
+      "Prerequisite: 5th level, Pact of the Blade. You can attack with your pact weapon twice, instead of once, whenever you take the Attack action on your turn."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 5
+  },
+  {
+    "index": "warlock-invocation-voice-of-the-chain-master",
+    "name": "Invocation: Voice of the Chain Master",
+    "desc": [
+      "Prerequisite: Pact of the Chain. You can communicate telepathically with your familiar and perceive through its senses as long as you are on the same plane of existence."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 2
+  },
+  {
+    "index": "warlock-invocation-whispers-of-the-grave",
+    "name": "Invocation: Whispers of the Grave",
+    "desc": [
+      "Prerequisite: 9th level. You can cast speak with dead at will, without expending a spell slot."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Warlock",
+    "required_min_level": 9
+  },
+  {
+    "index": "battlemaster-ambush",
+    "name": "Maneuver: Ambush",
+    "desc": [
+      "When you make a Dexterity (Stealth) check or an initiative roll, you can expend one superiority die and add the die to the roll, provided you aren't incapacitated."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-brace",
+    "name": "Maneuver: Brace",
+    "desc": [
+      "When a creature you can see moves into your reach with a melee weapon, you can use your reaction to expend one superiority die and make one attack against the creature. If the attack hits, add the superiority die to the damage roll."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-commanders-strike",
+    "name": "Maneuver: Commander's Strike",
+    "desc": [
+      "When you take the Attack action, you can forgo one of your attacks and use a bonus action to direct one of your companions to strike. Choose a friendly creature who can see or hear you and expend one superiority die; that creature can immediately make one weapon attack."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-disarming-attack",
+    "name": "Maneuver: Disarming Attack",
+    "desc": [
+      "When you hit a creature with a weapon attack, you can expend one superiority die to attempt to disarm the target. Add the superiority die to the attack's damage roll, and the target must make a Strength saving throw or drop one object of your choice."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-distracting-strike",
+    "name": "Maneuver: Distracting Strike",
+    "desc": [
+      "When you hit a creature with a weapon attack, you can expend one superiority die to distract the creature. Add the superiority die to the damage roll. The next attack roll against the target by an attacker other than you has advantage if made before the start of your next turn."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-evasive-footwork",
+    "name": "Maneuver: Evasive Footwork",
+    "desc": [
+      "When you move, you can expend one superiority die, rolling the die and adding the number rolled to your AC until you stop moving."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-feinting-attack",
+    "name": "Maneuver: Feinting Attack",
+    "desc": [
+      "You can expend one superiority die and use a bonus action to feint, choosing one creature within 5 feet. You have advantage on your next attack roll against that creature before end of turn. If the attack hits, add the superiority die to the damage roll."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-goading-attack",
+    "name": "Maneuver: Goading Attack",
+    "desc": [
+      "When you hit a creature with a weapon attack, you can expend one superiority die to attempt to goad the target. Add the superiority die to the damage. On a failed Wisdom save, the target has disadvantage on attack rolls against targets other than you until end of your next turn."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-lunging-attack",
+    "name": "Maneuver: Lunging Attack",
+    "desc": [
+      "When you make a melee weapon attack on your turn, you can expend one superiority die to increase your reach for that attack by 5 feet. If you hit, add the superiority die to the damage roll."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-maneuvering-attack",
+    "name": "Maneuver: Maneuvering Attack",
+    "desc": [
+      "When you hit a creature with a weapon attack, you can expend one superiority die to maneuver one of your comrades. Add the superiority die to the damage. Choose a friendly creature who can see or hear you; that creature can use its reaction to move up to half its speed without provoking opportunity attacks from the target."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-menacing-attack",
+    "name": "Maneuver: Menacing Attack",
+    "desc": [
+      "When you hit a creature with a weapon attack, you can expend one superiority die to frighten the target. Add the superiority die to the damage. On a failed Wisdom save, the target is frightened of you until end of your next turn."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-parry",
+    "name": "Maneuver: Parry",
+    "desc": [
+      "When another creature damages you with a melee attack, you can use your reaction and expend one superiority die to reduce the damage by the number rolled + your Dexterity modifier."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-precision-attack",
+    "name": "Maneuver: Precision Attack",
+    "desc": [
+      "When you make a weapon attack roll against a creature, you can expend one superiority die to add it to the roll. You can use this before or after making the roll, but before any effects are applied."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-pushing-attack",
+    "name": "Maneuver: Pushing Attack",
+    "desc": [
+      "When you hit a creature with a weapon attack, you can expend one superiority die to attempt to push the target back. Add the superiority die to the damage. If the target is Large or smaller, on a failed Strength save you push it up to 15 feet away."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-rally",
+    "name": "Maneuver: Rally",
+    "desc": [
+      "On your turn, you can use a bonus action and expend one superiority die to bolster a companion. Choose a friendly creature who can see or hear you. That creature gains temporary hit points equal to the superiority die roll + your Charisma modifier."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-riposte",
+    "name": "Maneuver: Riposte",
+    "desc": [
+      "When a creature misses you with a melee attack, you can use your reaction and expend one superiority die to make a melee weapon attack against the creature. If you hit, add the superiority die to the damage roll."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-sweeping-attack",
+    "name": "Maneuver: Sweeping Attack",
+    "desc": [
+      "When you hit a creature with a melee weapon attack, you can expend one superiority die to attempt to damage another creature within 5 feet of the original target. If the original attack roll would hit the second creature, it takes damage equal to the superiority die roll."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
+  },
+  {
+    "index": "battlemaster-trip-attack",
+    "name": "Maneuver: Trip Attack",
+    "desc": [
+      "When you hit a creature with a weapon attack, you can expend one superiority die to attempt to knock the target prone. Add the superiority die to the damage. If the target is Large or smaller, on a failed Strength save it is knocked prone."
+    ],
+    "prerequisites": [],
+    "modifiers": [],
+    "required_class": "Fighter",
+    "required_subclass": "FighterBattleMaster",
+    "required_min_level": 3
   }
 ]

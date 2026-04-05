@@ -35,18 +35,21 @@ public class CharacterFeatsController : ControllerBase
 
         var result = charFeats.Select(cf =>
         {
-            var feat = _feats.GetFeat(cf.FeatIndex);
+            var feat = cf.IsCustom ? null : _feats.GetFeat(cf.FeatIndex);
             return new
             {
                 cf.Id,
                 cf.FeatIndex,
-                Name = feat?.Name ?? cf.FeatIndex,
-                Desc = feat?.Desc ?? [],
+                Name = cf.IsCustom ? (cf.CustomName ?? "Custom Feat") : (feat?.Name ?? cf.FeatIndex ?? "Unknown"),
+                Desc = cf.IsCustom
+                    ? (string.IsNullOrWhiteSpace(cf.CustomDescription) ? [] : [cf.CustomDescription])
+                    : (feat?.Desc ?? []),
                 Prerequisites = feat?.Prerequisites ?? [],
                 Modifiers = feat?.Modifiers ?? [],
                 cf.Notes,
                 cf.TakenAtLevel,
                 cf.CreatedAt,
+                cf.IsCustom,
             };
         });
 
@@ -58,15 +61,44 @@ public class CharacterFeatsController : ControllerBase
     {
         if (!await OwnsCharacter(characterId)) return Forbid();
 
+        if (req.IsCustom == true)
+        {
+            if (string.IsNullOrWhiteSpace(req.CustomName)) return BadRequest("Custom feat name is required.");
+            var charFeat = new CharacterFeatEntity
+            {
+                CharacterId = characterId,
+                FeatIndex = null,
+                IsCustom = true,
+                CustomName = req.CustomName.Trim(),
+                CustomDescription = req.CustomDescription?.Trim(),
+            };
+            _db.CharacterFeats.Add(charFeat);
+            await _db.SaveChangesAsync();
+            return Ok(new
+            {
+                charFeat.Id,
+                FeatIndex = "custom",
+                Name = charFeat.CustomName,
+                Desc = string.IsNullOrWhiteSpace(charFeat.CustomDescription) ? [] : new[] { charFeat.CustomDescription },
+                Prerequisites = Array.Empty<object>(),
+                Modifiers = Array.Empty<object>(),
+                charFeat.Notes,
+                charFeat.TakenAtLevel,
+                charFeat.CreatedAt,
+                IsCustom = true,
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(req.FeatIndex)) return BadRequest("FeatIndex is required.");
         var feat = _feats.GetFeat(req.FeatIndex);
         if (feat is null) return BadRequest("Unknown feat index.");
 
         var alreadyHas = await _db.CharacterFeats
-            .AnyAsync(f => f.CharacterId == characterId && f.FeatIndex == req.FeatIndex);
+            .AnyAsync(f => f.CharacterId == characterId && f.FeatIndex == req.FeatIndex && !f.IsCustom);
         if (alreadyHas && req.FeatIndex != "ability-score-improvement")
             return Conflict("Character already has this feat.");
 
-        var charFeat = new CharacterFeatEntity
+        var entity = new CharacterFeatEntity
         {
             CharacterId = characterId,
             FeatIndex = req.FeatIndex,
@@ -74,20 +106,21 @@ public class CharacterFeatsController : ControllerBase
             TakenAtLevel = req.TakenAtLevel,
         };
 
-        _db.CharacterFeats.Add(charFeat);
+        _db.CharacterFeats.Add(entity);
         await _db.SaveChangesAsync();
 
         return Ok(new
         {
-            charFeat.Id,
-            charFeat.FeatIndex,
+            entity.Id,
+            entity.FeatIndex,
             Name = feat.Name,
             Desc = feat.Desc,
             Prerequisites = feat.Prerequisites,
             Modifiers = feat.Modifiers,
-            charFeat.Notes,
-            charFeat.TakenAtLevel,
-            charFeat.CreatedAt,
+            entity.Notes,
+            entity.TakenAtLevel,
+            entity.CreatedAt,
+            IsCustom = false,
         });
     }
 
@@ -111,7 +144,10 @@ public class CharacterFeatsController : ControllerBase
 
 public class AddCharacterFeatRequest
 {
-    public required string FeatIndex { get; set; }
+    public string? FeatIndex { get; set; }
     public string? Notes { get; set; }
     public int? TakenAtLevel { get; set; }
+    public bool? IsCustom { get; set; }
+    public string? CustomName { get; set; }
+    public string? CustomDescription { get; set; }
 }

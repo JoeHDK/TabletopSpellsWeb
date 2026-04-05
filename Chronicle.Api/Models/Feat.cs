@@ -29,4 +29,7 @@ public class Feat
     [JsonProperty("desc")] public List<string> Desc { get; set; } = [];
     [JsonProperty("prerequisites")] public List<FeatPrerequisite> Prerequisites { get; set; } = [];
     [JsonProperty("modifiers")] public List<FeatModifier> Modifiers { get; set; } = [];
+    [JsonProperty("required_class")] public string? RequiredClass { get; set; }
+    [JsonProperty("required_subclass")] public string? RequiredSubclass { get; set; }
+    [JsonProperty("required_min_level")] public int? RequiredMinLevel { get; set; }
 }

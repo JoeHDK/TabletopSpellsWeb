@@ -20,7 +20,8 @@ public class FeatService
         }
     }
 
-    public Feat? GetFeat(string index) =>
+    public Feat? GetFeat(string? index) =>
+        string.IsNullOrWhiteSpace(index) ? null :
         GetFeats().FirstOrDefault(f => f.Index.Equals(index, StringComparison.OrdinalIgnoreCase));
 
     public List<Feat> Search(string? search) =>
