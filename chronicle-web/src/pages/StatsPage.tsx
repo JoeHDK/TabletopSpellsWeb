@@ -370,32 +370,38 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices }: {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex gap-2">
-        <select
-          className="flex-1 bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
-          value={selectedParent}
-          onChange={e => handleParentChange(e.target.value)}
-          disabled={mutation.isPending}
-        >
-          <option value="">— None —</option>
-          {topLevelRaces.map(r => (
-            <option key={r.index} value={r.index}>{r.name}</option>
-          ))}
-          {virtualParents.map(p => (
-            <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-          ))}
-        </select>
-        <select
-          className="flex-1 bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-          value={selectedSubrace}
-          disabled={subraceOptions.length === 0 || mutation.isPending}
-          onChange={e => handleSubraceChange(e.target.value)}
-        >
-          <option value="">— Subrace —</option>
-          {subraceOptions.map(r => (
-            <option key={r.index} value={r.index}>{r.name}</option>
-          ))}
-        </select>
+      <div className="flex gap-2 items-end">
+        <div className="flex-1">
+          <p className="text-xs text-gray-400 mb-1">Race</p>
+          <select
+            className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
+            value={selectedParent}
+            onChange={e => handleParentChange(e.target.value)}
+            disabled={mutation.isPending}
+          >
+            <option value="">— None —</option>
+            {topLevelRaces.map(r => (
+              <option key={r.index} value={r.index}>{r.name}</option>
+            ))}
+            {virtualParents.map(p => (
+              <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex-1">
+          <p className="text-xs text-gray-400 mb-1">Subrace</p>
+          <select
+            className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+            value={selectedSubrace}
+            disabled={subraceOptions.length === 0 || mutation.isPending}
+            onChange={e => handleSubraceChange(e.target.value)}
+          >
+            <option value="">— None —</option>
+            {subraceOptions.map(r => (
+              <option key={r.index} value={r.index}>{r.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
       {choiceCount > 0 && chosenKeys.length < choiceCount && (
         <div className="mt-1">
@@ -1113,7 +1119,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
         return (
           <div className="px-4 pb-4 pt-1">
             {/* Outer flex: fields left, avatar right spanning full height */}
-            <div className="flex gap-3 items-stretch">
+            <div className="flex gap-3 items-start">
               {/* Fields column */}
               <div className="flex-1 space-y-2">
                 {/* Name + Level row */}
@@ -1146,10 +1152,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
 
                 {/* Race + Subrace */}
                 {character.gameType === 'dnd5e' && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Race</p>
-                    <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} />
-                  </div>
+                  <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} />
                 )}
 
                 {/* Class + Subclass */}
@@ -1198,21 +1201,21 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                 )}
               </div>
 
-              {/* Avatar column — spans full height of fields */}
-              <div className="flex flex-col items-center justify-center shrink-0">
-                <label className="relative cursor-pointer group h-full flex flex-col items-center justify-center" title="Click to upload avatar">
-                  <div className="w-40 h-full min-h-[80px] rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
+              {/* Avatar column — fixed circle */}
+              <div className="flex flex-col items-center justify-start shrink-0">
+                <label className="relative cursor-pointer group" title="Click to upload avatar">
+                  <div className="w-36 h-36 rounded-full bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
                     {character.avatarBase64 ? (
                       <img src={character.avatarBase64} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-4xl select-none">🧙</span>
                     )}
                     {avatarMutation.isPending && (
-                      <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
                         <span className="text-xs text-white">...</span>
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-xl transition-colors flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-full transition-colors flex items-center justify-center">
                       <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity font-medium">Change</span>
                     </div>
                   </div>
