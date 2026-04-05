@@ -691,7 +691,7 @@
     "speed": 30,
     "size": "Medium",
     "desc": [
-      "To be greeted with stares and whispers, to suffer violence and insult on the street, to see mistrust and fear in every eye \u00e2\u20ac\u201d this is the lot of the tiefling.",
+      "To be greeted with stares and whispers, to suffer violence and insult on the street, to see mistrust and fear in every eye â€” this is the lot of the tiefling.",
       "Tieflings are derived from human bloodlines, and in the broadest possible sense, they still look human. However, their infernal heritage has left a clear imprint on their appearance."
     ],
     "traits": [
@@ -955,6 +955,144 @@
         "type": "damage_resistance",
         "value": 1,
         "condition": "psychic"
+      }
+    ]
+  },
+  {
+    "index": "tiefling-asmodeus",
+    "name": "Tiefling (Asmodeus)",
+    "parent_race": "tiefling",
+    "speed": 30,
+    "size": "Medium",
+    "desc": [
+      "The most common tiefling bloodline, descended from the pact Asmodeus made with corrupt humans. They bear the standard infernal traits.",
+      "Tieflings of the Asmodeus bloodline carry Infernal Legacy: Thaumaturgy, then Hellish Rebuke, then Darkness."
+    ],
+    "traits": [
+      {
+        "name": "Darkvision",
+        "desc": "You can see in dim light within 60 feet as if bright light, and in darkness as if dim light."
+      },
+      {
+        "name": "Hellish Resistance",
+        "desc": "You have resistance to fire damage."
+      },
+      {
+        "name": "Infernal Legacy (Asmodeus)",
+        "desc": "You know the Thaumaturgy cantrip. At 3rd level you can cast Hellish Rebuke as a 2nd-level spell once per long rest. At 5th level you can cast Darkness once per long rest. Charisma is your spellcasting ability."
+      }
+    ],
+    "modifiers": [
+      {
+        "type": "ability_score",
+        "ability": "Intelligence",
+        "value": 1
+      },
+      {
+        "type": "ability_score",
+        "ability": "Charisma",
+        "value": 2
+      },
+      {
+        "type": "damage_resistance",
+        "value": 1,
+        "condition": "fire"
+      },
+      {
+        "type": "darkvision",
+        "value": 60
+      }
+    ]
+  },
+  {
+    "index": "tiefling-mephistopheles",
+    "name": "Tiefling (Mephistopheles)",
+    "parent_race": "tiefling",
+    "speed": 30,
+    "size": "Medium",
+    "desc": [
+      "Descended from the blood of Mephistopheles, these tieflings have a talent for arcane fire magic.",
+      "They carry Infernal Legacy tied to arcane flame: Mage Hand, then Burning Hands, then Flame Blade."
+    ],
+    "traits": [
+      {
+        "name": "Darkvision",
+        "desc": "You can see in dim light within 60 feet as if bright light, and in darkness as if dim light."
+      },
+      {
+        "name": "Hellish Resistance",
+        "desc": "You have resistance to fire damage."
+      },
+      {
+        "name": "Infernal Legacy (Mephistopheles)",
+        "desc": "You know the Mage Hand cantrip. At 3rd level you can cast Burning Hands as a 2nd-level spell once per long rest. At 5th level you can cast Flame Blade once per long rest. Charisma is your spellcasting ability."
+      }
+    ],
+    "modifiers": [
+      {
+        "type": "ability_score",
+        "ability": "Intelligence",
+        "value": 1
+      },
+      {
+        "type": "ability_score",
+        "ability": "Charisma",
+        "value": 2
+      },
+      {
+        "type": "damage_resistance",
+        "value": 1,
+        "condition": "fire"
+      },
+      {
+        "type": "darkvision",
+        "value": 60
+      }
+    ]
+  },
+  {
+    "index": "tiefling-zariel",
+    "name": "Tiefling (Zariel)",
+    "parent_race": "tiefling",
+    "speed": 30,
+    "size": "Medium",
+    "desc": [
+      "Bearing the blood of Zariel, the fallen angel who became an archdevil, these tieflings are fierce and martially gifted.",
+      "Their Infernal Legacy centres on radiant and divine smiting power."
+    ],
+    "traits": [
+      {
+        "name": "Darkvision",
+        "desc": "You can see in dim light within 60 feet as if bright light, and in darkness as if dim light."
+      },
+      {
+        "name": "Hellish Resistance",
+        "desc": "You have resistance to fire damage."
+      },
+      {
+        "name": "Infernal Legacy (Zariel)",
+        "desc": "You know the Thaumaturgy cantrip. At 3rd level you can cast Searing Smite as a 2nd-level spell once per long rest. At 5th level you can cast Branding Smite once per long rest. Charisma is your spellcasting ability."
+      }
+    ],
+    "modifiers": [
+      {
+        "type": "ability_score",
+        "ability": "Strength",
+        "value": 1
+      },
+      {
+        "type": "ability_score",
+        "ability": "Charisma",
+        "value": 2
+      },
+      {
+        "type": "damage_resistance",
+        "value": 1,
+        "condition": "fire"
+      },
+      {
+        "type": "darkvision",
+        "value": 60
       }
     ]
   }

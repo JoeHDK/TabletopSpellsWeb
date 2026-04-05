@@ -11,51 +11,53 @@ interface Props {
   label?: string
 }
 
-const POPUP_WIDTH = 128 // w-32
+const POPUP_WIDTH = 128 // px (w-32)
+const POPUP_HEIGHT = 130 // approx height: label + input + footer + padding
 const SCREEN_MARGIN = 8
-// Min safe distance from top of viewport before popup is considered clipped
-// (accounts for the sticky header which is ~96px tall)
+// Minimum safe top to avoid being obscured by the sticky header (~96px)
 const POPUP_SAFE_TOP = 104
 
 export default function EditableNumber({ value, onChange, min, max, className = '', label }: Props) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
-  const [offsetX, setOffsetX] = useState(0) // px adjustment from default centred position
-  const [flipDown, setFlipDown] = useState(false) // true when there's not enough space above
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({})
+  const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({})
+  const [flipDown, setFlipDown] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
-  const popupRef = useRef<HTMLDivElement>(null)
-  const flipComputedRef = useRef(false) // guard to avoid infinite flip loop
 
   const openPopup = () => {
     setDraft(String(value))
-    setOffsetX(0)
     setFlipDown(false)
-    flipComputedRef.current = false
+    setPopupStyle({})
+    setArrowStyle({})
     setOpen(true)
   }
 
-  // After popup mounts, clamp horizontally and flip vertically if needed
+  // After popup mounts, compute fixed viewport coordinates.
+  // Using position:fixed bypasses overflow:hidden on ancestor containers.
   useLayoutEffect(() => {
     if (!open || !wrapRef.current) return
-    const wrapRect = wrapRef.current.getBoundingClientRect()
+    const rect = wrapRef.current.getBoundingClientRect()
+    const centreX = rect.left + rect.width / 2
 
-    // Horizontal clamping
-    const centreX = wrapRect.left + wrapRect.width / 2
-    const defaultLeft = centreX - POPUP_WIDTH / 2
-    const clampedLeft = Math.max(
-      SCREEN_MARGIN,
-      Math.min(defaultLeft, window.innerWidth - POPUP_WIDTH - SCREEN_MARGIN),
-    )
-    setOffsetX(clampedLeft - defaultLeft)
+    // Horizontal: center on trigger, clamped to viewport edges
+    const rawLeft = centreX - POPUP_WIDTH / 2
+    const left = Math.max(SCREEN_MARGIN, Math.min(rawLeft, window.innerWidth - POPUP_WIDTH - SCREEN_MARGIN))
 
-    // Vertical flip: measure actual popup top after render (only once per open)
-    if (flipComputedRef.current) return
-    flipComputedRef.current = true
-    if (popupRef.current) {
-      const popupTop = popupRef.current.getBoundingClientRect().top
-      if (popupTop < POPUP_SAFE_TOP) setFlipDown(true)
-    }
+    // Vertical: show above unless too close to sticky header
+    const spaceAbove = rect.top - POPUP_SAFE_TOP
+    const shouldFlipDown = spaceAbove < POPUP_HEIGHT + SCREEN_MARGIN
+    setFlipDown(shouldFlipDown)
+    const top = shouldFlipDown
+      ? rect.bottom + SCREEN_MARGIN
+      : rect.top - POPUP_HEIGHT - SCREEN_MARGIN
+
+    setPopupStyle({ position: 'fixed', top, left, width: POPUP_WIDTH })
+
+    // Arrow offset: points to the trigger's horizontal centre
+    const arrowLeft = centreX - left - 6 // 6 = half arrow width (12px / 2)
+    setArrowStyle({ left: Math.max(6, Math.min(arrowLeft, POPUP_WIDTH - 18)) })
   }, [open])
 
   useEffect(() => {
@@ -80,7 +82,7 @@ export default function EditableNumber({ value, onChange, min, max, className = 
     setOpen(false)
   }
 
-  // Close on outside click
+  // Close on outside click (popup is a DOM child of wrapRef so .contains() works correctly)
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
@@ -91,9 +93,6 @@ export default function EditableNumber({ value, onChange, min, max, className = 
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open, draft]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Arrow points to the centre of the trigger, adjusted for popup offset
-  const arrowLeft = `calc(50% - ${offsetX}px)`
 
   return (
     <div ref={wrapRef} className="relative inline-block">
@@ -108,14 +107,13 @@ export default function EditableNumber({ value, onChange, min, max, className = 
 
       {open && (
         <div
-          ref={popupRef}
-          className={`absolute z-50 ${flipDown ? 'top-full mt-2' : 'bottom-full mb-2'} bg-gray-800 border border-gray-600 rounded-xl shadow-2xl p-3 w-32`}
-          style={{ left: '50%', transform: `translateX(calc(-50% + ${offsetX}px))` }}
+          className="z-50 bg-gray-800 border border-gray-600 rounded-xl shadow-2xl p-3"
+          style={popupStyle}
         >
           {/* Arrow — points toward the trigger */}
           <div
             className={`absolute w-3 h-3 bg-gray-800 border-gray-600 rotate-45 ${flipDown ? '-top-1.5 border-l border-t' : '-bottom-1.5 border-r border-b'}`}
-            style={{ left: arrowLeft, transform: `translateX(-50%) rotate(45deg)` }}
+            style={{ ...arrowStyle, transform: 'translateX(-50%) rotate(45deg)' }}
           />
           {label && <p className="text-xs text-gray-400 mb-1.5 text-center">{label}</p>}
           <input
