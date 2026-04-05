@@ -262,10 +262,11 @@ function calculateAC(
   return { total, breakdown: parts.join(' '), isAutoCalc: true }
 }
 
-function RaceSelector({ characterId, currentRace, currentRaceChoices }: {
+function RaceSelector({ characterId, currentRace, currentRaceChoices, currentSkillProficiencies }: {
   characterId: string
   currentRace?: string
   currentRaceChoices?: Record<string, number>
+  currentSkillProficiencies: string[]
 }) {
   const qc = useQueryClient()
   const { data: allRaces = [] } = useQuery({ queryKey: ['races'], queryFn: () => racesApi.getAll() })
@@ -322,15 +323,19 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices }: {
     }
   }, [currentRace, allRaces])
 
+  const ABILITY_CHOICE_KEYS = ['Strength','Dexterity','Constitution','Intelligence','Wisdom','Charisma']
+
   const mutation = useMutation({
-    mutationFn: (race: string | undefined) => charactersApi.update(characterId, { race, raceChoices: {} }),
+    mutationFn: ({ race, skillProficiencies }: { race: string | undefined; skillProficiencies: string[] }) =>
+      charactersApi.update(characterId, { race, raceChoices: {}, skillProficiencies }),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', characterId], updated)
       qc.invalidateQueries({ queryKey: ['character', characterId] })
     },
   })
   const choiceMutation = useMutation({
-    mutationFn: (raceChoices: Record<string, number>) => charactersApi.update(characterId, { raceChoices }),
+    mutationFn: ({ raceChoices, skillProficiencies }: { raceChoices: Record<string, number>; skillProficiencies: string[] }) =>
+      charactersApi.update(characterId, { raceChoices, skillProficiencies }),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', characterId], updated)
       qc.invalidateQueries({ queryKey: ['character', characterId] })
@@ -341,31 +346,56 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices }: {
   const selectedRace = allRaces.find(r => r.index === currentRace)
   const choiceModifier = selectedRace?.modifiers.find(m => m.type === 'ability_score_choice')
   const choiceCount = choiceModifier?.condition === 'choose_2' ? 2 : choiceModifier ? 1 : 0
+  const skillChoiceModifier = selectedRace?.modifiers.find(m => m.type === 'skill_choice')
   const choices = currentRaceChoices ?? {}
-  const chosenKeys = Object.keys(choices).filter(k => (choices[k] ?? 0) > 0)
+  const chosenKeys = Object.keys(choices).filter(k => (choices[k] ?? 0) > 0 && ABILITY_CHOICE_KEYS.includes(k))
+  const chosenSkill = Object.keys(choices).find(k => !ABILITY_CHOICE_KEYS.includes(k) && (choices[k] ?? 0) > 0)
+
+  const getRaceSkillsFromChoices = (raceChoices: Record<string, number>) =>
+    Object.keys(raceChoices).filter(k => !ABILITY_CHOICE_KEYS.includes(k) && (raceChoices[k] ?? 0) > 0)
 
   const handleParentChange = (parentValue: string) => {
     setSelectedParent(parentValue)
     setSelectedSubrace('')
+    // Strip any previously chosen race skill from skillProficiencies
+    const oldRaceSkills = getRaceSkillsFromChoices(currentRaceChoices ?? {})
+    const cleanedSkills = currentSkillProficiencies.filter(s => !oldRaceSkills.includes(s))
     if (!parentValue) {
-      mutation.mutate(undefined)
+      mutation.mutate({ race: undefined, skillProficiencies: cleanedSkills })
     } else if (!virtualParents.includes(parentValue)) {
-      // Real race (human, dragonborn, etc.) — save immediately
-      mutation.mutate(parentValue)
+      mutation.mutate({ race: parentValue, skillProficiencies: cleanedSkills })
     }
     // Virtual parent (dwarf, elf, etc.) — wait for subrace selection
   }
 
   const handleSubraceChange = (subraceValue: string) => {
     setSelectedSubrace(subraceValue)
-    if (subraceValue) mutation.mutate(subraceValue)
+    const oldRaceSkills = getRaceSkillsFromChoices(currentRaceChoices ?? {})
+    const cleanedSkills = currentSkillProficiencies.filter(s => !oldRaceSkills.includes(s))
+    if (subraceValue) mutation.mutate({ race: subraceValue, skillProficiencies: cleanedSkills })
   }
 
   const handleChoiceToggle = (ability: string) => {
     const next = { ...choices }
     if (next[ability]) { delete next[ability] }
     else if (chosenKeys.length < choiceCount) { next[ability] = choiceModifier?.value ?? 1 }
-    choiceMutation.mutate(next)
+    choiceMutation.mutate({ raceChoices: next, skillProficiencies: currentSkillProficiencies })
+  }
+
+  const handleSkillChoiceToggle = (skill: string) => {
+    const next = { ...choices }
+    // Remove any previous skill choice
+    getRaceSkillsFromChoices(next).forEach(k => delete next[k])
+    let newSkillProfs = currentSkillProficiencies.filter(s => getRaceSkillsFromChoices(currentRaceChoices ?? {}).includes(s) ? false : true)
+    if (chosenSkill === skill) {
+      // Deselect: just remove it
+      newSkillProfs = currentSkillProficiencies.filter(s => s !== skill)
+    } else {
+      // Select new skill
+      next[skill] = 1
+      newSkillProfs = [...currentSkillProficiencies.filter(s => s !== chosenSkill), skill]
+    }
+    choiceMutation.mutate({ raceChoices: next, skillProficiencies: newSkillProfs })
   }
 
   return (
@@ -427,6 +457,33 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices }: {
                   }`}
                 >
                   {ab.slice(0, 3)}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      {skillChoiceModifier && (
+        <div className="mt-1">
+          <div className="text-xs text-gray-400 mb-1">
+            Choose 1 bonus skill proficiency:
+            {chosenSkill && <span className="text-green-400 ml-1">{chosenSkill} ✓</span>}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {DND5E_SKILLS.map(s => {
+              const isChosen = chosenSkill === s.name
+              return (
+                <button
+                  key={s.name}
+                  onClick={() => handleSkillChoiceToggle(s.name)}
+                  disabled={choiceMutation.isPending}
+                  className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                    isChosen
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {s.name}
                 </button>
               )
             })}
@@ -1152,7 +1209,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
 
                 {/* Race + Subrace */}
                 {character.gameType === 'dnd5e' && (
-                  <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} />
+                  <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} currentSkillProficiencies={character.skillProficiencies ?? []} />
                 )}
 
                 {/* Class + Subclass */}

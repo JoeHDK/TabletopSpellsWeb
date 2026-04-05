@@ -467,6 +467,10 @@
         "ability": "any",
         "value": 1,
         "condition": "choose_2"
+      },
+      {
+        "type": "skill_choice",
+        "condition": "choose_1"
       }
     ]
   },
