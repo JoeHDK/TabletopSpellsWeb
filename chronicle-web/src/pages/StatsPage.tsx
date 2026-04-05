@@ -1119,7 +1119,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
         return (
           <div className="px-4 pb-4 pt-1">
             {/* Outer flex: fields left, avatar right spanning full height */}
-            <div className="flex gap-3 items-start">
+            <div className="flex gap-3 items-stretch">
               {/* Fields column */}
               <div className="flex-1 space-y-2">
                 {/* Name + Level row */}
@@ -1201,10 +1201,10 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                 )}
               </div>
 
-              {/* Avatar column — fixed circle */}
-              <div className="flex flex-col items-center justify-start shrink-0">
-                <label className="relative cursor-pointer group" title="Click to upload avatar">
-                  <div className="w-36 h-36 rounded-full bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
+              {/* Avatar column — square circle, height = fields column height, width = height */}
+              <div className="self-stretch aspect-square shrink-0 min-w-0">
+                <label className="relative cursor-pointer group block w-full h-full" title="Click to upload avatar">
+                  <div className="w-full h-full rounded-full bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
                     {character.avatarBase64 ? (
                       <img src={character.avatarBase64} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
