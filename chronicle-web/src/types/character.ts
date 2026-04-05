@@ -217,7 +217,7 @@ export interface ClassResource {
 }
 
 export interface RaceModifier {
-  type: 'ability_score' | 'hp_per_level' | 'passive_perception' | 'movement' | 'damage_resistance' | 'darkvision' | 'ability_score_choice'
+  type: 'ability_score' | 'hp_per_level' | 'passive_perception' | 'movement' | 'damage_resistance' | 'darkvision' | 'ability_score_choice' | 'skill_choice'
   ability?: string
   value: number
   condition?: string
