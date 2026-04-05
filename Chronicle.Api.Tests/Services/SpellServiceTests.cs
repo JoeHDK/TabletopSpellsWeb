@@ -4,7 +4,7 @@ using Chronicle.Api.Services;
 namespace Chronicle.Api.Tests.Services;
 
 /// <summary>
-/// Tests SpellService file-based loading, level filtering, and search for both games.
+/// Tests SpellService file-based loading, level filtering, and search.
 /// JSON files are linked from the API project into the test output directory.
 /// </summary>
 public class SpellServiceTests : IDisposable
@@ -31,21 +31,11 @@ public class SpellServiceTests : IDisposable
     }
 
     [Fact]
-    public void GetSpells_Pathfinder1e_ReturnsNonEmptyList()
+    public void GetSpells_Custom_ReturnsEmptyList()
     {
-        var spells = _service.GetSpells(Game.pathfinder1e);
+        var spells = _service.GetSpells(Game.custom);
 
-        Assert.NotEmpty(spells);
-    }
-
-    [Fact]
-    public void GetSpells_Pathfinder1e_HasMoreSpellsThanDnd5e()
-    {
-        var dnd5eCount = _service.GetSpells(Game.dnd5e).Count;
-        var pf1eCount = _service.GetSpells(Game.pathfinder1e).Count;
-
-        Assert.True(pf1eCount > dnd5eCount,
-            $"Expected PF1e ({pf1eCount}) to have more spells than D&D 5e ({dnd5eCount})");
+        Assert.Empty(spells);
     }
 
     [Fact]
@@ -64,9 +54,6 @@ public class SpellServiceTests : IDisposable
     [InlineData(Game.dnd5e, 1)]
     [InlineData(Game.dnd5e, 3)]
     [InlineData(Game.dnd5e, 9)]
-    [InlineData(Game.pathfinder1e, 0)]
-    [InlineData(Game.pathfinder1e, 1)]
-    [InlineData(Game.pathfinder1e, 9)]
     public void GetSpellsByLevel_ReturnsNonEmptyList(Game game, int level)
     {
         var spells = _service.GetSpellsByLevel(game, level);
@@ -134,15 +121,6 @@ public class SpellServiceTests : IDisposable
     }
 
     [Fact]
-    public void SearchSpells_Pathfinder1e_ReturnsMatchingSpells()
-    {
-        var results = _service.SearchSpells(Game.pathfinder1e, "cure");
-
-        Assert.NotEmpty(results);
-        Assert.All(results, s => Assert.Contains("cure", s.Name, StringComparison.OrdinalIgnoreCase));
-    }
-
-    [Fact]
     public void GetSpells_AllSpells_HaveNonNullName()
     {
         var spells = _service.GetSpells(Game.dnd5e);
@@ -170,15 +148,4 @@ public class SpellServiceTests : IDisposable
 
         Assert.Equal(all.Count, searched.Count);
     }
-
-    [Fact]
-    public void GetSpells_Pathfinder1e_AllSpells_HaveNonNullName()
-    {
-        var spells = _service.GetSpells(Game.pathfinder1e);
-
-        Assert.All(spells, s => Assert.NotNull(s.Name));
-    }
-
-    private static bool ContainsAnyDigit(string? s) =>
-        s != null && s.Any(char.IsDigit);
 }

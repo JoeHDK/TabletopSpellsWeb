@@ -4,7 +4,7 @@ using Chronicle.Api.Models.Enums;
 namespace Chronicle.Api.Tests.Helpers;
 
 /// <summary>
-/// Tests ClassHelper.IsDivineCaster() directly for all 24 classes.
+/// Tests ClassHelper.IsDivineCaster() directly for all D&D 5e classes.
 /// </summary>
 public class ClassHelperDivineCasterTests
 {
@@ -12,9 +12,6 @@ public class ClassHelperDivineCasterTests
     [InlineData(Class.Cleric)]
     [InlineData(Class.Druid)]
     [InlineData(Class.Paladin)]
-    [InlineData(Class.Oracle)]
-    [InlineData(Class.Shaman)]
-    [InlineData(Class.Inquisitor)]
     public void IsDivineCaster_ReturnsTrue_ForDivineClasses(Class cls)
     {
         Assert.True(ClassHelper.IsDivineCaster(cls));
@@ -31,29 +28,21 @@ public class ClassHelperDivineCasterTests
     [InlineData(Class.Wizard)]
     [InlineData(Class.Warlock)]
     [InlineData(Class.Artificer)]
-    [InlineData(Class.Summoner)]
-    [InlineData(Class.Witch)]
-    [InlineData(Class.Alchemist)]
-    [InlineData(Class.Magus)]
-    [InlineData(Class.Spiritualist)]
-    [InlineData(Class.Occultist)]
-    [InlineData(Class.Psychic)]
-    [InlineData(Class.Mesmerist)]
     public void IsDivineCaster_ReturnsFalse_ForNonDivineClasses(Class cls)
     {
         Assert.False(ClassHelper.IsDivineCaster(cls));
     }
 
     [Fact]
-    public void DivineCasters_ArrayContainsExactlySixClasses()
+    public void DivineCasters_ArrayContainsExactlyThreeClasses()
     {
-        Assert.Equal(6, ClassHelper.DivineCasters.Length);
+        Assert.Equal(3, ClassHelper.DivineCasters.Length);
     }
 
     [Fact]
-    public void DivineCasters_ContainsExpectedSixClasses()
+    public void DivineCasters_ContainsExpectedThreeClasses()
     {
-        var expected = new[] { Class.Cleric, Class.Druid, Class.Paladin, Class.Oracle, Class.Shaman, Class.Inquisitor };
+        var expected = new[] { Class.Cleric, Class.Druid, Class.Paladin };
         Assert.Equal(expected.OrderBy(c => c.ToString()), ClassHelper.DivineCasters.OrderBy(c => c.ToString()));
     }
 }

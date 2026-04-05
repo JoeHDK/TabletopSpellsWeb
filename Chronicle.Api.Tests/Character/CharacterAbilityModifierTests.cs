@@ -4,7 +4,7 @@ using Chronicle.Api.Models.Enums;
 namespace Chronicle.Api.Tests.Character;
 
 /// <summary>
-/// Tests GetRelevantAbilityModifier() for all 24 classes.
+/// Tests GetRelevantAbilityModifier() for all D&D 5e classes.
 /// Each class pulls from a specific ability score: INT, WIS, CHA, or STR.
 /// </summary>
 public class CharacterAbilityModifierTests
@@ -13,11 +13,7 @@ public class CharacterAbilityModifierTests
     {
         Name = "Test",
         CharacterClass = cls,
-        GameType = cls is Class.Inquisitor or Class.Summoner or Class.Witch or Class.Alchemist
-            or Class.Magus or Class.Oracle or Class.Shaman or Class.Spiritualist
-            or Class.Occultist or Class.Psychic or Class.Mesmerist
-            ? Game.pathfinder1e
-            : Game.dnd5e,
+        GameType = Game.dnd5e,
         Level = 1,
         AbilityScores = abilityScores,
     };
@@ -144,7 +140,7 @@ public class CharacterAbilityModifierTests
         Assert.Equal(0, character.GetRelevantAbilityModifier());
     }
 
-    // --- Strength classes: all remaining 17 ---
+    // --- Strength classes: all remaining D&D 5e non-caster classes ---
 
     [Theory]
     [InlineData(Class.Barbarian, 20, 5)]
@@ -160,28 +156,6 @@ public class CharacterAbilityModifierTests
     [InlineData(Class.Rogue, 10, 0)]
     [InlineData(Class.Warlock, 18, 4)]
     [InlineData(Class.Warlock, 10, 0)]
-    [InlineData(Class.Inquisitor, 16, 3)]
-    [InlineData(Class.Inquisitor, 10, 0)]
-    [InlineData(Class.Summoner, 14, 2)]
-    [InlineData(Class.Summoner, 10, 0)]
-    [InlineData(Class.Witch, 12, 1)]
-    [InlineData(Class.Witch, 10, 0)]
-    [InlineData(Class.Alchemist, 18, 4)]
-    [InlineData(Class.Alchemist, 10, 0)]
-    [InlineData(Class.Magus, 20, 5)]
-    [InlineData(Class.Magus, 10, 0)]
-    [InlineData(Class.Oracle, 16, 3)]
-    [InlineData(Class.Oracle, 10, 0)]
-    [InlineData(Class.Shaman, 14, 2)]
-    [InlineData(Class.Shaman, 10, 0)]
-    [InlineData(Class.Spiritualist, 12, 1)]
-    [InlineData(Class.Spiritualist, 10, 0)]
-    [InlineData(Class.Occultist, 18, 4)]
-    [InlineData(Class.Occultist, 10, 0)]
-    [InlineData(Class.Psychic, 16, 3)]
-    [InlineData(Class.Psychic, 10, 0)]
-    [InlineData(Class.Mesmerist, 14, 2)]
-    [InlineData(Class.Mesmerist, 10, 0)]
     public void StrengthClasses_ReturnStrengthModifier(Class cls, int strScore, int expectedMod)
     {
         var character = MakeCharacter(cls, AllScores("Strength", strScore));
@@ -196,17 +170,6 @@ public class CharacterAbilityModifierTests
     [InlineData(Class.Ranger)]
     [InlineData(Class.Rogue)]
     [InlineData(Class.Warlock)]
-    [InlineData(Class.Inquisitor)]
-    [InlineData(Class.Summoner)]
-    [InlineData(Class.Witch)]
-    [InlineData(Class.Alchemist)]
-    [InlineData(Class.Magus)]
-    [InlineData(Class.Oracle)]
-    [InlineData(Class.Shaman)]
-    [InlineData(Class.Spiritualist)]
-    [InlineData(Class.Occultist)]
-    [InlineData(Class.Psychic)]
-    [InlineData(Class.Mesmerist)]
     public void StrengthClasses_IgnoreOtherAbilityScores(Class cls)
     {
         var scores = new Dictionary<string, int>

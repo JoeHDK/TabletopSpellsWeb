@@ -15,14 +15,13 @@ public class SpellService
         {
             if (_cache.TryGetValue(game, out var cached)) return cached;
 
-            var fileName = game switch
+            if (game == Game.custom)
             {
-                Game.dnd5e => "dnd5e.json",
-                Game.pathfinder1e => "Pathfinder1e.json",
-                _ => throw new ArgumentOutOfRangeException(nameof(game))
-            };
+                _cache[game] = [];
+                return [];
+            }
 
-            var filePath = Path.Combine(AppContext.BaseDirectory, "Spells", fileName);
+            var filePath = Path.Combine(AppContext.BaseDirectory, "Spells", "dnd5e.json");
             var json = File.ReadAllText(filePath);
             var settings = new JsonSerializerSettings
             {

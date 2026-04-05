@@ -1,10 +1,8 @@
-export type Game = 'pathfinder1e' | 'dnd5e'
+export type Game = 'dnd5e' | 'custom'
 
 export type CharacterClass =
   | 'Barbarian' | 'Bard' | 'Cleric' | 'Druid' | 'Fighter' | 'Monk'
-  | 'Paladin' | 'Ranger' | 'Rogue' | 'Sorcerer' | 'Wizard' | 'Inquisitor'
-  | 'Summoner' | 'Witch' | 'Alchemist' | 'Magus' | 'Oracle' | 'Shaman'
-  | 'Spiritualist' | 'Occultist' | 'Psychic' | 'Mesmerist' | 'Warlock' | 'Artificer'
+  | 'Paladin' | 'Ranger' | 'Rogue' | 'Sorcerer' | 'Wizard' | 'Warlock' | 'Artificer'
 
 export interface Character {
   id: string

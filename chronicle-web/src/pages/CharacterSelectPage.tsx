@@ -10,10 +10,8 @@ import BurgerMenu from '../components/BurgerMenu'
 import type { Character, CreateCharacterRequest, CharacterClass, Game }from '../types'
 
 const CLASSES: CharacterClass[] = [
-  'Alchemist','Artificer','Barbarian','Bard','Cleric','Druid','Fighter',
-  'Inquisitor','Magus','Mesmerist','Monk','Occultist','Oracle','Paladin',
-  'Psychic','Ranger','Rogue','Shaman','Sorcerer','Spiritualist','Summoner',
-  'Warlock','Witch','Wizard',
+  'Artificer','Barbarian','Bard','Cleric','Druid','Fighter',
+  'Monk','Paladin','Ranger','Rogue','Sorcerer','Warlock','Wizard',
 ]
 
 function SectionHeader({ title, count, open, onToggle, children }: {
@@ -351,7 +349,7 @@ export default function CharacterSelectPage() {
                     className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700"
                   >
                     <option value="dnd5e">D&D 5e</option>
-                    <option value="pathfinder1e">Pathfinder 1e</option>
+                    <option value="custom">Custom</option>
                   </select>
                 </div>
               </div>

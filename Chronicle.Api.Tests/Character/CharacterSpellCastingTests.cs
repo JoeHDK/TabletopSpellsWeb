@@ -13,11 +13,7 @@ public class CharacterSpellCastingTests
     {
         Name = "Test",
         CharacterClass = cls,
-        GameType = cls is Class.Inquisitor or Class.Summoner or Class.Witch or Class.Alchemist
-            or Class.Magus or Class.Oracle or Class.Shaman or Class.Spiritualist
-            or Class.Occultist or Class.Psychic or Class.Mesmerist
-            ? Game.pathfinder1e
-            : Game.dnd5e,
+        GameType = Game.dnd5e,
         Level = 3,
         MaxSpellsPerDay = new Dictionary<int, int> { [1] = maxLevel1Slots, [2] = 1 },
         SpellsUsedToday = new Dictionary<int, int> { [1] = 0, [2] = 0 },
@@ -35,16 +31,6 @@ public class CharacterSpellCastingTests
         [Class.Wizard],
         [Class.Warlock],
         [Class.Artificer],
-        [Class.Inquisitor],
-        [Class.Summoner],
-        [Class.Witch],
-        [Class.Magus],
-        [Class.Oracle],
-        [Class.Shaman],
-        [Class.Spiritualist],
-        [Class.Occultist],
-        [Class.Psychic],
-        [Class.Mesmerist],
     ];
 
     // Non-spellcasting classes that don't use spell slots
@@ -54,7 +40,6 @@ public class CharacterSpellCastingTests
         [Class.Fighter],
         [Class.Monk],
         [Class.Rogue],
-        [Class.Alchemist],
     ];
 
     [Theory]

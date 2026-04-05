@@ -2,6 +2,6 @@ namespace Chronicle.Api.Models.Enums;
 
 public enum Game
 {
-    pathfinder1e,
-    dnd5e,
+    dnd5e = 0,
+    custom = 1,
 }

@@ -9,11 +9,9 @@ import { getLevelForClass, parseFirstLevel, resolveClassName } from '../utils/sp
 
 // Classes with spells in D&D 5e
 const DND5E_SPELL_CLASSES = ['bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard', 'artificer']
-// Classes with spells in Pathfinder 1e
-const PF1E_SPELL_CLASSES = ['bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'wizard', 'inquisitor', 'summoner', 'witch', 'alchemist', 'magus', 'oracle', 'shaman', 'spiritualist', 'occultist', 'psychic', 'mesmerist']
 
-function getSpellClassesForGame(gameType?: string): string[] {
-  return gameType === 'pathfinder1e' ? PF1E_SPELL_CLASSES : DND5E_SPELL_CLASSES
+function getSpellClassesForGame(_gameType?: string): string[] {
+  return DND5E_SPELL_CLASSES
 }
 
 export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = {}) {

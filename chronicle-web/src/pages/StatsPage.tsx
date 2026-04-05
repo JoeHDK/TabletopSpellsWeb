@@ -84,63 +84,11 @@ const DND5E_SKILLS = [
   { name: 'Survival', ability: 'Wisdom' },
 ]
 
-const PF1E_SKILLS = [
-  { name: 'Acrobatics', ability: 'Dexterity' },
-  { name: 'Appraise', ability: 'Intelligence' },
-  { name: 'Bluff', ability: 'Charisma' },
-  { name: 'Climb', ability: 'Strength' },
-  { name: 'Diplomacy', ability: 'Charisma' },
-  { name: 'Disable Device', ability: 'Dexterity' },
-  { name: 'Disguise', ability: 'Charisma' },
-  { name: 'Escape Artist', ability: 'Dexterity' },
-  { name: 'Fly', ability: 'Dexterity' },
-  { name: 'Handle Animal', ability: 'Charisma' },
-  { name: 'Heal', ability: 'Wisdom' },
-  { name: 'Intimidate', ability: 'Charisma' },
-  { name: 'Know: Arcana', ability: 'Intelligence' },
-  { name: 'Know: History', ability: 'Intelligence' },
-  { name: 'Know: Nature', ability: 'Intelligence' },
-  { name: 'Know: Planes', ability: 'Intelligence' },
-  { name: 'Know: Religion', ability: 'Intelligence' },
-  { name: 'Linguistics', ability: 'Intelligence' },
-  { name: 'Perception', ability: 'Wisdom' },
-  { name: 'Perform', ability: 'Charisma' },
-  { name: 'Ride', ability: 'Dexterity' },
-  { name: 'Sense Motive', ability: 'Wisdom' },
-  { name: 'Sleight of Hand', ability: 'Dexterity' },
-  { name: 'Spellcraft', ability: 'Intelligence' },
-  { name: 'Stealth', ability: 'Dexterity' },
-  { name: 'Survival', ability: 'Wisdom' },
-  { name: 'Swim', ability: 'Strength' },
-  { name: 'Use Magic Device', ability: 'Charisma' },
-]
-
-const PF1E_SAVES = [
-  { name: 'Fortitude', ability: 'Constitution' },
-  { name: 'Reflex', ability: 'Dexterity' },
-  { name: 'Will', ability: 'Wisdom' },
-]
-
-// Pathfinder 1e: base skill ranks per level (add INT mod × level for total)
-const PF1E_SKILL_RANKS_PER_LEVEL: Record<string, number> = {
-  Alchemist: 4, Barbarian: 4, Bard: 6, Cleric: 2, Druid: 4,
-  Fighter: 2, Inquisitor: 6, Magus: 2, Mesmerist: 6, Monk: 4,
-  Occultist: 4, Oracle: 4, Paladin: 2, Psychic: 2, Ranger: 6,
-  Rogue: 8, Shaman: 4, Sorcerer: 2, Spiritualist: 4, Summoner: 2,
-  Witch: 2, Wizard: 2,
-}
-
-// Spellcasting ability by class (D&D 5e and Pathfinder 1e)
+// Spellcasting ability by class (D&D 5e)
 const CASTER_ABILITY: Record<string, string> = {
-  // D&D 5e
   Bard: 'Charisma', Cleric: 'Wisdom', Druid: 'Wisdom',
   Paladin: 'Charisma', Ranger: 'Wisdom', Sorcerer: 'Charisma',
   Warlock: 'Charisma', Wizard: 'Intelligence', Artificer: 'Intelligence',
-  // Pathfinder 1e
-  Alchemist: 'Intelligence', Inquisitor: 'Wisdom', Magus: 'Intelligence',
-  Mesmerist: 'Charisma', Occultist: 'Intelligence', Oracle: 'Charisma',
-  Psychic: 'Intelligence', Shaman: 'Wisdom', Spiritualist: 'Wisdom',
-  Summoner: 'Charisma', Witch: 'Intelligence',
 }
 
 const SUBCLASSES:Record<string, string[]> = {
@@ -1098,8 +1046,8 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   }
 
   const fmtMod = (n: number) => n >= 0 ? `+${n}` : `${n}`
-  const skillList = character.gameType === 'pathfinder1e' ? PF1E_SKILLS : DND5E_SKILLS
-  const saveList = character.gameType === 'pathfinder1e' ? PF1E_SAVES : ABILITY_KEYS.map(k => ({ name: k, ability: k }))
+  const skillList = DND5E_SKILLS
+  const saveList = ABILITY_KEYS.map(k => ({ name: k, ability: k }))
 
   const castingAbility = CASTER_ABILITY[character.characterClass]
   const castingAbilityMod = castingAbility ? abilityMod(castingAbility) : null
@@ -1112,10 +1060,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     .filter(m => m.type === 'sneak_attack_dice')
     .reduce((max, m) => Math.max(max, m.value), 0)
 
-  const maxSkillProficiencies = character.gameType === 'pathfinder1e'
-    ? (PF1E_SKILL_RANKS_PER_LEVEL[character.characterClass] ?? 2) * d.level
-      + Math.max(0, abilityMod('Intelligence')) * d.level
-    : null // No cap for D&D 5e — free selection
+  const maxSkillProficiencies = null // No cap for D&D 5e / Custom — free selection
   const atSkillLimit = maxSkillProficiencies !== null && d.skillProficiencies.length >= maxSkillProficiencies
 
   const subclassList = SUBCLASSES[d.characterClass] ?? []
