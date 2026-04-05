@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
@@ -269,15 +269,64 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices }: {
 }) {
   const qc = useQueryClient()
   const { data: allRaces = [] } = useQuery({ queryKey: ['races'], queryFn: () => racesApi.getAll() })
-  const selectedRace = allRaces.find(r => r.index === currentRace)
-  const choiceModifier = selectedRace?.modifiers.find(m => m.type === 'ability_score_choice')
-  const choiceCount = choiceModifier?.condition === 'choose_2' ? 2 : choiceModifier ? 1 : 0
+
+  // Subraces: races whose parent_race differs from their own index
+  const subraceSet = useMemo(() => {
+    const s = new Set<string>()
+    allRaces.forEach(r => { if (r.parent_race && r.parent_race !== r.index) s.add(r.index) })
+    return s
+  }, [allRaces])
+
+  // Map of parent_race → child races
+  const parentGroups = useMemo(() => {
+    const m = new Map<string, Race[]>()
+    allRaces.forEach(r => {
+      if (r.parent_race && r.parent_race !== r.index) {
+        const arr = m.get(r.parent_race) ?? []
+        arr.push(r)
+        m.set(r.parent_race, arr)
+      }
+    })
+    return m
+  }, [allRaces])
+
+  // Top-level races shown in the Race dropdown (not subraces of another)
+  const topLevelRaces = useMemo(() =>
+    allRaces.filter(r => !subraceSet.has(r.index)), [allRaces, subraceSet])
+
+  // Virtual parents: parent_race values not present as a race index (e.g. "dwarf", "elf")
+  const virtualParents = useMemo(() => {
+    const raceIndexes = new Set(allRaces.map(r => r.index))
+    return [...new Set(
+      allRaces
+        .filter(r => r.parent_race && r.parent_race !== r.index)
+        .map(r => r.parent_race!)
+        .filter(p => !raceIndexes.has(p))
+    )]
+  }, [allRaces])
+
+  const [selectedParent, setSelectedParent] = useState('')
+  const [selectedSubrace, setSelectedSubrace] = useState('')
+
+  useEffect(() => {
+    if (!allRaces.length) return
+    if (!currentRace) { setSelectedParent(''); setSelectedSubrace(''); return }
+    const raceObj = allRaces.find(r => r.index === currentRace)
+    if (!raceObj) return
+    if (raceObj.parent_race && raceObj.parent_race !== raceObj.index) {
+      setSelectedParent(raceObj.parent_race)
+      setSelectedSubrace(raceObj.index)
+    } else {
+      setSelectedParent(raceObj.index)
+      setSelectedSubrace('')
+    }
+  }, [currentRace, allRaces])
 
   const mutation = useMutation({
     mutationFn: (race: string | undefined) => charactersApi.update(characterId, { race, raceChoices: {} }),
     onSuccess: (updated) => {
       qc.setQueryData<Character>(['character', characterId], updated)
-      qc.invalidateQueries({ queryKey: ['race'] })
+      qc.invalidateQueries({ queryKey: ['character', characterId] })
     },
   })
   const choiceMutation = useMutation({
@@ -288,32 +337,66 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices }: {
     },
   })
 
+  const subraceOptions = parentGroups.get(selectedParent) ?? []
+  const selectedRace = allRaces.find(r => r.index === currentRace)
+  const choiceModifier = selectedRace?.modifiers.find(m => m.type === 'ability_score_choice')
+  const choiceCount = choiceModifier?.condition === 'choose_2' ? 2 : choiceModifier ? 1 : 0
   const choices = currentRaceChoices ?? {}
   const chosenKeys = Object.keys(choices).filter(k => (choices[k] ?? 0) > 0)
 
+  const handleParentChange = (parentValue: string) => {
+    setSelectedParent(parentValue)
+    setSelectedSubrace('')
+    if (!parentValue) {
+      mutation.mutate(undefined)
+    } else if (!virtualParents.includes(parentValue)) {
+      // Real race (human, dragonborn, etc.) — save immediately
+      mutation.mutate(parentValue)
+    }
+    // Virtual parent (dwarf, elf, etc.) — wait for subrace selection
+  }
+
+  const handleSubraceChange = (subraceValue: string) => {
+    setSelectedSubrace(subraceValue)
+    if (subraceValue) mutation.mutate(subraceValue)
+  }
+
   const handleChoiceToggle = (ability: string) => {
     const next = { ...choices }
-    if (next[ability]) {
-      delete next[ability]
-    } else if (chosenKeys.length < choiceCount) {
-      next[ability] = choiceModifier?.value ?? 1
-    }
+    if (next[ability]) { delete next[ability] }
+    else if (chosenKeys.length < choiceCount) { next[ability] = choiceModifier?.value ?? 1 }
     choiceMutation.mutate(next)
   }
 
   return (
     <div className="flex flex-col gap-1">
-      <select
-        className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
-        value={currentRace ?? ''}
-        onChange={e => mutation.mutate(e.target.value || undefined)}
-        disabled={mutation.isPending}
-      >
-        <option value="">— None —</option>
-        {allRaces.map(r => (
-          <option key={r.index} value={r.index}>{r.name}</option>
-        ))}
-      </select>
+      <div className="flex gap-2">
+        <select
+          className="flex-1 bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs"
+          value={selectedParent}
+          onChange={e => handleParentChange(e.target.value)}
+          disabled={mutation.isPending}
+        >
+          <option value="">— None —</option>
+          {topLevelRaces.map(r => (
+            <option key={r.index} value={r.index}>{r.name}</option>
+          ))}
+          {virtualParents.map(p => (
+            <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+          ))}
+        </select>
+        <select
+          className="flex-1 bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+          value={selectedSubrace}
+          disabled={subraceOptions.length === 0 || mutation.isPending}
+          onChange={e => handleSubraceChange(e.target.value)}
+        >
+          <option value="">— Subrace —</option>
+          {subraceOptions.map(r => (
+            <option key={r.index} value={r.index}>{r.name}</option>
+          ))}
+        </select>
+      </div>
       {choiceCount > 0 && chosenKeys.length < choiceCount && (
         <div className="mt-1">
           <div className="text-xs text-gray-400 mb-1">
@@ -1028,44 +1111,94 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     switch (sectionId) {
       case 'identity':
         return (
-          <div className="px-4 pb-4 pt-1 space-y-3">
-            {/* Top block: Name + Race + Level beside Avatar */}
+          <div className="px-4 pb-4 pt-1">
+            {/* Outer flex: fields left, avatar right spanning full height */}
             <div className="flex gap-3 items-stretch">
+              {/* Fields column */}
               <div className="flex-1 space-y-2">
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Name</p>
-                  {editingName ? (
-                    <input
-                      ref={nameRef}
-                      className="w-full bg-gray-800 text-white text-sm font-bold rounded-lg px-3 py-1.5 border border-indigo-500 focus:outline-none"
-                      value={d.name}
-                      onChange={e => patch({ name: e.target.value })}
-                      onBlur={() => setEditingName(false)}
-                      onKeyDown={e => e.key === 'Enter' && setEditingName(false)}
-                    />
-                  ) : (
-                    <button
-                      className="text-sm font-bold hover:text-indigo-300 transition-colors text-left"
-                      onClick={() => setEditingName(true)}
-                    >
-                      {d.name} <span className="text-gray-600 text-xs font-normal">✏</span>
-                    </button>
-                  )}
+                {/* Name + Level row */}
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-0.5">Name</p>
+                    {editingName ? (
+                      <input
+                        ref={nameRef}
+                        className="w-full bg-gray-800 text-white text-sm font-bold rounded-lg px-3 py-1.5 border border-indigo-500 focus:outline-none"
+                        value={d.name}
+                        onChange={e => patch({ name: e.target.value })}
+                        onBlur={() => setEditingName(false)}
+                        onKeyDown={e => e.key === 'Enter' && setEditingName(false)}
+                      />
+                    ) : (
+                      <button
+                        className="text-sm font-bold hover:text-indigo-300 transition-colors text-left"
+                        onClick={() => setEditingName(true)}
+                      >
+                        {d.name} <span className="text-gray-600 text-xs font-normal">✏</span>
+                      </button>
+                    )}
+                  </div>
+                  <div className="w-16 shrink-0">
+                    <p className="text-xs text-gray-400 mb-0.5">Level</p>
+                    <EditableNumber value={d.level} onChange={v => patch({ level: v })} min={1} max={20} label="Level" className="font-bold text-lg" />
+                  </div>
                 </div>
+
+                {/* Race + Subrace */}
                 {character.gameType === 'dnd5e' && (
-                  <div className="flex gap-2 items-end">
-                    <div className="w-3/4">
-                      <p className="text-xs text-gray-400 mb-1">Race</p>
-                      <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-400 mb-0.5">Level</p>
-                      <EditableNumber value={d.level} onChange={v => patch({ level: v })} min={1} max={20} label="Level" className="font-bold text-lg" />
-                    </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Race</p>
+                    <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} />
+                  </div>
+                )}
+
+                {/* Class + Subclass */}
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-0.5">Class</p>
+                    {character.gameType === 'dnd5e' ? (
+                      <select
+                        className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs font-medium"
+                        value={d.characterClass}
+                        onChange={e => {
+                          const cls = e.target.value as CharacterClass
+                          patch({ characterClass: cls, subclass: 'None' })
+                        }}
+                      >
+                        {DND5E_CLASSES.map(cls => (
+                          <option key={cls} value={cls}>{cls}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="font-medium text-sm">{character.characterClass}</p>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 mb-1">Subclass</p>
+                    <select
+                      className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                      value={d.subclass ?? 'None'}
+                      disabled={subclassList.length === 0}
+                      onChange={e => patch({ subclass: e.target.value })}
+                    >
+                      <option value="None">— None —</option>
+                      {subclassList.map(s => (
+                        <option key={s} value={s}>{formatSubclass(s, d.characterClass)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Background */}
+                {character.gameType === 'dnd5e' && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Background</p>
+                    <BackgroundSelector characterId={character.id} currentBackground={character.background} currentSkillProficiencies={d.skillProficiencies} />
                   </div>
                 )}
               </div>
-              {/* Avatar — stretches to match left column height */}
+
+              {/* Avatar column — spans full height of fields */}
               <div className="flex flex-col items-center justify-center shrink-0">
                 <label className="relative cursor-pointer group h-full flex flex-col items-center justify-center" title="Click to upload avatar">
                   <div className="w-40 h-full min-h-[80px] rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden flex items-center justify-center group-hover:border-indigo-500 transition-colors">
@@ -1086,51 +1219,6 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                   <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                 </label>
               </div>
-            </div>
-
-            {/* Bottom block: Class + Subclass row → Background */}
-            <div className="space-y-2">
-              <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <p className="text-xs text-gray-400 mb-0.5">Class</p>
-                  {character.gameType === 'dnd5e' ? (
-                    <select
-                      className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs font-medium"
-                      value={d.characterClass}
-                      onChange={e => {
-                        const cls = e.target.value as CharacterClass
-                        patch({ characterClass: cls, subclass: 'None' })
-                      }}
-                    >
-                      {DND5E_CLASSES.map(cls => (
-                        <option key={cls} value={cls}>{cls}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p className="font-medium text-sm">{character.characterClass}</p>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-gray-400 mb-1">Subclass</p>
-                  <select
-                    className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-                    value={d.subclass ?? 'None'}
-                    disabled={subclassList.length === 0}
-                    onChange={e => patch({ subclass: e.target.value })}
-                  >
-                    <option value="None">— None —</option>
-                    {subclassList.map(s => (
-                      <option key={s} value={s}>{formatSubclass(s, d.characterClass)}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              {character.gameType === 'dnd5e' && (
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">Background</p>
-                  <BackgroundSelector characterId={character.id} currentBackground={character.background} currentSkillProficiencies={d.skillProficiencies} />
-                </div>
-              )}
             </div>
 
             {/* Avatar crop modal */}
