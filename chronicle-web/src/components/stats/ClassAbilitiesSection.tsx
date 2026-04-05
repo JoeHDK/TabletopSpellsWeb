@@ -53,11 +53,11 @@ export function ClassAbilitiesSection({ classFeatures, skillExpertise = [], allP
     })
 
   const featureCards = features.map(f => {
-    const isOpen = bare ? true : expanded.has(f.index)
+    const isOpen = expanded.has(f.index)
     return (
       <div key={f.index} className="rounded-xl overflow-hidden">
         <button
-          onClick={() => !bare && toggle(f.index)}
+          onClick={() => toggle(f.index)}
           className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-800 transition-colors text-left rounded-xl"
         >
           <span className="text-xs text-gray-500 w-6 flex-shrink-0">L{f.min_level}</span>
@@ -72,7 +72,7 @@ export function ClassAbilitiesSection({ classFeatures, skillExpertise = [], allP
             {!f.is_passive && !f.resource_key && (
               <span className="text-[9px] px-1 py-0.5 rounded bg-green-900/60 text-green-400">active</span>
             )}
-            {!bare && <span className="text-gray-600 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>}
+            <span className="text-gray-600 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
           </div>
         </button>
         <div className={`grid transition-all duration-300 ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>

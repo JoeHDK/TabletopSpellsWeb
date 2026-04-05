@@ -691,7 +691,7 @@
     "speed": 30,
     "size": "Medium",
     "desc": [
-      "To be greeted with stares and whispers, to suffer violence and insult on the street, to see mistrust and fear in every eye — this is the lot of the tiefling.",
+      "To be greeted with stares and whispers, to suffer violence and insult on the street, to see mistrust and fear in every eye \u00e2\u20ac\u201d this is the lot of the tiefling.",
       "Tieflings are derived from human bloodlines, and in the broadest possible sense, they still look human. However, their infernal heritage has left a clear imprint on their appearance."
     ],
     "traits": [
@@ -915,7 +915,7 @@
   {
     "index": "githyanki",
     "name": "Githyanki",
-    "parent_race": "gith",
+    "parent_race": "githyanki",
     "speed": 30,
     "size": "Medium",
     "desc": [
