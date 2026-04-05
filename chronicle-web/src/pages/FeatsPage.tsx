@@ -227,7 +227,7 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
 
   // Split feats: class-specific vs general
   const { generalFeats, classFeats } = useMemo(() => {
-    const charClass = character?.class ?? ''
+    const charClass = character?.characterClass ?? ''
     const charSubclass = character?.subclass ?? ''
     const general: Feat[] = []
     const cls: Feat[] = []
@@ -269,7 +269,7 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
               {classFeats.length > 0 && (
                 <div>
                   <h2 className="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-2 mt-1">
-                    {character?.class} Class Abilities
+                    {character?.characterClass} Class Abilities
                   </h2>
                   {classFeats.map(feat => (
                     <div key={feat.index} className="mb-2">
