@@ -193,8 +193,8 @@ export interface AddCharacterFeatRequest {
   isCustom?: boolean
   customName?: string
   customDescription?: string
+  customModifiers?: Array<{ type: FeatModifierType; value: number }>
 }
-
 export interface ClassFeatureModifier {
   type: FeatModifierType
   value: number

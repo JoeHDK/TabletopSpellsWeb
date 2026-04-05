@@ -2,8 +2,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using Chronicle.Api.Data;
 using Chronicle.Api.Data.Entities;
+using Chronicle.Api.Models;
 using Chronicle.Api.Services;
 
 namespace Chronicle.Api.Controllers;
@@ -36,6 +38,9 @@ public class CharacterFeatsController : ControllerBase
         var result = charFeats.Select(cf =>
         {
             var feat = cf.IsCustom ? null : _feats.GetFeat(cf.FeatIndex);
+            var customMods = cf.IsCustom && !string.IsNullOrWhiteSpace(cf.CustomModifiers)
+                ? JsonConvert.DeserializeObject<List<FeatModifier>>(cf.CustomModifiers) ?? []
+                : null;
             return new
             {
                 cf.Id,
@@ -45,7 +50,7 @@ public class CharacterFeatsController : ControllerBase
                     ? (string.IsNullOrWhiteSpace(cf.CustomDescription) ? [] : [cf.CustomDescription])
                     : (feat?.Desc ?? []),
                 Prerequisites = feat?.Prerequisites ?? [],
-                Modifiers = feat?.Modifiers ?? [],
+                Modifiers = cf.IsCustom ? (customMods ?? []) : (feat?.Modifiers ?? []),
                 cf.Notes,
                 cf.TakenAtLevel,
                 cf.CreatedAt,
@@ -64,6 +69,9 @@ public class CharacterFeatsController : ControllerBase
         if (req.IsCustom == true)
         {
             if (string.IsNullOrWhiteSpace(req.CustomName)) return BadRequest("Custom feat name is required.");
+            var modifiersJson = req.CustomModifiers is { Count: > 0 }
+                ? JsonConvert.SerializeObject(req.CustomModifiers)
+                : null;
             var charFeat = new CharacterFeatEntity
             {
                 CharacterId = characterId,
@@ -71,9 +79,11 @@ public class CharacterFeatsController : ControllerBase
                 IsCustom = true,
                 CustomName = req.CustomName.Trim(),
                 CustomDescription = req.CustomDescription?.Trim(),
+                CustomModifiers = modifiersJson,
             };
             _db.CharacterFeats.Add(charFeat);
             await _db.SaveChangesAsync();
+            var returnedMods = req.CustomModifiers ?? [];
             return Ok(new
             {
                 charFeat.Id,
@@ -81,7 +91,7 @@ public class CharacterFeatsController : ControllerBase
                 Name = charFeat.CustomName,
                 Desc = string.IsNullOrWhiteSpace(charFeat.CustomDescription) ? [] : new[] { charFeat.CustomDescription },
                 Prerequisites = Array.Empty<object>(),
-                Modifiers = Array.Empty<object>(),
+                Modifiers = returnedMods,
                 charFeat.Notes,
                 charFeat.TakenAtLevel,
                 charFeat.CreatedAt,
@@ -150,4 +160,5 @@ public class AddCharacterFeatRequest
     public bool? IsCustom { get; set; }
     public string? CustomName { get; set; }
     public string? CustomDescription { get; set; }
+    public List<FeatModifier>? CustomModifiers { get; set; }
 }

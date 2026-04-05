@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { featsApi } from '../api/feats'
 import { characterFeatsApi } from '../api/characterFeats'
 import { charactersApi } from '../api/characters'
-import type { Feat, CharacterFeat, FeatModifier } from '../types'
+import type { Feat, CharacterFeat, FeatModifier, FeatModifierType } from '../types'
 
 const MODIFIER_LABELS: Record<string, string> = {
   initiative: '⚡ Initiative',
@@ -142,6 +142,18 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
   const [showCustomModal, setShowCustomModal] = useState(false)
   const [customName, setCustomName] = useState('')
   const [customDesc, setCustomDesc] = useState('')
+  const [customMods, setCustomMods] = useState<Array<{ type: FeatModifierType; value: number }>>([])
+
+  const CUSTOM_MODIFIER_OPTIONS: Array<{ type: FeatModifierType; label: string }> = [
+    { type: 'initiative', label: '⚡ Initiative' },
+    { type: 'ac', label: '🛡 AC' },
+    { type: 'hp_per_level', label: '❤️ HP/Level' },
+    { type: 'passive_perception', label: '👁 Passive Perception' },
+    { type: 'passive_investigation', label: '🔍 Passive Investigation' },
+    { type: 'movement', label: '🏃 Movement (ft)' },
+    { type: 'medium_armor_max_dex', label: '🛡 Med. Armor DEX cap' },
+    { type: 'damage_reduction', label: '⚔️ Damage Reduction' },
+  ]
 
   // ASI feat selection modal state
   const [asiPendingFeat, setAsiPendingFeat] = useState<string | null>(null)
@@ -197,9 +209,15 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
 
   const handleAddCustom = () => {
     if (!customName.trim()) return
-    addMutation.mutate({ isCustom: true, customName: customName.trim(), customDescription: customDesc.trim() })
+    addMutation.mutate({
+      isCustom: true,
+      customName: customName.trim(),
+      customDescription: customDesc.trim(),
+      customModifiers: customMods.length > 0 ? customMods : undefined,
+    })
     setCustomName('')
     setCustomDesc('')
+    setCustomMods([])
     setShowCustomModal(false)
   }
 
@@ -362,6 +380,38 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
                   rows={3}
                   className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-purple-500 focus:outline-none text-sm resize-none"
                 />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-400">Stat Modifiers</label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomMods(prev => [...prev, { type: 'initiative', value: 1 }])}
+                    className="text-xs text-purple-400 hover:text-purple-300"
+                  >＋ Add</button>
+                </div>
+                {customMods.map((mod, i) => (
+                  <div key={i} className="flex gap-2 mb-1 items-center">
+                    <select
+                      value={mod.type}
+                      onChange={e => setCustomMods(prev => prev.map((m, j) => j === i ? { ...m, type: e.target.value as FeatModifierType } : m))}
+                      className="flex-1 bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 text-xs focus:outline-none"
+                    >
+                      {CUSTOM_MODIFIER_OPTIONS.map(o => <option key={o.type} value={o.type}>{o.label}</option>)}
+                    </select>
+                    <input
+                      type="number"
+                      value={mod.value}
+                      onChange={e => setCustomMods(prev => prev.map((m, j) => j === i ? { ...m, value: parseInt(e.target.value) || 0 } : m))}
+                      className="w-14 bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 text-xs text-center focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCustomMods(prev => prev.filter((_, j) => j !== i))}
+                      className="text-gray-500 hover:text-red-400 text-sm px-1"
+                    >×</button>
+                  </div>
+                ))}
               </div>
             </div>
             <div className="flex gap-3">

@@ -14,6 +14,7 @@ public class CharacterFeatEntity
     public bool IsCustom { get; set; } = false;
     public string? CustomName { get; set; }
     public string? CustomDescription { get; set; }
+    public string? CustomModifiers { get; set; }  // JSON: [{type, value}]
 
     [ForeignKey(nameof(CharacterId))] public CharacterEntity? Character { get; set; }
 }
