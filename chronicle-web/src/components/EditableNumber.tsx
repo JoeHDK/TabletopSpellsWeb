@@ -12,8 +12,10 @@ interface Props {
 }
 
 const POPUP_WIDTH = 128 // w-32
-const POPUP_HEIGHT = 130 // approx height: label + input + footer + padding
 const SCREEN_MARGIN = 8
+// Min safe distance from top of viewport before popup is considered clipped
+// (accounts for the sticky header which is ~96px tall)
+const POPUP_SAFE_TOP = 104
 
 export default function EditableNumber({ value, onChange, min, max, className = '', label }: Props) {
   const [open, setOpen] = useState(false)
@@ -23,11 +25,13 @@ export default function EditableNumber({ value, onChange, min, max, className = 
   const inputRef = useRef<HTMLInputElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
+  const flipComputedRef = useRef(false) // guard to avoid infinite flip loop
 
   const openPopup = () => {
     setDraft(String(value))
     setOffsetX(0)
     setFlipDown(false)
+    flipComputedRef.current = false
     setOpen(true)
   }
 
@@ -45,8 +49,13 @@ export default function EditableNumber({ value, onChange, min, max, className = 
     )
     setOffsetX(clampedLeft - defaultLeft)
 
-    // Vertical flip: if not enough space above, show below
-    setFlipDown(wrapRect.top < POPUP_HEIGHT + SCREEN_MARGIN)
+    // Vertical flip: measure actual popup top after render (only once per open)
+    if (flipComputedRef.current) return
+    flipComputedRef.current = true
+    if (popupRef.current) {
+      const popupTop = popupRef.current.getBoundingClientRect().top
+      if (popupTop < POPUP_SAFE_TOP) setFlipDown(true)
+    }
   }, [open])
 
   useEffect(() => {

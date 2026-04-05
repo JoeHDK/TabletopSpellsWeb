@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace Chronicle.Api.Models;
 
@@ -6,7 +7,9 @@ public class Race
 {
     [JsonPropertyName("index")] public string Index { get; set; } = "";
     [JsonPropertyName("name")] public string Name { get; set; } = "";
-    [JsonPropertyName("parent_race")] public string? ParentRace { get; set; }
+    [JsonPropertyName("parent_race")]
+    [JsonProperty("parent_race")]
+    public string? ParentRace { get; set; }
     [JsonPropertyName("speed")] public int Speed { get; set; } = 30;
     [JsonPropertyName("size")] public string Size { get; set; } = "Medium";
     [JsonPropertyName("desc")] public List<string> Desc { get; set; } = new();
