@@ -101,6 +101,71 @@ export const MULTICLASS_PREREQS: Partial<Record<CharacterClass, Array<{ ability:
   Artificer: [{ ability: 'Intelligence', min: 13 }],
 }
 
+/**
+ * Saving throw proficiencies gained when multiclassing INTO a class (PHB p.164).
+ * Empty array = the class grants no saving throws on multiclass entry.
+ */
+export const MULTICLASS_SAVING_THROWS: Record<CharacterClass, string[]> = {
+  Artificer: ['Intelligence'],
+  Barbarian: ['Strength', 'Constitution'],
+  Bard:      [],
+  Cleric:    [],
+  Druid:     [],
+  Fighter:   ['Strength', 'Constitution'],
+  Monk:      ['Strength', 'Dexterity'],
+  Paladin:   ['Wisdom', 'Charisma'],
+  Ranger:    ['Strength', 'Dexterity'],
+  Rogue:     ['Dexterity'],
+  Sorcerer:  ['Constitution'],
+  Warlock:   ['Wisdom'],
+  Wizard:    ['Intelligence'],
+}
+
+/**
+ * Skill proficiency picks gained when multiclassing INTO a class (PHB p.164).
+ * count = number of skills to pick; anySkill = true means pick from ANY skill (Bard).
+ */
+export const MULTICLASS_SKILL_PICKS: Record<CharacterClass, { count: number; anySkill: boolean }> = {
+  Artificer: { count: 1, anySkill: false },
+  Barbarian: { count: 1, anySkill: false },
+  Bard:      { count: 1, anySkill: true  },
+  Cleric:    { count: 0, anySkill: false },
+  Druid:     { count: 0, anySkill: false },
+  Fighter:   { count: 1, anySkill: false },
+  Monk:      { count: 1, anySkill: false },
+  Paladin:   { count: 0, anySkill: false },
+  Ranger:    { count: 1, anySkill: false },
+  Rogue:     { count: 1, anySkill: false },
+  Sorcerer:  { count: 0, anySkill: false },
+  Warlock:   { count: 1, anySkill: false },
+  Wizard:    { count: 0, anySkill: false },
+}
+
+/** Skill options available to each class (used for both initial build and multiclass skill picks) */
+export const CLASS_SKILL_LIST: Record<CharacterClass, string[]> = {
+  Artificer: ['Arcana', 'History', 'Investigation', 'Medicine', 'Nature', 'Perception', 'Sleight of Hand'],
+  Barbarian: ['Animal Handling', 'Athletics', 'Intimidation', 'Nature', 'Perception', 'Survival'],
+  Bard:      ['Acrobatics', 'Animal Handling', 'Arcana', 'Athletics', 'Deception', 'History', 'Insight', 'Intimidation', 'Investigation', 'Medicine', 'Nature', 'Perception', 'Performance', 'Persuasion', 'Religion', 'Sleight of Hand', 'Stealth', 'Survival'],
+  Cleric:    ['History', 'Insight', 'Medicine', 'Persuasion', 'Religion'],
+  Druid:     ['Arcana', 'Animal Handling', 'Insight', 'Medicine', 'Nature', 'Perception', 'Religion', 'Survival'],
+  Fighter:   ['Acrobatics', 'Animal Handling', 'Athletics', 'History', 'Insight', 'Intimidation', 'Perception', 'Survival'],
+  Monk:      ['Acrobatics', 'Athletics', 'History', 'Insight', 'Religion', 'Stealth'],
+  Paladin:   ['Athletics', 'Insight', 'Intimidation', 'Medicine', 'Persuasion', 'Religion'],
+  Ranger:    ['Animal Handling', 'Athletics', 'Insight', 'Investigation', 'Nature', 'Perception', 'Stealth', 'Survival'],
+  Rogue:     ['Acrobatics', 'Athletics', 'Deception', 'Insight', 'Intimidation', 'Investigation', 'Perception', 'Performance', 'Persuasion', 'Sleight of Hand', 'Stealth'],
+  Sorcerer:  ['Arcana', 'Deception', 'Insight', 'Intimidation', 'Persuasion', 'Religion'],
+  Warlock:   ['Arcana', 'Deception', 'History', 'Intimidation', 'Investigation', 'Nature', 'Religion'],
+  Wizard:    ['Arcana', 'History', 'Insight', 'Investigation', 'Medicine', 'Religion'],
+}
+
+/** All D&D 5e skills (used when anySkill = true, e.g. Bard multiclass) */
+export const ALL_DND5E_SKILLS = [
+  'Acrobatics', 'Animal Handling', 'Arcana', 'Athletics', 'Deception',
+  'History', 'Insight', 'Intimidation', 'Investigation', 'Medicine',
+  'Nature', 'Perception', 'Performance', 'Persuasion', 'Religion',
+  'Sleight of Hand', 'Stealth', 'Survival',
+]
+
 /** Returns true if the character's ability scores meet prerequisites for the given class */
 export function checkMulticlassPrereqs(
   cls: CharacterClass,

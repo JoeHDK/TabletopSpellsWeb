@@ -1004,12 +1004,33 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     qc.invalidateQueries({ queryKey: ['character', id] })
   }, [character, effectiveClasses, id, qc, updateMutation])
 
-  const handleAddClass = useCallback((entry: CharacterClassEntry) => {
+  const handleAddClass = useCallback((
+    entry: CharacterClassEntry,
+    gainedSaves: string[],
+    gainedSkills: string[],
+  ) => {
     if (!character) return
     const newClasses = [...effectiveClasses, entry]
     const totalLevel = newClasses.reduce((s, e) => s + e.level, 0)
-    updateMutation.mutate({ classes: newClasses, level: totalLevel })
-    qc.setQueryData<Character>(['character', id], c => c ? { ...c, classes: newClasses, level: totalLevel } : c)
+    const req: UpdateCharacterRequest = { classes: newClasses, level: totalLevel }
+    // Merge gained saving throws (de-duplicate)
+    if (gainedSaves.length > 0) {
+      const current = character.savingThrowProficiencies ?? []
+      req.savingThrowProficiencies = [...new Set([...current, ...gainedSaves])]
+    }
+    // Merge gained skill proficiencies (de-duplicate)
+    if (gainedSkills.length > 0) {
+      const current = character.skillProficiencies ?? []
+      req.skillProficiencies = [...new Set([...current, ...gainedSkills])]
+    }
+    updateMutation.mutate(req)
+    qc.setQueryData<Character>(['character', id], c => c ? {
+      ...c,
+      classes: newClasses,
+      level: totalLevel,
+      ...(req.savingThrowProficiencies ? { savingThrowProficiencies: req.savingThrowProficiencies } : {}),
+      ...(req.skillProficiencies ? { skillProficiencies: req.skillProficiencies } : {}),
+    } : c)
     qc.invalidateQueries({ queryKey: ['character', id] })
     setShowAddClassModal(false)
   }, [character, effectiveClasses, id, qc, updateMutation])
@@ -1408,6 +1429,8 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
               <AddClassModal
                 existingClasses={effectiveClasses}
                 abilityScores={character.abilityScores}
+                existingSavingThrows={character.savingThrowProficiencies ?? []}
+                existingSkillProficiencies={d.skillProficiencies}
                 gameType={character.gameType}
                 onConfirm={handleAddClass}
                 onCancel={() => setShowAddClassModal(false)}

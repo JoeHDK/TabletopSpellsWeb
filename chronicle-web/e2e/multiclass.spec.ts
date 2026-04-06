@@ -40,7 +40,7 @@ test.describe('Multiclass identity card', () => {
     await expect(addClassBtn).toBeVisible({ timeout: 10_000 })
     await addClassBtn.click()
 
-    // Wait for the AddClassModal to appear
+    // Wait for the AddClassModal to appear (step 1)
     const modal = page.locator('.fixed.inset-0').last()
     await expect(modal).toBeVisible({ timeout: 5_000 })
 
@@ -48,8 +48,21 @@ test.describe('Multiclass identity card', () => {
     const classSelect = modal.locator('select').first()
     await classSelect.selectOption('Rogue')
 
-    // Confirm — button text is "Add Class" (no warning for Rogue with DEX 14)
-    const confirmBtn = modal.getByRole('button', { name: /add class/i })
+    // Step 1: "Next →" button (no prereq warning for Rogue with DEX 14)
+    const nextBtn = modal.getByRole('button', { name: /next/i })
+    await expect(nextBtn).toBeVisible({ timeout: 3_000 })
+    await nextBtn.click()
+
+    // Step 2: Proficiencies review — Rogue grants DEX saving throw + 1 skill pick
+    // Pick one skill from the Rogue skill list
+    const rogueSkill = modal.locator('button').filter({ hasText: /Acrobatics|Athletics|Deception|Insight|Intimidation|Investigation|Perception|Performance|Persuasion|Sleight of Hand|Stealth/ }).first()
+    if (await rogueSkill.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await rogueSkill.click()
+    }
+
+    // Confirm: "Add Rogue"
+    const confirmBtn = modal.getByRole('button', { name: /add rogue/i })
+    await expect(confirmBtn).toBeVisible({ timeout: 3_000 })
     await confirmBtn.click()
 
     // Two class rows should appear (multiclass layout)
