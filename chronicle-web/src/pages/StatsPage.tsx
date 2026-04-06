@@ -1136,7 +1136,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   const skillList = DND5E_SKILLS
   const saveList = ABILITY_KEYS.map(k => ({ name: k, ability: k }))
 
-  const castingAbility = CASTER_ABILITY[character.characterClass]
+  const castingAbility = effectiveClasses.map(e => CASTER_ABILITY[e.characterClass]).find(Boolean)
   const castingAbilityMod = castingAbility ? abilityMod(castingAbility) : null
   const spellSaveDC = castingAbilityMod !== null ? 8 + profBonusNum + castingAbilityMod : null
   const spellAttackBonus = castingAbilityMod !== null ? profBonusNum + castingAbilityMod : null

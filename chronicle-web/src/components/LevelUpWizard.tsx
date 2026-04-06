@@ -10,7 +10,7 @@ import { getLevelForClass, resolveClassName } from '../utils/spellUtils'
 import { ABILITY_KEYS } from '../components/stats/statsConstants'
 import {
   HIT_DIE, ASI_LEVELS, SUBCLASS_LEVEL, PREPARED_CASTERS, KNOWN_CASTERS,
-  getCantripCount, getSpellsKnown,
+  getCantripCount, getSpellsKnown, computeMulticlassSpellSlots, MAX_SPELL_LEVEL_TABLE,
 } from '../utils/multiclassTables'
 
 const SUBCLASSES: Record<string, string[]> = {
@@ -109,7 +109,7 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
     const cls = effectiveClasses[0]
     const newClassLevel = cls.level + 1
     const newTotalLevel = character.level + 1
-    return buildInitialState(0, cls, newClassLevel, newTotalLevel, character)
+    return buildInitialState(0, cls, newClassLevel, newTotalLevel, character, effectiveClasses)
   })
   const [search, setSearch] = useState('')
   const [asiOrFeatChoice, setAsiOrFeatChoice] = useState<'asi' | 'feat' | null>(null)
@@ -321,7 +321,7 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
                 const cls = effectiveClasses[idx]
                 const newClassLevel = cls.level + 1
                 const newTotalLevel = character.level + 1
-                setState(buildInitialState(idx, cls, newClassLevel, newTotalLevel, character))
+                setState(buildInitialState(idx, cls, newClassLevel, newTotalLevel, character, effectiveClasses))
               }}
             />
           )}
@@ -379,9 +379,11 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
               spells={allSpells.filter(s => {
                 const lvlForClass = getLevelForClass(s.spell_level, resolveClassName(state.targetClass))
                 const isLeveled = lvlForClass !== null && lvlForClass > 0
+                const maxSpellLvl = MAX_SPELL_LEVEL_TABLE[state.targetClass]?.[state.newClassLevel - 1] ?? 9
+                const withinLevel = lvlForClass !== null && lvlForClass <= maxSpellLvl
                 const notKnown = !knownSpellIds.has(s.id ?? s.name ?? '')
                 const notPicked = !state.pickedSpells.includes(s.id ?? s.name ?? '')
-                return isLeveled && notKnown && notPicked
+                return isLeveled && withinLevel && notKnown && notPicked
               })}
               picked={state.pickedSpells}
               maxPicks={state.requiredSpellPicks}
@@ -527,19 +529,36 @@ function buildInitialState(
   newClassLevel: number,
   newTotalLevel: number,
   character: Character,
+  effectiveClasses: CharacterClassEntry[],
 ): WizardState {
   const die = HIT_DIE[cls.characterClass] ?? 8
   const conMod = getConMod(character.abilityScores['Constitution'] ?? 10)
   const avgHp = Math.floor(die / 2) + 1 + conMod
 
-  const newSlots = getExpectedSpellSlots(cls.characterClass, newClassLevel)
-  const prevSlots = getExpectedSpellSlots(cls.characterClass, cls.level)
-  const mergedSlots = { ...character.maxSpellsPerDay }
-  for (const [lvlStr, count] of Object.entries(newSlots)) {
-    const lvl = parseInt(lvlStr)
-    const prev = prevSlots[lvl] ?? 0
-    const diff = count - prev
-    if (diff > 0) mergedSlots[lvl] = (mergedSlots[lvl] ?? 0) + diff
+  // Build the classes array as it will look after this level-up
+  const updatedClasses = effectiveClasses.map((e, i) =>
+    i === idx ? { ...e, level: newClassLevel } : e
+  )
+
+  let mergedSlots: Record<number, number>
+  if (updatedClasses.length > 1) {
+    // Multiclass: recompute combined spell slots from scratch using PHB rules
+    const result = computeMulticlassSpellSlots(updatedClasses)
+    mergedSlots = { ...result.shared }
+    if (result.pact) {
+      mergedSlots[result.pact.level] = (mergedSlots[result.pact.level] ?? 0) + result.pact.count
+    }
+  } else {
+    // Single class: apply delta from single-class table
+    const newSlots = getExpectedSpellSlots(cls.characterClass, newClassLevel)
+    const prevSlots = getExpectedSpellSlots(cls.characterClass, cls.level)
+    mergedSlots = { ...character.maxSpellsPerDay }
+    for (const [lvlStr, count] of Object.entries(newSlots)) {
+      const lvl = parseInt(lvlStr)
+      const prev = prevSlots[lvl] ?? 0
+      const diff = count - prev
+      if (diff > 0) mergedSlots[lvl] = (mergedSlots[lvl] ?? 0) + diff
+    }
   }
 
   // Cantrips
