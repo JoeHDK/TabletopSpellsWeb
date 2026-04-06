@@ -13,9 +13,11 @@ import { spellsPerDayApi } from '../api/spells'
 import { racesApi } from '../api/races'
 import { backgroundsApi } from '../api/backgrounds'
 import EditableNumber from '../components/EditableNumber'
+import AddClassModal from '../components/AddClassModal'
+import LevelUpWizard from '../components/LevelUpWizard'
 // resizeImage import removed — avatar now goes through AvatarCropModal canvas pipeline
 import { lookupArmor } from '../utils/armorTable'
-import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race, EquipmentResource, CharacterClass } from '../types'
+import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race, EquipmentResource, CharacterClass, CharacterClassEntry } from '../types'
 import { AbilityScoresSection, SavingThrowsSection, AttacksSection, BLANK_ATTACK, ClassResourcesSection, ClassFeaturesSection, ClassAbilitiesSection, FeatsSection } from '../components/stats'
 import AvatarCropModal from '../components/stats/AvatarCropModal'
 import { CLASS_SAVING_THROWS, ABILITY_KEYS, ABILITY_SHORT } from '../components/stats/statsConstants'
@@ -769,6 +771,8 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   const [editingConcentration, setEditingConcentration] = useState(false)
   const [concentrationInput, setConcentrationInput] = useState('')
   const [pendingCropSrc, setPendingCropSrc] = useState<string | null>(null)
+  const [showAddClassModal, setShowAddClassModal] = useState(false)
+  const [showLevelUpWizard, setShowLevelUpWizard] = useState(false)
 
   const { preferences, updatePreferences } = useUserPreferences()
   const [sectionOrder, setSectionOrder] = useState<StatsSectionId[]>(DEFAULT_SECTION_ORDER)
@@ -1115,6 +1119,59 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     }
   }
 
+  // ── Multiclass helpers ────────────────────────────────────────────
+  /** True when character has a classes array with entries (multiclass mode) */
+  const isMulticlass = !!(character?.classes && character.classes.length > 0)
+
+  const updateClassEntry = useCallback((idx: number, patch: Partial<CharacterClassEntry>) => {
+    if (!character) return
+    const current = character.classes ?? [{
+      characterClass: character.characterClass,
+      subclass: character.subclass,
+      level: character.level,
+      cantripsKnown: 0,
+    }]
+    const updated = current.map((e, i) => i === idx ? { ...e, ...patch } : e)
+    const totalLevel = updated.reduce((s, e) => s + e.level, 0)
+    const req: UpdateCharacterRequest = { classes: updated, level: totalLevel }
+    // Keep primary characterClass/subclass in sync with first class entry
+    if (idx === 0) {
+      if (patch.characterClass) req.characterClass = patch.characterClass
+      if (patch.subclass !== undefined) req.subclass = patch.subclass
+    }
+    updateMutation.mutate(req)
+    qc.setQueryData<Character>(['character', id], c => c ? { ...c, classes: updated, level: totalLevel, ...(req.characterClass ? { characterClass: req.characterClass } : {}), ...(req.subclass !== undefined ? { subclass: req.subclass } : {}) } : c)
+    qc.invalidateQueries({ queryKey: ['character', id] })
+  }, [character, id, qc, updateMutation])
+
+  const handleAddClass = useCallback((entry: CharacterClassEntry) => {
+    if (!character) return
+    const base: CharacterClassEntry[] = character.classes && character.classes.length > 0
+      ? character.classes
+      : [{ characterClass: character.characterClass, subclass: character.subclass, level: character.level, cantripsKnown: 0 }]
+    const newClasses = [...base, entry]
+    const totalLevel = newClasses.reduce((s, e) => s + e.level, 0)
+    updateMutation.mutate({ classes: newClasses, level: totalLevel })
+    qc.setQueryData<Character>(['character', id], c => c ? { ...c, classes: newClasses, level: totalLevel } : c)
+    qc.invalidateQueries({ queryKey: ['character', id] })
+    setShowAddClassModal(false)
+  }, [character, id, qc, updateMutation])
+
+  const handleRemoveClass = useCallback((idx: number) => {
+    if (!character?.classes || character.classes.length <= 1) return
+    const newClasses = character.classes.filter((_, i) => i !== idx)
+    const totalLevel = newClasses.reduce((s, e) => s + e.level, 0)
+    const req: UpdateCharacterRequest = { classes: newClasses, level: totalLevel }
+    // When back to single-class, sync primary fields
+    if (newClasses.length === 1) {
+      req.characterClass = newClasses[0].characterClass
+      req.subclass = newClasses[0].subclass
+    }
+    updateMutation.mutate(req)
+    qc.setQueryData<Character>(['character', id], c => c ? { ...c, ...req } : c)
+    qc.invalidateQueries({ queryKey: ['character', id] })
+  }, [character, id, qc, updateMutation])
+
   const renderSection = (sectionId: StatsSectionId): React.ReactNode => {
     switch (sectionId) {
       case 'identity':
@@ -1148,7 +1205,11 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                   </div>
                   <div className="w-16 shrink-0">
                     <p className="text-xs text-gray-400 mb-0.5">Level</p>
-                    <EditableNumber value={d.level} onChange={v => patch({ level: v })} min={1} max={20} label="Level" className="font-bold text-lg" />
+                    {isMulticlass ? (
+                      <p className="font-bold text-lg text-white">{d.level}</p>
+                    ) : (
+                      <EditableNumber value={d.level} onChange={v => patch({ level: v })} min={1} max={20} label="Level" className="font-bold text-lg" />
+                    )}
                   </div>
                 </div>
 
@@ -1157,42 +1218,105 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                   <RaceSelector characterId={character.id} currentRace={character.race} currentRaceChoices={character.raceChoices} currentSkillProficiencies={character.skillProficiencies ?? []} />
                 )}
 
-                {/* Class + Subclass */}
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-400 mb-0.5">Class</p>
-                    {character.gameType === 'dnd5e' ? (
-                      <select
-                        className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs font-medium"
-                        value={d.characterClass}
-                        onChange={e => {
-                          const cls = e.target.value as CharacterClass
-                          patch({ characterClass: cls, subclass: 'None' })
-                        }}
+                {/* Class + Subclass — multiclass or single-class */}
+                {isMulticlass ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-400">Classes</p>
+                      {character.gameType === 'dnd5e' && (
+                        <button
+                          className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
+                          onClick={() => setShowAddClassModal(true)}
+                        >
+                          + Add Class
+                        </button>
+                      )}
+                    </div>
+                    {character.classes!.map((entry, idx) => {
+                      const subclassOpts = SUBCLASSES[entry.characterClass] ?? []
+                      return (
+                        <div key={entry.characterClass} className="flex gap-1.5 items-center bg-gray-800/60 rounded-lg px-2 py-1.5">
+                          <span className="text-xs font-medium text-white flex-shrink-0 w-20 truncate">{entry.characterClass}</span>
+                          <div className="flex-shrink-0">
+                            <EditableNumber
+                              value={entry.level}
+                              onChange={v => updateClassEntry(idx, { level: v })}
+                              min={1} max={20}
+                              label={`${entry.characterClass} Level`}
+                              className="text-sm font-bold"
+                            />
+                          </div>
+                          <select
+                            className="flex-1 min-w-0 bg-gray-700 text-white rounded px-1.5 py-1 text-xs border border-gray-600 focus:border-indigo-500 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+                            value={entry.subclass}
+                            disabled={subclassOpts.length === 0}
+                            onChange={e => updateClassEntry(idx, { subclass: e.target.value })}
+                          >
+                            <option value="None">— None —</option>
+                            {subclassOpts.map(s => (
+                              <option key={s} value={s}>{formatSubclass(s, entry.characterClass)}</option>
+                            ))}
+                          </select>
+                          {character.classes!.length > 1 && (
+                            <button
+                              className="text-gray-500 hover:text-red-400 transition-colors flex-shrink-0 text-sm leading-none"
+                              onClick={() => handleRemoveClass(idx)}
+                              title={`Remove ${entry.characterClass}`}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-400 mb-0.5">Class</p>
+                        {character.gameType === 'dnd5e' ? (
+                          <select
+                            className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs font-medium"
+                            value={d.characterClass}
+                            onChange={e => {
+                              const cls = e.target.value as CharacterClass
+                              patch({ characterClass: cls, subclass: 'None' })
+                            }}
+                          >
+                            {DND5E_CLASSES.map(cls => (
+                              <option key={cls} value={cls}>{cls}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p className="font-medium text-sm">{character.characterClass}</p>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-400 mb-1">Subclass</p>
+                        <select
+                          className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                          value={d.subclass ?? 'None'}
+                          disabled={subclassList.length === 0}
+                          onChange={e => patch({ subclass: e.target.value })}
+                        >
+                          <option value="None">— None —</option>
+                          {subclassList.map(s => (
+                            <option key={s} value={s}>{formatSubclass(s, d.characterClass)}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    {character.gameType === 'dnd5e' && (
+                      <button
+                        className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
+                        onClick={() => setShowAddClassModal(true)}
                       >
-                        {DND5E_CLASSES.map(cls => (
-                          <option key={cls} value={cls}>{cls}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <p className="font-medium text-sm">{character.characterClass}</p>
+                        + Add Class
+                      </button>
                     )}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-400 mb-1">Subclass</p>
-                    <select
-                      className="w-full bg-gray-800 text-white rounded-lg px-2 py-1.5 border border-gray-700 focus:border-indigo-500 focus:outline-none text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-                      value={d.subclass ?? 'None'}
-                      disabled={subclassList.length === 0}
-                      onChange={e => patch({ subclass: e.target.value })}
-                    >
-                      <option value="None">— None —</option>
-                      {subclassList.map(s => (
-                        <option key={s} value={s}>{formatSubclass(s, d.characterClass)}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                )}
 
                 {/* Background */}
                 {character.gameType === 'dnd5e' && (
@@ -1200,6 +1324,16 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                     <p className="text-xs text-gray-400 mb-1">Background</p>
                     <BackgroundSelector characterId={character.id} currentBackground={character.background} currentSkillProficiencies={d.skillProficiencies} />
                   </div>
+                )}
+
+                {/* Level Up / Level Down buttons */}
+                {character.gameType === 'dnd5e' && (
+                  <button
+                    className="w-full mt-1 py-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl text-sm font-medium transition-colors"
+                    onClick={() => setShowLevelUpWizard(true)}
+                  >
+                    ▲ Level Up
+                  </button>
                 )}
               </div>
 
@@ -1232,6 +1366,26 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                 imageSrc={pendingCropSrc}
                 onSave={handleCropSave}
                 onCancel={handleCropCancel}
+              />
+            )}
+
+            {/* Add Class modal */}
+            {showAddClassModal && (
+              <AddClassModal
+                existingClasses={character.classes ?? [{ characterClass: character.characterClass, subclass: character.subclass, level: character.level, cantripsKnown: 0 }]}
+                abilityScores={character.abilityScores}
+                gameType={character.gameType}
+                onConfirm={handleAddClass}
+                onCancel={() => setShowAddClassModal(false)}
+              />
+            )}
+
+            {/* Level Up Wizard */}
+            {showLevelUpWizard && (
+              <LevelUpWizard
+                character={character}
+                characterId={character.id}
+                onClose={() => setShowLevelUpWizard(false)}
               />
             )}
           </div>
