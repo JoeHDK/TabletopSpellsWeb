@@ -5,6 +5,7 @@ import { featsApi } from '../api/feats'
 import { characterFeatsApi } from '../api/characterFeats'
 import { charactersApi } from '../api/characters'
 import type { Feat, CharacterFeat, FeatModifier, FeatModifierType } from '../types'
+import LevelUpBanner from '../components/LevelUpBanner'
 
 const MODIFIER_LABELS: Record<string, string> = {
   initiative: '⚡ Initiative',
@@ -270,6 +271,7 @@ export default function FeatsPage({ embedded }: { embedded?: boolean } = {}) {
           <span className="text-xs text-gray-400">{charFeats.length} known</span>
         </header>
       )}
+      <LevelUpBanner />
 
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-2xl mx-auto space-y-3">

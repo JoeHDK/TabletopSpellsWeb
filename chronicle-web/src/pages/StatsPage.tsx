@@ -15,6 +15,7 @@ import { backgroundsApi } from '../api/backgrounds'
 import EditableNumber from '../components/EditableNumber'
 import AddClassModal from '../components/AddClassModal'
 import LevelUpWizard from '../components/LevelUpWizard'
+import { useLevelUpStore } from '../stores/levelUpStore'
 // resizeImage import removed — avatar now goes through AvatarCropModal canvas pipeline
 import { lookupArmor } from '../utils/armorTable'
 import type { Character, UpdateCharacterRequest, CharacterAttack, AddAttackRequest, InventoryItem, CharacterFeat, ClassFeature, ClassResource, Race, EquipmentResource, CharacterClass, CharacterClassEntry } from '../types'
@@ -674,6 +675,19 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     enabled: !!id,
   })
 
+  // Derive a normalized classes[] that always has at least one entry.
+  // Single-class characters (classes = null) get a synthetic single-entry array.
+  const effectiveClasses = useMemo((): CharacterClassEntry[] => {
+    if (!character) return []
+    if (character.classes && character.classes.length > 0) return character.classes
+    return [{
+      characterClass: character.characterClass as CharacterClass,
+      subclass: character.subclass ?? 'None',
+      level: character.level,
+      cantripsKnown: 0,
+    }]
+  }, [character])
+
   const { data: classFeatures = [] } = useQuery({
     queryKey: ['class-features', character?.characterClass, character?.level, character?.subclass],
     queryFn: () => classFeaturesApi.getForCharacter(
@@ -681,12 +695,13 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
       character!.level,
       character!.subclass !== 'None' ? character!.subclass?.toLowerCase() : undefined,
     ),
-    enabled: !!character && !(character.classes && character.classes.length > 0),
+    // Only used as fallback when effectiveClasses is not yet populated
+    enabled: !!character && effectiveClasses.length === 0,
   })
 
-  // For multiclass characters, fetch features for each class in parallel
+  // Fetch features for every class entry in parallel (works for single and multiclass)
   const multiclassFeatureQueries = useQueries({
-    queries: (character?.classes && character.classes.length > 0 ? character.classes : []).map(entry => ({
+    queries: effectiveClasses.map(entry => ({
       queryKey: ['class-features', entry.characterClass, entry.level, entry.subclass],
       queryFn: () => classFeaturesApi.getForCharacter(
         entry.characterClass,
@@ -696,7 +711,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
       enabled: !!character,
     })),
   })
-  const allClassFeatures: ClassFeature[] = character?.classes && character.classes.length > 0
+  const allClassFeatures: ClassFeature[] = effectiveClasses.length > 0
     ? multiclassFeatureQueries.flatMap(q => q.data ?? [])
     : classFeatures
 
@@ -788,7 +803,13 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   const [concentrationInput, setConcentrationInput] = useState('')
   const [pendingCropSrc, setPendingCropSrc] = useState<string | null>(null)
   const [showAddClassModal, setShowAddClassModal] = useState(false)
+  const levelUpActive = useLevelUpStore(s => s.isActive)
   const [showLevelUpWizard, setShowLevelUpWizard] = useState(false)
+
+  // Auto-reopen wizard when returning to StatsPage with an in-progress level-up
+  useEffect(() => {
+    if (levelUpActive) setShowLevelUpWizard(true)
+  }, [levelUpActive])
 
   const { preferences, updatePreferences } = useUserPreferences()
   const [sectionOrder, setSectionOrder] = useState<StatsSectionId[]>(DEFAULT_SECTION_ORDER)
@@ -1136,18 +1157,12 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   }
 
   // ── Multiclass helpers ────────────────────────────────────────────
-  /** True when character has a classes array with entries (multiclass mode) */
-  const isMulticlass = !!(character?.classes && character.classes.length > 0)
+  /** True when character has more than one class entry */
+  const isMulticlass = effectiveClasses.length > 1
 
   const updateClassEntry = useCallback((idx: number, patch: Partial<CharacterClassEntry>) => {
     if (!character) return
-    const current = character.classes ?? [{
-      characterClass: character.characterClass,
-      subclass: character.subclass,
-      level: character.level,
-      cantripsKnown: 0,
-    }]
-    const updated = current.map((e, i) => i === idx ? { ...e, ...patch } : e)
+    const updated = effectiveClasses.map((e, i) => i === idx ? { ...e, ...patch } : e)
     const totalLevel = updated.reduce((s, e) => s + e.level, 0)
     const req: UpdateCharacterRequest = { classes: updated, level: totalLevel }
     // Keep primary characterClass/subclass in sync with first class entry
@@ -1158,24 +1173,21 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     updateMutation.mutate(req)
     qc.setQueryData<Character>(['character', id], c => c ? { ...c, classes: updated, level: totalLevel, ...(req.characterClass ? { characterClass: req.characterClass } : {}), ...(req.subclass !== undefined ? { subclass: req.subclass } : {}) } : c)
     qc.invalidateQueries({ queryKey: ['character', id] })
-  }, [character, id, qc, updateMutation])
+  }, [character, effectiveClasses, id, qc, updateMutation])
 
   const handleAddClass = useCallback((entry: CharacterClassEntry) => {
     if (!character) return
-    const base: CharacterClassEntry[] = character.classes && character.classes.length > 0
-      ? character.classes
-      : [{ characterClass: character.characterClass, subclass: character.subclass, level: character.level, cantripsKnown: 0 }]
-    const newClasses = [...base, entry]
+    const newClasses = [...effectiveClasses, entry]
     const totalLevel = newClasses.reduce((s, e) => s + e.level, 0)
     updateMutation.mutate({ classes: newClasses, level: totalLevel })
     qc.setQueryData<Character>(['character', id], c => c ? { ...c, classes: newClasses, level: totalLevel } : c)
     qc.invalidateQueries({ queryKey: ['character', id] })
     setShowAddClassModal(false)
-  }, [character, id, qc, updateMutation])
+  }, [character, effectiveClasses, id, qc, updateMutation])
 
   const handleRemoveClass = useCallback((idx: number) => {
-    if (!character?.classes || character.classes.length <= 1) return
-    const newClasses = character.classes.filter((_, i) => i !== idx)
+    if (effectiveClasses.length <= 1) return
+    const newClasses = effectiveClasses.filter((_, i) => i !== idx)
     const totalLevel = newClasses.reduce((s, e) => s + e.level, 0)
     const req: UpdateCharacterRequest = { classes: newClasses, level: totalLevel }
     // When back to single-class, sync primary fields
@@ -1186,7 +1198,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     updateMutation.mutate(req)
     qc.setQueryData<Character>(['character', id], c => c ? { ...c, ...req } : c)
     qc.invalidateQueries({ queryKey: ['character', id] })
-  }, [character, id, qc, updateMutation])
+  }, [effectiveClasses, id, qc, updateMutation])
 
   const renderSection = (sectionId: StatsSectionId): React.ReactNode => {
     switch (sectionId) {
@@ -1248,7 +1260,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                         </button>
                       )}
                     </div>
-                    {character.classes!.map((entry, idx) => {
+                    {effectiveClasses.map((entry, idx) => {
                       const subclassOpts = SUBCLASSES[entry.characterClass] ?? []
                       return (
                         <div key={entry.characterClass} className="flex gap-1.5 items-center bg-gray-800/60 rounded-lg px-2 py-1.5">
@@ -1273,7 +1285,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                               <option key={s} value={s}>{formatSubclass(s, entry.characterClass)}</option>
                             ))}
                           </select>
-                          {character.classes!.length > 1 && (
+                          {effectiveClasses.length > 1 && (
                             <button
                               className="text-gray-500 hover:text-red-400 transition-colors flex-shrink-0 text-sm leading-none"
                               onClick={() => handleRemoveClass(idx)}
@@ -1388,7 +1400,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
             {/* Add Class modal */}
             {showAddClassModal && (
               <AddClassModal
-                existingClasses={character.classes ?? [{ characterClass: character.characterClass, subclass: character.subclass, level: character.level, cantripsKnown: 0 }]}
+                existingClasses={effectiveClasses}
                 abilityScores={character.abilityScores}
                 gameType={character.gameType}
                 onConfirm={handleAddClass}
@@ -1720,9 +1732,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
           : <p className="px-4 pb-4 pt-2 text-xs text-gray-500">No class resources.</p>
 
       case 'class-features': {
-        const hasDruid = character.classes && character.classes.length > 0
-          ? character.classes.some(c => resolveClassName(c.characterClass) === 'druid')
-          : resolveClassName(character.characterClass) === 'druid'
+        const hasDruid = effectiveClasses.some(c => resolveClassName(c.characterClass) === 'druid')
         if (!hasDruid) return null
         return (
           <ClassFeaturesSection

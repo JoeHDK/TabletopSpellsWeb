@@ -5,6 +5,7 @@ import { spellsApi, preparedSpellsApi, spellsPerDayApi, spellLogsApi } from '../
 import { charactersApi } from '../api/characters'
 import type { Spell, Character, SpellsPerDay, PreparedSpell } from '../types'
 import SpellDetailModal from '../components/SpellDetailModal'
+import LevelUpBanner from '../components/LevelUpBanner'
 import { getLevelForClass, parseFirstLevel, resolveClassName, isPreparingCaster } from '../utils/spellUtils'
 
 export default function SpellListPage({ embedded }: { embedded?: boolean } = {}) {
@@ -141,6 +142,7 @@ function ArcaneSpellList({ characterId, character, embedded }: { characterId: st
           {canPrepare && <span className="text-sm text-amber-400">{preparedCount}/{maxPrepared} prepared</span>}
         </header>
       )}
+      <LevelUpBanner />
 
       <div className="p-4">
         <input
@@ -467,6 +469,7 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
           <span className="text-sm text-amber-400">{preparedCount}/{maxPrepared} prepared</span>
         </header>
       )}
+      <LevelUpBanner />
 
       <div className="p-4 space-y-3">
         <input
