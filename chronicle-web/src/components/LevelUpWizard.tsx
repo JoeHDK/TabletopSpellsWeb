@@ -12,7 +12,15 @@ import {
   HIT_DIE, ASI_LEVELS, SUBCLASS_LEVEL, PREPARED_CASTERS, KNOWN_CASTERS,
   getCantripCount, getSpellsKnown, computeMulticlassSpellSlots, MAX_SPELL_LEVEL_TABLE,
   getClassResourceGains,
+  checkMulticlassPrereqs, unmetPrereqsText,
+  MULTICLASS_SAVING_THROWS, MULTICLASS_SKILL_PICKS, CLASS_SKILL_LIST, ALL_DND5E_SKILLS,
 } from '../utils/multiclassTables'
+
+const DND5E_CLASSES: CharacterClass[] = [
+  'Artificer', 'Barbarian', 'Bard', 'Cleric', 'Druid',
+  'Fighter', 'Monk', 'Paladin', 'Ranger', 'Rogue',
+  'Sorcerer', 'Warlock', 'Wizard',
+]
 
 const SUBCLASSES: Record<string, string[]> = {
   Barbarian: ['BarbarianPathOfTheBerserker','BarbarianPathOfTheTotemWarrior','BarbarianPathOfTheWildMagic','BarbarianPathOfTheZealot','BarbarianPathOfTheAncestralGuardian','BarbarianPathOfTheRune','BarbarianPathOfTheBeast','BarbarianPathOfTheWildHunt'],
@@ -55,6 +63,8 @@ interface LevelDownSnapshot {
 
 type WizardStepId =
   | 'choose-class'
+  | 'pick-new-class'
+  | 'new-class-proficiencies'
   | 'gain-hp'
   | 'class-resources-info'
   | 'spell-slots-info'
@@ -65,6 +75,7 @@ type WizardStepId =
   | 'summary'
 
 interface WizardState {
+  mode: 'level-up' | 'add-class'
   targetClassIdx: number
   targetClass: CharacterClass
   newClassLevel: number
@@ -86,15 +97,21 @@ interface WizardState {
   pickedSubclass: string | null
   // New spell slots (computed)
   newMaxSpellsPerDay: Record<number, number>
+  // Add-class mode
+  gainedSavingThrows: string[]
+  gainedSkills: string[]
+  prereqsMet: boolean
+  prereqConfirmed: boolean
 }
 
 interface Props {
   character: Character
   characterId: string
+  initialMode?: 'level-up' | 'add-class'
   onClose: () => void
 }
 
-export default function LevelUpWizard({ character, characterId, onClose }: Props) {
+export default function LevelUpWizard({ character, characterId, initialMode, onClose }: Props) {
   const qc = useQueryClient()
 
   // Determine starting class choices
@@ -105,9 +122,14 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
 
   // ── Wizard state ──────────────────────────────────────────────────
   const [step, setStep] = useState<WizardStepId>(
-    effectiveClasses.length > 1 ? 'choose-class' : 'gain-hp'
+    initialMode === 'add-class' ? 'pick-new-class' : 'choose-class'
   )
   const [state, setState] = useState<WizardState>(() => {
+    if (initialMode === 'add-class') {
+      const available = DND5E_CLASSES.filter(c => !effectiveClasses.find(e => e.characterClass === c))
+      const firstAvailable = available[0] ?? 'Fighter'
+      return buildAddClassState(firstAvailable, character, effectiveClasses)
+    }
     const cls = effectiveClasses[0]
     const newClassLevel = cls.level + 1
     const newTotalLevel = character.level + 1
@@ -178,9 +200,51 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
         prevAbilityScores: character.abilityScores,
         addedSpellIds: state.pickedSpells,
         addedCantripIds: state.pickedCantrips,
-        addedFeatId: null, // filled below
+        addedFeatId: null,
       }
 
+      if (state.mode === 'add-class') {
+        // ── Add New Class path ──────────────────────────────────────
+        const newEntry: CharacterClassEntry = {
+          characterClass: state.targetClass,
+          subclass: 'None',
+          level: 1,
+          cantripsKnown: getCantripCount(state.targetClass, 1),
+        }
+        const newClasses = [...effectiveClasses, newEntry]
+
+        const charReq: UpdateCharacterRequest = {
+          level: state.newTotalLevel,
+          maxHp: character.maxHp + state.hpGained,
+          classes: newClasses,
+          maxSpellsPerDay: state.newMaxSpellsPerDay,
+          lastLevelUpSnapshot: JSON.stringify(snapshot),
+        }
+        if (state.gainedSavingThrows.length > 0) {
+          const current = character.savingThrowProficiencies ?? []
+          charReq.savingThrowProficiencies = [...new Set([...current, ...state.gainedSavingThrows])]
+        }
+        if (state.gainedSkills.length > 0) {
+          const current = character.skillProficiencies ?? []
+          charReq.skillProficiencies = [...new Set([...current, ...state.gainedSkills])]
+        }
+
+        const allSpellPicks = [...state.pickedSpells, ...state.pickedCantrips]
+        for (const spellId of allSpellPicks) {
+          const spell = allSpells.find(s => (s.id ?? s.name) === spellId)
+          const isCantrip = spell?.spell_level === '0' || spell?.spell_level === 'Cantrip'
+          await preparedSpellsApi.upsert(characterId, spellId, {
+            spellId, isPrepared: isCantrip, isAlwaysPrepared: false, isFavorite: false, isDomainSpell: false,
+          })
+        }
+        if (allSpellPicks.length > 0) qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
+
+        await updateMutation.mutateAsync(charReq)
+        onClose()
+        return
+      }
+
+      // ── Level-Up path ───────────────────────────────────────────
       // Build updated classes array
       const newClasses = effectiveClasses.map((e, i) =>
         i === state.targetClassIdx
@@ -290,6 +354,7 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
 
   // ── Render ───────────────────────────────────────────────────────
   const canProceed = useMemo(() => canGoNext(step, state, asiOrFeatChoice), [step, state, asiOrFeatChoice])
+  const isAddClass = state.mode === 'add-class'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -297,7 +362,9 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
         {/* Header */}
         <div className="px-6 pt-5 pb-3 border-b border-gray-800 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-white">Level Up ▲</h2>
+            <h2 className="text-lg font-bold text-white">
+              {isAddClass ? 'Add Class ✦' : 'Level Up ▲'}
+            </h2>
             <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-xl leading-none">×</button>
           </div>
           {/* Progress bar */}
@@ -318,13 +385,45 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
           {step === 'choose-class' && (
             <ChooseClassStep
               effectiveClasses={effectiveClasses}
-              selectedIdx={state.targetClassIdx}
+              selectedIdx={isAddClass ? -1 : state.targetClassIdx}
               onSelect={idx => {
                 const cls = effectiveClasses[idx]
                 const newClassLevel = cls.level + 1
                 const newTotalLevel = character.level + 1
                 setState(buildInitialState(idx, cls, newClassLevel, newTotalLevel, character, effectiveClasses))
               }}
+              onAddClass={() => {
+                const available = DND5E_CLASSES.filter(c => !effectiveClasses.find(e => e.characterClass === c))
+                const firstAvailable = available[0] ?? 'Fighter'
+                setState(buildAddClassState(firstAvailable, character, effectiveClasses))
+              }}
+            />
+          )}
+
+          {step === 'pick-new-class' && (
+            <PickNewClassStep
+              existingClasses={effectiveClasses}
+              abilityScores={character.abilityScores}
+              gameType={character.gameType}
+              selectedClass={state.targetClass}
+              prereqConfirmed={state.prereqConfirmed}
+              onSelectClass={cls => {
+                const newState = buildAddClassState(cls, character, effectiveClasses)
+                setState(newState)
+              }}
+              onPrereqConfirm={() => setState(s => ({ ...s, prereqConfirmed: true }))}
+            />
+          )}
+
+          {step === 'new-class-proficiencies' && (
+            <NewClassProficienciesStep
+              newClass={state.targetClass}
+              existingSavingThrows={character.savingThrowProficiencies ?? []}
+              existingSkillProficiencies={character.skillProficiencies ?? []}
+              gainedSavingThrows={state.gainedSavingThrows}
+              gainedSkills={state.gainedSkills}
+              onSavingThrowChange={saves => setState(s => ({ ...s, gainedSavingThrows: saves }))}
+              onSkillsChange={skills => setState(s => ({ ...s, gainedSkills: skills }))}
             />
           )}
 
@@ -340,7 +439,7 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
           {step === 'class-resources-info' && (
             <ClassResourcesInfoStep
               targetClass={state.targetClass}
-              fromLevel={effectiveClasses[state.targetClassIdx].level}
+              fromLevel={isAddClass ? 0 : effectiveClasses[state.targetClassIdx]?.level ?? 0}
               toLevel={state.newClassLevel}
             />
           )}
@@ -348,7 +447,7 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
           {step === 'spell-slots-info' && (
             <SpellSlotsInfoStep
               targetClass={state.targetClass}
-              prevLevel={effectiveClasses[state.targetClassIdx].level}
+              prevLevel={isAddClass ? 0 : effectiveClasses[state.targetClassIdx]?.level ?? 0}
               newLevel={state.newClassLevel}
               prevSlots={character.maxSpellsPerDay}
               newSlots={state.newMaxSpellsPerDay ?? character.maxSpellsPerDay}
@@ -482,7 +581,7 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
                 onClick={handleConfirm}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Confirming…' : 'Confirm Level Up ▲'}
+                {isSubmitting ? 'Confirming…' : isAddClass ? 'Confirm Add Class ✦' : 'Confirm Level Up ▲'}
               </button>
             ) : (
               <button
@@ -586,6 +685,7 @@ function buildInitialState(
   }
 
   return {
+    mode: 'level-up',
     targetClassIdx: idx,
     targetClass: cls.characterClass,
     newClassLevel,
@@ -602,17 +702,92 @@ function buildInitialState(
     pickedFeatId: null,
     pickedSubclass: null,
     newMaxSpellsPerDay: mergedSlots,
+    gainedSavingThrows: [],
+    gainedSkills: [],
+    prereqsMet: true,
+    prereqConfirmed: false,
+  }
+}
+
+function buildAddClassState(
+  newCls: CharacterClass,
+  character: Character,
+  effectiveClasses: CharacterClassEntry[],
+): WizardState {
+  const newEntry: CharacterClassEntry = { characterClass: newCls, subclass: 'None', level: 1, cantripsKnown: 0 }
+  const updatedClasses = [...effectiveClasses, newEntry]
+  const newTotalLevel = character.level + 1
+
+  // Recompute combined spell slots with new class at level 1
+  const result = computeMulticlassSpellSlots(updatedClasses)
+  const mergedSlots: Record<number, number> = { ...result.shared }
+  if (result.pact) mergedSlots[result.pact.level] = (mergedSlots[result.pact.level] ?? 0) + result.pact.count
+
+  const die = HIT_DIE[newCls] ?? 8
+  const conMod = getConMod(character.abilityScores['Constitution'] ?? 10)
+  const avgHp = Math.floor(die / 2) + 1 + conMod
+
+  const newCantrips = getCantripCount(newCls, 1)
+
+  let spellDiff = 0
+  if (KNOWN_CASTERS.has(newCls)) {
+    spellDiff = getSpellsKnown(newCls, 1) ?? 0
+  }
+
+  const prereqsMet = checkMulticlassPrereqs(newCls, character.abilityScores)
+
+  return {
+    mode: 'add-class',
+    targetClassIdx: effectiveClasses.length,
+    targetClass: newCls,
+    newClassLevel: 1,
+    newTotalLevel,
+    hpGained: avgHp,
+    pickedSpells: [],
+    pickedCantrips: [],
+    requiredSpellPicks: spellDiff,
+    requiredCantripPicks: newCantrips,
+    asiOrFeat: null,
+    asiChoices: {},
+    asiPointsLeft: 2,
+    pickedFeat: null,
+    pickedFeatId: null,
+    pickedSubclass: null,
+    newMaxSpellsPerDay: mergedSlots,
+    gainedSavingThrows: [],
+    gainedSkills: [],
+    prereqsMet,
+    prereqConfirmed: false,
   }
 }
 
 function computeSteps(state: WizardState, _character: Character, effectiveClasses: CharacterClassEntry[]): WizardStepId[] {
   const steps: WizardStepId[] = []
-  const cls = effectiveClasses[state.targetClassIdx]
 
-  if (effectiveClasses.length > 1) steps.push('choose-class')
+  // Always show choose-class first so users can pick level-up or add-class
+  steps.push('choose-class')
+
+  if (state.mode === 'add-class') {
+    steps.push('pick-new-class')
+    steps.push('new-class-proficiencies')
+    steps.push('gain-hp')
+
+    const resourceGains = getClassResourceGains(state.targetClass, 0, 1)
+    if (resourceGains.length > 0) steps.push('class-resources-info')
+
+    const isCaster = PREPARED_CASTERS.has(state.targetClass) || KNOWN_CASTERS.has(state.targetClass)
+    if (isCaster) steps.push('spell-slots-info')
+    if (state.requiredCantripPicks > 0) steps.push('pick-cantrips')
+    if (state.requiredSpellPicks > 0) steps.push('pick-spells')
+
+    steps.push('summary')
+    return steps
+  }
+
+  // Level-up mode
+  const cls = effectiveClasses[state.targetClassIdx]
   steps.push('gain-hp')
 
-  // Class resources: show if any new or upgraded resources at this level
   const resourceGains = getClassResourceGains(state.targetClass, effectiveClasses[state.targetClassIdx].level, state.newClassLevel)
   if (resourceGains.length > 0) steps.push('class-resources-info')
 
@@ -626,13 +801,11 @@ function computeSteps(state: WizardState, _character: Character, effectiveClasse
   if (state.requiredCantripPicks > 0) steps.push('pick-cantrips')
   if (state.requiredSpellPicks > 0) steps.push('pick-spells')
 
-  // Subclass: only if current subclass is None and hitting the subclass level
   const currentSubclass = cls.subclass
   if (currentSubclass === 'None' && state.newClassLevel === SUBCLASS_LEVEL[state.targetClass]) {
     steps.push('subclass')
   }
 
-  // ASI: check if newClassLevel is an ASI level
   const asiLevelsForClass = ASI_LEVELS[state.targetClass] ?? []
   if (asiLevelsForClass.includes(state.newClassLevel)) steps.push('asi-or-feat')
 
@@ -641,6 +814,13 @@ function computeSteps(state: WizardState, _character: Character, effectiveClasse
 }
 
 function canGoNext(step: WizardStepId, state: WizardState, asiOrFeatChoice: 'asi' | 'feat' | null): boolean {
+  if (step === 'choose-class') return true
+  if (step === 'pick-new-class') return state.prereqsMet || state.prereqConfirmed
+  if (step === 'new-class-proficiencies') {
+    const skillConfig = MULTICLASS_SKILL_PICKS[state.targetClass]
+    const required = skillConfig?.count ?? 0
+    return state.gainedSkills.length >= required
+  }
   if (step === 'gain-hp') return state.hpGained > 0
   if (step === 'pick-cantrips') return state.pickedCantrips.length >= state.requiredCantripPicks
   if (step === 'pick-spells') return state.pickedSpells.length >= state.requiredSpellPicks
@@ -655,11 +835,13 @@ function canGoNext(step: WizardStepId, state: WizardState, asiOrFeatChoice: 'asi
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function ChooseClassStep({ effectiveClasses, selectedIdx, onSelect }: {
+function ChooseClassStep({ effectiveClasses, selectedIdx, onSelect, onAddClass }: {
   effectiveClasses: CharacterClassEntry[]
   selectedIdx: number
   onSelect: (idx: number) => void
+  onAddClass: () => void
 }) {
+  const canAddMore = effectiveClasses.length < DND5E_CLASSES.length
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-300">Which class gains a level?</p>
@@ -675,6 +857,177 @@ function ChooseClassStep({ effectiveClasses, selectedIdx, onSelect }: {
           <span className="text-gray-400">Level {e.level} → {e.level + 1}</span>
         </button>
       ))}
+      {canAddMore && (
+        <button
+          className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed text-sm transition-colors ${
+            selectedIdx === -1 ? 'border-indigo-500 bg-indigo-900/30 text-indigo-300' : 'border-indigo-700/60 text-indigo-400 hover:border-indigo-500 hover:bg-indigo-900/20'
+          }`}
+          onClick={onAddClass}
+        >
+          ✦ Add New Class
+        </button>
+      )}
+    </div>
+  )
+}
+
+function PickNewClassStep({ existingClasses, abilityScores, gameType, selectedClass, prereqConfirmed, onSelectClass, onPrereqConfirm }: {
+  existingClasses: CharacterClassEntry[]
+  abilityScores: Record<string, number>
+  gameType: string
+  selectedClass: CharacterClass
+  prereqConfirmed: boolean
+  onSelectClass: (cls: CharacterClass) => void
+  onPrereqConfirm: () => void
+}) {
+  const takenClasses = new Set(existingClasses.map(e => e.characterClass))
+  const available = DND5E_CLASSES.filter(c => !takenClasses.has(c))
+  const isDnd5e = gameType === 'dnd5e'
+  const prereqsMet = !isDnd5e || checkMulticlassPrereqs(selectedClass, abilityScores)
+  const prereqText = isDnd5e ? unmetPrereqsText(selectedClass, abilityScores) : ''
+  const showWarning = isDnd5e && !prereqsMet
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-white">Add New Class</h3>
+        <p className="text-xs text-gray-400 mt-1">Select the class you are multiclassing into at level 1.</p>
+      </div>
+      <div>
+        <label className="text-xs text-gray-400 mb-1 block">Class</label>
+        <select
+          className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+          value={selectedClass}
+          onChange={e => onSelectClass(e.target.value as CharacterClass)}
+        >
+          {available.map(cls => <option key={cls} value={cls}>{cls}</option>)}
+        </select>
+      </div>
+
+      {showWarning && (
+        <div className="bg-yellow-900/40 border border-yellow-600/50 rounded-lg px-3 py-2 space-y-2">
+          <p className="text-xs text-yellow-300">⚠️ {selectedClass} requires {prereqText}.</p>
+          <label className="flex items-center gap-2 text-xs text-yellow-200 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={prereqConfirmed}
+              onChange={e => { if (e.target.checked) onPrereqConfirm() }}
+              className="rounded accent-yellow-500"
+            />
+            I understand and want to proceed anyway
+          </label>
+        </div>
+      )}
+
+      {available.length === 0 && (
+        <p className="text-xs text-gray-500">All classes are already assigned to this character.</p>
+      )}
+    </div>
+  )
+}
+
+function NewClassProficienciesStep({ newClass, existingSavingThrows, existingSkillProficiencies, gainedSavingThrows, gainedSkills, onSavingThrowChange, onSkillsChange }: {
+  newClass: CharacterClass
+  existingSavingThrows: string[]
+  existingSkillProficiencies: string[]
+  gainedSavingThrows: string[]
+  gainedSkills: string[]
+  onSavingThrowChange: (saves: string[]) => void
+  onSkillsChange: (skills: string[]) => void
+}) {
+  const grantedSaves = MULTICLASS_SAVING_THROWS[newClass] ?? []
+  const skillConfig = MULTICLASS_SKILL_PICKS[newClass]
+  const skillPool = skillConfig?.anySkill ? ALL_DND5E_SKILLS : (CLASS_SKILL_LIST[newClass] ?? [])
+  const availableSkills = skillPool.filter(s => !existingSkillProficiencies.includes(s))
+  const requiredSkills = skillConfig?.count ?? 0
+  const hasSaves = grantedSaves.length > 0
+  const hasSkills = requiredSkills > 0
+
+  const toggleSave = (save: string, checked: boolean) => {
+    if (checked) onSavingThrowChange([...gainedSavingThrows, save])
+    else onSavingThrowChange(gainedSavingThrows.filter(s => s !== save))
+  }
+
+  const toggleSkill = (skill: string) => {
+    if (gainedSkills.includes(skill)) {
+      onSkillsChange(gainedSkills.filter(s => s !== skill))
+    } else if (gainedSkills.length < requiredSkills) {
+      onSkillsChange([...gainedSkills, skill])
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-white">Proficiencies Gained</h3>
+        <p className="text-xs text-gray-400 mt-1">
+          When multiclassing into <span className="text-indigo-300 font-medium">{newClass}</span>, you gain these proficiencies.
+        </p>
+      </div>
+
+      {hasSaves && (
+        <div>
+          <p className="text-xs font-semibold text-gray-300 mb-2">Saving Throws</p>
+          <div className="space-y-1">
+            {grantedSaves.map(save => {
+              const alreadyHave = existingSavingThrows.includes(save)
+              return (
+                <label key={save} className={`flex items-center gap-2 text-sm cursor-pointer ${alreadyHave ? 'opacity-50' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={alreadyHave || gainedSavingThrows.includes(save)}
+                    disabled={alreadyHave}
+                    onChange={e => !alreadyHave && toggleSave(save, e.target.checked)}
+                    className="rounded accent-indigo-500"
+                  />
+                  <span className={alreadyHave ? 'text-gray-500 line-through' : 'text-white'}>{save}</span>
+                  {alreadyHave && <span className="text-xs text-gray-500">(already proficient)</span>}
+                </label>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {hasSkills && (
+        <div>
+          <p className="text-xs font-semibold text-gray-300 mb-1">
+            Skills — pick {requiredSkills}
+            {skillConfig?.anySkill ? ' (any skill)' : ` from ${newClass} list`}
+          </p>
+          <p className="text-xs text-indigo-300 mb-2">{gainedSkills.length}/{requiredSkills} chosen</p>
+          {availableSkills.length === 0 ? (
+            <p className="text-xs text-gray-500 bg-gray-800 rounded-lg px-3 py-2">
+              You are already proficient in all available skills for this class.
+            </p>
+          ) : (
+            <div className="space-y-1 max-h-44 overflow-y-auto">
+              {availableSkills.map(skill => {
+                const selected = gainedSkills.includes(skill)
+                const disabled = !selected && gainedSkills.length >= requiredSkills
+                return (
+                  <button
+                    key={skill}
+                    disabled={disabled}
+                    onClick={() => toggleSkill(skill)}
+                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs border transition-colors ${
+                      selected ? 'bg-indigo-700/40 border-indigo-500 text-white' : disabled ? 'bg-gray-800/50 border-gray-700 text-gray-600 cursor-not-allowed' : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500'
+                    }`}
+                  >
+                    {skill}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!hasSaves && !hasSkills && (
+        <div className="bg-gray-800 rounded-lg px-3 py-2 text-xs text-gray-400">
+          {newClass} grants no additional proficiencies when multiclassed into.
+        </div>
+      )}
     </div>
   )
 }
@@ -997,6 +1350,31 @@ function SummaryStep({ state, character, allSpells, allFeats, effectiveClasses }
   const resolvedSpells = state.pickedSpells.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id)
   const resolvedCantrips = state.pickedCantrips.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id)
   const featName = state.pickedFeat?.name ?? (state.pickedFeatId ? allFeats.find(f => f.index === state.pickedFeatId)?.name : null)
+
+  if (state.mode === 'add-class') {
+    const resourceGains = getClassResourceGains(state.targetClass, 0, 1)
+    const savesText = state.gainedSavingThrows.length > 0 ? state.gainedSavingThrows.join(', ') : 'None'
+    const skillsText = state.gainedSkills.length > 0 ? state.gainedSkills.join(', ') : 'None'
+    return (
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-white">Summary</h3>
+        <p className="text-xs text-gray-400">Review your choices before confirming.</p>
+        <div className="space-y-2 text-sm">
+          <SummaryRow label="New Class" value={`${state.targetClass} (Level 1)`} highlight />
+          <SummaryRow label="Total Level" value={`${character.level} → ${state.newTotalLevel}`} />
+          <SummaryRow label="Max HP" value={`${character.maxHp} → ${character.maxHp + state.hpGained} (+${state.hpGained})`} highlight />
+          <SummaryRow label="Saving Throws" value={savesText} />
+          <SummaryRow label="Skills" value={skillsText} />
+          {resourceGains.length > 0 && (
+            <SummaryRow label="Class Resources" value={resourceGains.map(g => `★ ${g.name}`).join(', ')} highlight />
+          )}
+          {resolvedCantrips.length > 0 && <SummaryRow label="New Cantrips" value={resolvedCantrips.join(', ')} />}
+          {resolvedSpells.length > 0 && <SummaryRow label="New Spells" value={resolvedSpells.join(', ')} />}
+        </div>
+      </div>
+    )
+  }
+
   const resourceGains = getClassResourceGains(state.targetClass, effectiveClasses[state.targetClassIdx].level, state.newClassLevel)
 
   return (

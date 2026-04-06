@@ -13,7 +13,6 @@ import { spellsPerDayApi } from '../api/spells'
 import { racesApi } from '../api/races'
 import { backgroundsApi } from '../api/backgrounds'
 import EditableNumber from '../components/EditableNumber'
-import AddClassModal from '../components/AddClassModal'
 import LevelUpWizard from '../components/LevelUpWizard'
 import { useLevelUpStore } from '../stores/levelUpStore'
 // resizeImage import removed — avatar now goes through AvatarCropModal canvas pipeline
@@ -804,9 +803,9 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   const [editingConcentration, setEditingConcentration] = useState(false)
   const [concentrationInput, setConcentrationInput] = useState('')
   const [pendingCropSrc, setPendingCropSrc] = useState<string | null>(null)
-  const [showAddClassModal, setShowAddClassModal] = useState(false)
   const levelUpActive = useLevelUpStore(s => s.isActive)
   const [showLevelUpWizard, setShowLevelUpWizard] = useState(false)
+  const [levelUpWizardMode, setLevelUpWizardMode] = useState<'level-up' | 'add-class'>('level-up')
 
   // Auto-reopen wizard when returning to StatsPage with an in-progress level-up
   useEffect(() => {
@@ -1002,37 +1001,6 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     updateMutation.mutate(req)
     qc.setQueryData<Character>(['character', id], c => c ? { ...c, classes: updated, level: totalLevel, ...(req.characterClass ? { characterClass: req.characterClass } : {}), ...(req.subclass !== undefined ? { subclass: req.subclass } : {}) } : c)
     qc.invalidateQueries({ queryKey: ['character', id] })
-  }, [character, effectiveClasses, id, qc, updateMutation])
-
-  const handleAddClass = useCallback((
-    entry: CharacterClassEntry,
-    gainedSaves: string[],
-    gainedSkills: string[],
-  ) => {
-    if (!character) return
-    const newClasses = [...effectiveClasses, entry]
-    const totalLevel = newClasses.reduce((s, e) => s + e.level, 0)
-    const req: UpdateCharacterRequest = { classes: newClasses, level: totalLevel }
-    // Merge gained saving throws (de-duplicate)
-    if (gainedSaves.length > 0) {
-      const current = character.savingThrowProficiencies ?? []
-      req.savingThrowProficiencies = [...new Set([...current, ...gainedSaves])]
-    }
-    // Merge gained skill proficiencies (de-duplicate)
-    if (gainedSkills.length > 0) {
-      const current = character.skillProficiencies ?? []
-      req.skillProficiencies = [...new Set([...current, ...gainedSkills])]
-    }
-    updateMutation.mutate(req)
-    qc.setQueryData<Character>(['character', id], c => c ? {
-      ...c,
-      classes: newClasses,
-      level: totalLevel,
-      ...(req.savingThrowProficiencies ? { savingThrowProficiencies: req.savingThrowProficiencies } : {}),
-      ...(req.skillProficiencies ? { skillProficiencies: req.skillProficiencies } : {}),
-    } : c)
-    qc.invalidateQueries({ queryKey: ['character', id] })
-    setShowAddClassModal(false)
   }, [character, effectiveClasses, id, qc, updateMutation])
 
   const handleRemoveClass = useCallback((idx: number) => {
@@ -1281,7 +1249,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                       {character.gameType === 'dnd5e' && (
                         <button
                           className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
-                          onClick={() => setShowAddClassModal(true)}
+                          onClick={() => { setLevelUpWizardMode('add-class'); setShowLevelUpWizard(true) }}
                         >
                           + Add Class
                         </button>
@@ -1365,7 +1333,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                     {character.gameType === 'dnd5e' && (
                       <button
                         className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-medium"
-                        onClick={() => setShowAddClassModal(true)}
+                        onClick={() => { setLevelUpWizardMode('add-class'); setShowLevelUpWizard(true) }}
                       >
                         + Add Class
                       </button>
@@ -1385,7 +1353,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
                 {character.gameType === 'dnd5e' && (
                   <button
                     className="w-full mt-1 py-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl text-sm font-medium transition-colors"
-                    onClick={() => setShowLevelUpWizard(true)}
+                    onClick={() => { setLevelUpWizardMode('level-up'); setShowLevelUpWizard(true) }}
                   >
                     ▲ Level Up
                   </button>
@@ -1424,25 +1392,13 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
               />
             )}
 
-            {/* Add Class modal */}
-            {showAddClassModal && (
-              <AddClassModal
-                existingClasses={effectiveClasses}
-                abilityScores={character.abilityScores}
-                existingSavingThrows={character.savingThrowProficiencies ?? []}
-                existingSkillProficiencies={d.skillProficiencies}
-                gameType={character.gameType}
-                onConfirm={handleAddClass}
-                onCancel={() => setShowAddClassModal(false)}
-              />
-            )}
-
-            {/* Level Up Wizard */}
+            {/* Level Up Wizard (handles both level-up and add-class) */}
             {showLevelUpWizard && (
               <LevelUpWizard
                 character={character}
                 characterId={character.id}
-                onClose={() => setShowLevelUpWizard(false)}
+                initialMode={levelUpWizardMode}
+                onClose={() => { setShowLevelUpWizard(false); setLevelUpWizardMode('level-up') }}
               />
             )}
           </div>
