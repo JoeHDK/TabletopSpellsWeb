@@ -1723,7 +1723,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
               classResources={classResources}
               equipmentResources={equipmentResources}
               classFeatures={allClassFeatures}
-              characterLevel={d.level}}
+              characterLevel={d.level}
               resourcePending={resourceMutation.isPending}
               onEquipResAction={(args) => equipResMutation.mutate(args)}
               equipResPending={equipResMutation.isPending}
