@@ -12,6 +12,7 @@ import fs from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const TOKEN_FILE = path.join(__dirname, '.auth', 'token.json')
+const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173'
 
 function readAuthData(): { token: string } {
   try {
@@ -30,7 +31,7 @@ export const test = base.extend<Fixtures>({
   authedRequest: async ({ playwright }, use) => {
     const { token } = readAuthData()
     const ctx = await playwright.request.newContext({
-      baseURL: 'http://localhost:5173',
+      baseURL: BASE_URL,
       extraHTTPHeaders: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',

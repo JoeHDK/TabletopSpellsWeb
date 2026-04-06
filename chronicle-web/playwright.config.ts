@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173'
+const isRemote = BASE_URL !== 'http://localhost:5173'
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -7,12 +10,12 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: 'list',
-  timeout: 30_000,
+  timeout: 45_000,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    ignoreHTTPSErrors: true, // API proxy uses self-signed cert
+    ignoreHTTPSErrors: true,
   },
   projects: [
     {
@@ -28,10 +31,12 @@ export default defineConfig({
       dependencies: ['setup'],
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
-    timeout: 30_000,
-  },
+  ...(isRemote ? {} : {
+    webServer: {
+      command: 'npm run dev',
+      url: 'http://localhost:5173',
+      reuseExistingServer: true,
+      timeout: 30_000,
+    },
+  }),
 })

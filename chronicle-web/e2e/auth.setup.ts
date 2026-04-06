@@ -17,6 +17,7 @@ const TOKEN_FILE = path.join(__dirname, '.auth', 'token.json')
 
 const TEST_USERNAME = process.env.TEST_USERNAME ?? 'chronicle-e2e-tester'
 const TEST_PASSWORD = process.env.TEST_PASSWORD ?? 'TestPass123!'
+const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173'
 
 setup('authenticate', async ({ request }) => {
   // Try login first (user may already exist from a previous run)
@@ -53,7 +54,7 @@ setup('authenticate', async ({ request }) => {
     cookies: [],
     origins: [
       {
-        origin: 'http://localhost:5173',
+        origin: BASE_URL,
         localStorage: [
           {
             name: 'auth',
