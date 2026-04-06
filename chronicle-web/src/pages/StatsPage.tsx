@@ -780,11 +780,13 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
       .catch(() => {/* endpoint not yet available */})
   }, [id, character?.characterClass, character?.level]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { data: equipmentResources = [] } = useQuery<EquipmentResource[]>({
+  const { data: equipmentResourcesRaw } = useQuery<EquipmentResource[]>({
     queryKey: ['equipment-resources', id],
     queryFn: () => equipmentResourcesApi.getAll(id!),
     enabled: !!id,
+    retry: false,
   })
+  const equipmentResources: EquipmentResource[] = Array.isArray(equipmentResourcesRaw) ? equipmentResourcesRaw : []
 
   const equipResMutation = useMutation({
     mutationFn: async ({ action, usageId }: { action: 'use' | 'restore' | 'rest-short' | 'rest-long', usageId?: string }) => {
@@ -964,6 +966,69 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [character?.id])
 
+  // ── Callbacks that must be declared before any early return ──────────────
+  // (React requires hooks to be called in the same order every render)
+
+  const save = useCallback(async (pendingDraft: NonNullable<typeof draft>) => {
+    if (!character) return
+    const { currentHp, maxHp, ...charUpdate } = pendingDraft
+    const tasks: Promise<unknown>[] = []
+    if (Object.keys(charUpdate).length > 0) tasks.push(updateMutation.mutateAsync(charUpdate))
+    if (currentHp !== undefined || maxHp !== undefined) {
+      tasks.push(hpMutation.mutateAsync({
+        currentHp: currentHp ?? character.currentHp,
+        maxHp: maxHp ?? character.maxHp,
+      }))
+    }
+    try {
+      await Promise.all(tasks)
+      setDraft(null)
+      setEditingName(false)
+    } catch {
+      // Errors surfaced via mutation.isError; draft kept so a retry is possible
+    }
+  }, [character, updateMutation, hpMutation]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateClassEntry = useCallback((idx: number, patch: Partial<CharacterClassEntry>) => {
+    if (!character) return
+    const updated = effectiveClasses.map((e, i) => i === idx ? { ...e, ...patch } : e)
+    const totalLevel = updated.reduce((s, e) => s + e.level, 0)
+    const req: UpdateCharacterRequest = { classes: updated, level: totalLevel }
+    // Keep primary characterClass/subclass in sync with first class entry
+    if (idx === 0) {
+      if (patch.characterClass) req.characterClass = patch.characterClass
+      if (patch.subclass !== undefined) req.subclass = patch.subclass
+    }
+    updateMutation.mutate(req)
+    qc.setQueryData<Character>(['character', id], c => c ? { ...c, classes: updated, level: totalLevel, ...(req.characterClass ? { characterClass: req.characterClass } : {}), ...(req.subclass !== undefined ? { subclass: req.subclass } : {}) } : c)
+    qc.invalidateQueries({ queryKey: ['character', id] })
+  }, [character, effectiveClasses, id, qc, updateMutation])
+
+  const handleAddClass = useCallback((entry: CharacterClassEntry) => {
+    if (!character) return
+    const newClasses = [...effectiveClasses, entry]
+    const totalLevel = newClasses.reduce((s, e) => s + e.level, 0)
+    updateMutation.mutate({ classes: newClasses, level: totalLevel })
+    qc.setQueryData<Character>(['character', id], c => c ? { ...c, classes: newClasses, level: totalLevel } : c)
+    qc.invalidateQueries({ queryKey: ['character', id] })
+    setShowAddClassModal(false)
+  }, [character, effectiveClasses, id, qc, updateMutation])
+
+  const handleRemoveClass = useCallback((idx: number) => {
+    if (effectiveClasses.length <= 1) return
+    const newClasses = effectiveClasses.filter((_, i) => i !== idx)
+    const totalLevel = newClasses.reduce((s, e) => s + e.level, 0)
+    const req: UpdateCharacterRequest = { classes: newClasses, level: totalLevel }
+    // When back to single-class, sync primary fields
+    if (newClasses.length === 1) {
+      req.characterClass = newClasses[0].characterClass
+      req.subclass = newClasses[0].subclass
+    }
+    updateMutation.mutate(req)
+    qc.setQueryData<Character>(['character', id], c => c ? { ...c, ...req } : c)
+    qc.invalidateQueries({ queryKey: ['character', id] })
+  }, [effectiveClasses, id, qc, updateMutation])
+
   if (isLoading || !character) return (
     <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">Loading…</div>
   )
@@ -1009,25 +1074,6 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   const totalScores = Object.fromEntries(ABILITY_KEYS.map(k => [k, totalAbilityScore(k)]))
 
   const acInfo = calculateAC(character.characterClass, totalScores, inventory, d.baseArmorClass, charFeats, allClassFeatures)
-
-  const save = useCallback(async (pendingDraft: NonNullable<typeof draft>) => {
-    const { currentHp, maxHp, ...charUpdate } = pendingDraft
-    const tasks: Promise<unknown>[] = []
-    if (Object.keys(charUpdate).length > 0) tasks.push(updateMutation.mutateAsync(charUpdate))
-    if (currentHp !== undefined || maxHp !== undefined) {
-      tasks.push(hpMutation.mutateAsync({
-        currentHp: currentHp ?? character.currentHp,
-        maxHp: maxHp ?? character.maxHp,
-      }))
-    }
-    try {
-      await Promise.all(tasks)
-      setDraft(null)
-      setEditingName(false)
-    } catch {
-      // Errors surfaced via mutation.isError; draft kept so a retry is possible
-    }
-  }, [character, updateMutation, hpMutation]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const patch = (fields: Partial<typeof d>) => {
     const newDraft = { ...(draft ?? {}), ...fields }
@@ -1159,46 +1205,6 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   // ── Multiclass helpers ────────────────────────────────────────────
   /** True when character has more than one class entry */
   const isMulticlass = effectiveClasses.length > 1
-
-  const updateClassEntry = useCallback((idx: number, patch: Partial<CharacterClassEntry>) => {
-    if (!character) return
-    const updated = effectiveClasses.map((e, i) => i === idx ? { ...e, ...patch } : e)
-    const totalLevel = updated.reduce((s, e) => s + e.level, 0)
-    const req: UpdateCharacterRequest = { classes: updated, level: totalLevel }
-    // Keep primary characterClass/subclass in sync with first class entry
-    if (idx === 0) {
-      if (patch.characterClass) req.characterClass = patch.characterClass
-      if (patch.subclass !== undefined) req.subclass = patch.subclass
-    }
-    updateMutation.mutate(req)
-    qc.setQueryData<Character>(['character', id], c => c ? { ...c, classes: updated, level: totalLevel, ...(req.characterClass ? { characterClass: req.characterClass } : {}), ...(req.subclass !== undefined ? { subclass: req.subclass } : {}) } : c)
-    qc.invalidateQueries({ queryKey: ['character', id] })
-  }, [character, effectiveClasses, id, qc, updateMutation])
-
-  const handleAddClass = useCallback((entry: CharacterClassEntry) => {
-    if (!character) return
-    const newClasses = [...effectiveClasses, entry]
-    const totalLevel = newClasses.reduce((s, e) => s + e.level, 0)
-    updateMutation.mutate({ classes: newClasses, level: totalLevel })
-    qc.setQueryData<Character>(['character', id], c => c ? { ...c, classes: newClasses, level: totalLevel } : c)
-    qc.invalidateQueries({ queryKey: ['character', id] })
-    setShowAddClassModal(false)
-  }, [character, effectiveClasses, id, qc, updateMutation])
-
-  const handleRemoveClass = useCallback((idx: number) => {
-    if (effectiveClasses.length <= 1) return
-    const newClasses = effectiveClasses.filter((_, i) => i !== idx)
-    const totalLevel = newClasses.reduce((s, e) => s + e.level, 0)
-    const req: UpdateCharacterRequest = { classes: newClasses, level: totalLevel }
-    // When back to single-class, sync primary fields
-    if (newClasses.length === 1) {
-      req.characterClass = newClasses[0].characterClass
-      req.subclass = newClasses[0].subclass
-    }
-    updateMutation.mutate(req)
-    qc.setQueryData<Character>(['character', id], c => c ? { ...c, ...req } : c)
-    qc.invalidateQueries({ queryKey: ['character', id] })
-  }, [effectiveClasses, id, qc, updateMutation])
 
   const renderSection = (sectionId: StatsSectionId): React.ReactNode => {
     switch (sectionId) {

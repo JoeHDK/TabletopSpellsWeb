@@ -31,9 +31,9 @@ export default defineConfig({
   server: {
     host: true, // bind to 0.0.0.0 so other devices on the network can connect
     proxy: {
-      '/api': { target: 'https://localhost', changeOrigin: true, secure: false },
+      '/api': { target: 'http://localhost:5006', changeOrigin: true, secure: false },
       '/hubs': {
-        target: 'https://localhost',
+        target: 'http://localhost:5006',
         changeOrigin: true,
         secure: false,
         ws: true, // proxy WebSocket upgrades for SignalR

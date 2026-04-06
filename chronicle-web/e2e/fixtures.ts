@@ -1,7 +1,9 @@
 /**
- * Custom Playwright fixtures — extends the default `request` fixture to
- * automatically attach the Bearer token from the auth setup, and extends
- * `page` to inject the auth token into localStorage before each navigation.
+ * Custom Playwright fixtures — extends the `request` fixture with an
+ * authenticated API request context that sends the Bearer token.
+ *
+ * Page auth is handled by storageState (set in playwright.config.ts),
+ * which injects the JWT into localStorage before each test via auth.setup.ts.
  */
 import { test as base, APIRequestContext } from '@playwright/test'
 import path from 'path'
@@ -25,17 +27,6 @@ type Fixtures = {
 }
 
 export const test = base.extend<Fixtures>({
-  // Override page to inject localStorage auth BEFORE any page scripts run
-  page: async ({ page }, use) => {
-    const { token } = readAuthData()
-    // addInitScript runs before the page's own JS — guaranteed before Zustand hydrates
-    await page.addInitScript((t) => {
-      const authState = JSON.stringify({ state: { token: t, username: 'e2e', userId: '', isDm: false }, version: 0 })
-      localStorage.setItem('auth', authState)
-    }, token)
-    await use(page)
-  },
-
   authedRequest: async ({ playwright }, use) => {
     const { token } = readAuthData()
     const ctx = await playwright.request.newContext({
