@@ -4,6 +4,13 @@ export type CharacterClass =
   | 'Barbarian' | 'Bard' | 'Cleric' | 'Druid' | 'Fighter' | 'Monk'
   | 'Paladin' | 'Ranger' | 'Rogue' | 'Sorcerer' | 'Wizard' | 'Warlock' | 'Artificer'
 
+export interface CharacterClassEntry {
+  characterClass: CharacterClass
+  subclass: string
+  level: number
+  cantripsKnown: number
+}
+
 export interface Character {
   id: string
   name: string
@@ -55,6 +62,9 @@ export interface Character {
   hair?: string
   skin?: string
   alliesAndOrganizations?: string
+  // Multiclass support
+  classes?: CharacterClassEntry[]
+  lastLevelUpSnapshot?: string
 }
 
 export interface UpdateCharacteristicsRequest {
@@ -106,6 +116,9 @@ export interface UpdateCharacterRequest {
   deathSaveFailures?: number
   exhaustionLevel?: number
   concentrationSpell?: string
+  // Multiclass support
+  classes?: CharacterClassEntry[]
+  lastLevelUpSnapshot?: string
 }
 
 export interface CharacterTheme {

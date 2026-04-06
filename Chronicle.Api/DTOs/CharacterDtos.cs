@@ -3,6 +3,14 @@ using Chronicle.Api.Models.Enums;
 
 namespace Chronicle.Api.DTOs;
 
+public class CharacterClassEntryDto
+{
+    public Class CharacterClass { get; set; }
+    public string Subclass { get; set; } = "None";
+    public int Level { get; set; }
+    public int CantripsKnown { get; set; }
+}
+
 public class CharacterDto
 {
     public Guid Id { get; set; }
@@ -55,6 +63,9 @@ public class CharacterDto
     public string? Hair { get; set; }
     public string? Skin { get; set; }
     public string? AlliesAndOrganizations { get; set; }
+    // Multiclass support
+    public List<CharacterClassEntryDto>? Classes { get; set; }
+    public string? LastLevelUpSnapshot { get; set; }
 }
 
 public class UpdateCharacteristicsRequest
@@ -128,6 +139,9 @@ public class UpdateCharacterRequest
     public string? Race { get; set; }
     public Dictionary<string, int>? RaceChoices { get; set; }
     public Class? CharacterClass { get; set; }
+    // Multiclass support
+    public List<CharacterClassEntryDto>? Classes { get; set; }
+    public string? LastLevelUpSnapshot { get; set; }
 }
 
 public class UpdateHpRequest

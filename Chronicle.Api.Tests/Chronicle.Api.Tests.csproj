@@ -31,9 +31,6 @@
     <None Include="..\Chronicle.Api\Spells\dnd5e.json" Link="Spells\dnd5e.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\Chronicle.Api\Spells\Pathfinder1e.json" Link="Spells\Pathfinder1e.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Include="..\Chronicle.Api\WildShape\srd-beasts.json" Link="WildShape\srd-beasts.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

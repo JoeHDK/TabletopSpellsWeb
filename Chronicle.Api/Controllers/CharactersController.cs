@@ -99,6 +99,10 @@ public class CharactersController : ControllerBase
             entity.CharacterClass = req.CharacterClass.Value;
             entity.IsDivineCaster = ClassHelper.IsDivineCaster(req.CharacterClass.Value);
         }
+        if (req.Classes != null)
+            entity.MulticlassJson = req.Classes.Count > 0 ? JsonConvert.SerializeObject(req.Classes) : null;
+        if (req.LastLevelUpSnapshot != null)
+            entity.LastLevelUpSnapshot = req.LastLevelUpSnapshot == "" ? null : req.LastLevelUpSnapshot;
 
         entity.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -330,5 +334,9 @@ public class CharactersController : ControllerBase
         Hair = e.Hair,
         Skin = e.Skin,
         AlliesAndOrganizations = e.AlliesAndOrganizations,
+        Classes = e.MulticlassJson != null
+            ? JsonConvert.DeserializeObject<List<CharacterClassEntryDto>>(e.MulticlassJson)
+            : null,
+        LastLevelUpSnapshot = e.LastLevelUpSnapshot,
     };
 }

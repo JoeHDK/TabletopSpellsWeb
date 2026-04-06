@@ -46,6 +46,10 @@ public class CharacterEntity
     public bool IsNpc { get; set; } = false;
     public string? Race { get; set; }
     [Column(TypeName = "jsonb")] public string? RaceChoicesJson { get; set; }
+
+    // Multiclass support
+    [Column(TypeName = "jsonb")] public string? MulticlassJson { get; set; }
+    [Column(TypeName = "jsonb")] public string? LastLevelUpSnapshot { get; set; }
     public string? Background { get; set; }
 
     // Wild Shape state (Druid only)
