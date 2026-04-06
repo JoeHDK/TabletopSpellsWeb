@@ -11,6 +11,7 @@ import { ABILITY_KEYS } from '../components/stats/statsConstants'
 import {
   HIT_DIE, ASI_LEVELS, SUBCLASS_LEVEL, PREPARED_CASTERS, KNOWN_CASTERS,
   getCantripCount, getSpellsKnown, computeMulticlassSpellSlots, MAX_SPELL_LEVEL_TABLE,
+  getClassResourceGains,
 } from '../utils/multiclassTables'
 
 const SUBCLASSES: Record<string, string[]> = {
@@ -55,6 +56,7 @@ interface LevelDownSnapshot {
 type WizardStepId =
   | 'choose-class'
   | 'gain-hp'
+  | 'class-resources-info'
   | 'spell-slots-info'
   | 'pick-cantrips'
   | 'pick-spells'
@@ -335,6 +337,14 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
             />
           )}
 
+          {step === 'class-resources-info' && (
+            <ClassResourcesInfoStep
+              targetClass={state.targetClass}
+              fromLevel={effectiveClasses[state.targetClassIdx].level}
+              toLevel={state.newClassLevel}
+            />
+          )}
+
           {step === 'spell-slots-info' && (
             <SpellSlotsInfoStep
               targetClass={state.targetClass}
@@ -446,6 +456,7 @@ export default function LevelUpWizard({ character, characterId, onClose }: Props
               character={character}
               allSpells={allSpells}
               allFeats={allFeats}
+              effectiveClasses={effectiveClasses}
             />
           )}
 
@@ -600,6 +611,10 @@ function computeSteps(state: WizardState, _character: Character, effectiveClasse
 
   if (effectiveClasses.length > 1) steps.push('choose-class')
   steps.push('gain-hp')
+
+  // Class resources: show if any new or upgraded resources at this level
+  const resourceGains = getClassResourceGains(state.targetClass, effectiveClasses[state.targetClassIdx].level, state.newClassLevel)
+  if (resourceGains.length > 0) steps.push('class-resources-info')
 
   const isCaster = PREPARED_CASTERS.has(state.targetClass) || KNOWN_CASTERS.has(state.targetClass)
   const hasNewSlots = Object.keys(getExpectedSpellSlots(state.targetClass, state.newClassLevel)).some(lvl => {
@@ -934,15 +949,55 @@ function AsiOrFeatStep({ choice, onChoiceChange, asiChoices, asiPointsLeft, abil
   )
 }
 
-function SummaryStep({ state, character, allSpells, allFeats }: {
+function ClassResourcesInfoStep({ targetClass, fromLevel, toLevel }: {
+  targetClass: CharacterClass
+  fromLevel: number
+  toLevel: number
+}) {
+  const gains = getClassResourceGains(targetClass, fromLevel, toLevel)
+  const resetLabel: Record<string, string> = {
+    'short rest': 'Short Rest',
+    'long rest': 'Long Rest',
+    'weekly': 'Weekly',
+  }
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-white">Class Resources</h3>
+      <p className="text-xs text-gray-400">
+        You gain the following class resources at {targetClass} level {toLevel}:
+      </p>
+      <div className="space-y-2">
+        {gains.map(g => (
+          <div key={g.key} className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${g.change === 'new' ? 'bg-green-800 text-green-300' : 'bg-yellow-800 text-yellow-300'}`}>
+                {g.change === 'new' ? 'NEW' : '↑'}
+              </span>
+              <span className="text-sm text-white">{g.name}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-sm font-medium text-indigo-300">{g.maxUses === 99 ? '∞' : g.maxUses}</span>
+              <span className="text-xs text-gray-400 ml-1">/ {resetLabel[g.resetOn] ?? g.resetOn}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SummaryStep({ state, character, allSpells, allFeats, effectiveClasses }: {
   state: WizardState
   character: Character
   allSpells: Spell[]
   allFeats: Feat[]
+  effectiveClasses: CharacterClassEntry[]
 }) {
   const resolvedSpells = state.pickedSpells.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id)
   const resolvedCantrips = state.pickedCantrips.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id)
   const featName = state.pickedFeat?.name ?? (state.pickedFeatId ? allFeats.find(f => f.index === state.pickedFeatId)?.name : null)
+  const resourceGains = getClassResourceGains(state.targetClass, effectiveClasses[state.targetClassIdx].level, state.newClassLevel)
 
   return (
     <div className="space-y-3">
@@ -953,6 +1008,13 @@ function SummaryStep({ state, character, allSpells, allFeats }: {
         <SummaryRow label="Class Level" value={`${state.targetClass} ${state.newClassLevel - 1} → ${state.newClassLevel}`} />
         <SummaryRow label="Total Level" value={`${character.level} → ${state.newTotalLevel}`} />
         <SummaryRow label="Max HP" value={`${character.maxHp} → ${character.maxHp + state.hpGained} (+${state.hpGained})`} highlight />
+        {resourceGains.length > 0 && (
+          <SummaryRow
+            label="Class Resources"
+            value={resourceGains.map(g => `${g.change === 'new' ? '★' : '↑'} ${g.name}`).join(', ')}
+            highlight
+          />
+        )}
         {resolvedCantrips.length > 0 && <SummaryRow label="New Cantrips" value={resolvedCantrips.join(', ')} />}
         {resolvedSpells.length > 0 && <SummaryRow label="New Spells" value={resolvedSpells.join(', ')} />}
         {state.pickedSubclass && <SummaryRow label="Subclass" value={state.pickedSubclass} highlight />}

@@ -336,3 +336,126 @@ export function computeMulticlassSpellSlots(classes: CharacterClassEntry[]): Spe
 
   return { shared, pact }
 }
+
+// ── Class Resource Gains ──────────────────────────────────────────────────────
+
+export interface ResourceGain {
+  key: string
+  name: string
+  change: 'new' | 'upgraded'
+  maxUses: number
+  resetOn: string
+}
+
+interface ResourceSpec { maxUses: number; resetOn: string }
+type ResourceMap = Record<string, ResourceSpec & { name: string }>
+
+function fighterResources(level: number): ResourceMap {
+  const r: ResourceMap = {
+    second_wind: { name: 'Second Wind', maxUses: 1, resetOn: 'short rest' },
+  }
+  if (level >= 2) {
+    r.action_surge = { name: 'Action Surge', maxUses: level >= 17 ? 2 : 1, resetOn: 'short rest' }
+  }
+  if (level >= 9) {
+    r.indomitable = { name: 'Indomitable', maxUses: level >= 17 ? 3 : level >= 13 ? 2 : 1, resetOn: 'long rest' }
+  }
+  return r
+}
+
+function barbarianResources(level: number): ResourceMap {
+  const uses = level >= 20 ? 99 : level >= 17 ? 6 : level >= 15 ? 5 : level >= 12 ? 4 : level >= 6 ? 3 : 2
+  return { rage: { name: 'Rage', maxUses: uses, resetOn: 'long rest' } }
+}
+
+function clericResources(level: number): ResourceMap {
+  const r: ResourceMap = {}
+  if (level >= 2) {
+    r.channel_divinity = { name: 'Channel Divinity', maxUses: level >= 18 ? 3 : level >= 6 ? 2 : 1, resetOn: 'short rest' }
+  }
+  if (level >= 10) {
+    r.divine_intervention = { name: 'Divine Intervention', maxUses: 1, resetOn: 'weekly' }
+  }
+  return r
+}
+
+function paladinResources(level: number, chaMod = 0): ResourceMap {
+  const r: ResourceMap = {
+    divine_sense: { name: 'Divine Sense', maxUses: Math.max(1, 1 + chaMod), resetOn: 'long rest' },
+    lay_on_hands: { name: 'Lay on Hands', maxUses: level * 5, resetOn: 'long rest' },
+  }
+  if (level >= 3) r.channel_divinity = { name: 'Channel Divinity', maxUses: 1, resetOn: 'long rest' }
+  if (level >= 14) r.cleansing_touch = { name: 'Cleansing Touch', maxUses: Math.max(1, chaMod), resetOn: 'long rest' }
+  return r
+}
+
+function monkResources(level: number): ResourceMap {
+  if (level < 2) return {}
+  return { ki_points: { name: 'Ki Points', maxUses: level, resetOn: 'short rest' } }
+}
+
+function sorcererResources(level: number): ResourceMap {
+  if (level < 2) return {}
+  return { sorcery_points: { name: 'Sorcery Points', maxUses: level, resetOn: 'long rest' } }
+}
+
+function warlockResources(level: number): ResourceMap {
+  const pactSlots = level >= 11 ? 3 : level >= 2 ? 2 : 1
+  const r: ResourceMap = {
+    pact_magic_slots: { name: 'Pact Magic Slots', maxUses: pactSlots, resetOn: 'short rest' },
+  }
+  if (level >= 11) r.mystic_arcanum_6 = { name: 'Mystic Arcanum (6th)', maxUses: 1, resetOn: 'long rest' }
+  if (level >= 13) r.mystic_arcanum_7 = { name: 'Mystic Arcanum (7th)', maxUses: 1, resetOn: 'long rest' }
+  if (level >= 15) r.mystic_arcanum_8 = { name: 'Mystic Arcanum (8th)', maxUses: 1, resetOn: 'long rest' }
+  if (level >= 17) r.mystic_arcanum_9 = { name: 'Mystic Arcanum (9th)', maxUses: 1, resetOn: 'long rest' }
+  return r
+}
+
+function bardResources(level: number, chaMod = 0): ResourceMap {
+  return {
+    bardic_inspiration: { name: 'Bardic Inspiration', maxUses: Math.max(1, chaMod), resetOn: level >= 5 ? 'short rest' : 'long rest' },
+  }
+}
+
+function artificerResources(level: number): ResourceMap {
+  const r: ResourceMap = {}
+  if (level >= 2) r.infusions = { name: 'Infusions', maxUses: Math.floor(level / 2), resetOn: 'long rest' }
+  if (level >= 5) r.arcane_firearm = { name: 'Arcane Firearm', maxUses: 1, resetOn: 'long rest' }
+  return r
+}
+
+function getResourcesForClass(cls: CharacterClass, level: number): ResourceMap {
+  switch (cls) {
+    case 'Fighter':   return fighterResources(level)
+    case 'Barbarian': return barbarianResources(level)
+    case 'Cleric':    return clericResources(level)
+    case 'Paladin':   return paladinResources(level)
+    case 'Monk':      return monkResources(level)
+    case 'Sorcerer':  return sorcererResources(level)
+    case 'Warlock':   return warlockResources(level)
+    case 'Bard':      return bardResources(level)
+    case 'Artificer': return artificerResources(level)
+    default:          return {}
+  }
+}
+
+/**
+ * Returns a list of class resources that are new or upgraded when going from
+ * `fromLevel` to `toLevel` for a given class. Mirrors ClassResourceSeedService.cs.
+ */
+export function getClassResourceGains(cls: CharacterClass, fromLevel: number, toLevel: number): ResourceGain[] {
+  const before = getResourcesForClass(cls, fromLevel)
+  const after  = getResourcesForClass(cls, toLevel)
+  const gains: ResourceGain[] = []
+
+  for (const [key, spec] of Object.entries(after)) {
+    const prev = before[key]
+    if (!prev) {
+      gains.push({ key, name: spec.name, change: 'new', maxUses: spec.maxUses, resetOn: spec.resetOn })
+    } else if (spec.maxUses > prev.maxUses || spec.resetOn !== prev.resetOn) {
+      gains.push({ key, name: spec.name, change: 'upgraded', maxUses: spec.maxUses, resetOn: spec.resetOn })
+    }
+  }
+
+  return gains
+}
