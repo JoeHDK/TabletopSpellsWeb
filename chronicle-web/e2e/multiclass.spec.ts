@@ -8,15 +8,15 @@
  *
  * Requires running dev stack (npm run dev + dotnet run).
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { createCharacter, deleteCharacter } from './helpers'
 
 test.describe('Multiclass identity card', () => {
   let characterId: string
 
-  test.beforeEach(async ({ request }) => {
+  test.beforeEach(async ({ authedRequest }) => {
     // Start as Fighter 5 — INT 12 (fails Wizard prereq of 13)
-    const char = await createCharacter(request, {
+    const char = await createCharacter(authedRequest, {
       name: `E2E-MC-${Date.now()}`,
       characterClass: 'Fighter',
       level: 5,
@@ -28,8 +28,8 @@ test.describe('Multiclass identity card', () => {
     characterId = char.id
   })
 
-  test.afterEach(async ({ request }) => {
-    await deleteCharacter(request, characterId)
+  test.afterEach(async ({ authedRequest }) => {
+    await deleteCharacter(authedRequest, characterId)
   })
 
   test('Add Class → two class rows appear, total level = 6', async ({ page }) => {
@@ -68,9 +68,9 @@ test.describe('Multiclass identity card', () => {
     await expect(page.getByText('6', { exact: false })).toBeVisible()
   })
 
-  test('Remove added class → back to single-class display', async ({ page }) => {
+  test('Remove added class → back to single-class display', async ({ page, authedRequest }) => {
     // First add a class via API directly for reliability
-    await page.request.put(`/api/characters/${characterId}`, {
+    await authedRequest.put(`/api/characters/${characterId}`, {
       data: {
         classes: [
           { characterClass: 'Fighter', subclass: 'None', level: 5, cantripsKnown: 0 },

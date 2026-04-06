@@ -10,14 +10,14 @@
  *
  * Requires running dev stack (npm run dev + dotnet run).
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { createCharacter, deleteCharacter } from './helpers'
 
 test.describe('Single-class regression', () => {
   let characterId: string
 
-  test.beforeEach(async ({ request }) => {
-    const char = await createCharacter(request, {
+  test.beforeEach(async ({ authedRequest }) => {
+    const char = await createCharacter(authedRequest, {
       name: `E2E-Reg-${Date.now()}`,
       characterClass: 'Wizard',
       level: 5,
@@ -27,8 +27,8 @@ test.describe('Single-class regression', () => {
     characterId = char.id
   })
 
-  test.afterEach(async ({ request }) => {
-    await deleteCharacter(request, characterId)
+  test.afterEach(async ({ authedRequest }) => {
+    await deleteCharacter(authedRequest, characterId)
   })
 
   test('Level editable inline → updates and persists', async ({ page }) => {

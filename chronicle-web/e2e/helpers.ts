@@ -33,7 +33,8 @@ export async function createCharacter(
 
   const res = await request.post('/api/characters', { data: body })
   if (!res.ok()) {
-    throw new Error(`Failed to create character: ${await res.text()}`)
+    const text = await res.text()
+    throw new Error(`Failed to create character (${res.status()}): ${text}`)
   }
   const data = await res.json()
   return { id: data.id, name: data.name }

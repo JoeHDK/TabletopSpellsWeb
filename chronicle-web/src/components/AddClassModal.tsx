@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import type { CharacterClass, CharacterClassEntry } from '../types/character'
 import { checkMulticlassPrereqs, unmetPrereqsText } from '../utils/multiclassTables'
 

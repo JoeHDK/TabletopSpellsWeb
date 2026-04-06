@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { spellsApi, preparedSpellsApi } from '../api/spells'
 import { characterFeatsApi } from '../api/characterFeats'
@@ -575,7 +575,7 @@ function buildInitialState(
   }
 }
 
-function computeSteps(state: WizardState, character: Character, effectiveClasses: CharacterClassEntry[]): WizardStepId[] {
+function computeSteps(state: WizardState, _character: Character, effectiveClasses: CharacterClassEntry[]): WizardStepId[] {
   const steps: WizardStepId[] = []
   const cls = effectiveClasses[state.targetClassIdx]
 

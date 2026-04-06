@@ -116,6 +116,7 @@ export interface UpdateCharacterRequest {
   deathSaveFailures?: number
   exhaustionLevel?: number
   concentrationSpell?: string
+  maxHp?: number
   // Multiclass support
   classes?: CharacterClassEntry[]
   lastLevelUpSnapshot?: string

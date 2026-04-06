@@ -1724,6 +1724,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
               equipmentResources={equipmentResources}
               classFeatures={allClassFeatures}
               characterLevel={d.level}
+              onResourceAction={(args) => resourceMutation.mutate(args)}
               resourcePending={resourceMutation.isPending}
               onEquipResAction={(args) => equipResMutation.mutate(args)}
               equipResPending={equipResMutation.isPending}

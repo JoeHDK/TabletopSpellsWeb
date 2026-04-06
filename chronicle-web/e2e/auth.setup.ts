@@ -8,9 +8,12 @@
  */
 import { test as setup, expect } from '@playwright/test'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import fs from 'fs'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const STORAGE_STATE = path.join(__dirname, '.auth', 'storageState.json')
+const TOKEN_FILE = path.join(__dirname, '.auth', 'token.json')
 
 const TEST_USERNAME = process.env.TEST_USERNAME ?? 'chronicle-e2e-tester'
 const TEST_PASSWORD = process.env.TEST_PASSWORD ?? 'TestPass123!'
@@ -40,6 +43,11 @@ setup('authenticate', async ({ request }) => {
 
   expect(authData).not.toBeNull()
 
+  fs.mkdirSync(path.dirname(STORAGE_STATE), { recursive: true })
+
+  // Save token separately so API request fixtures can read it
+  fs.writeFileSync(TOKEN_FILE, JSON.stringify({ token: authData!.token }))
+
   // Build the storageState.json with the JWT injected in Zustand's persist format
   const storageState = {
     cookies: [],
@@ -64,6 +72,5 @@ setup('authenticate', async ({ request }) => {
     ],
   }
 
-  fs.mkdirSync(path.dirname(STORAGE_STATE), { recursive: true })
   fs.writeFileSync(STORAGE_STATE, JSON.stringify(storageState, null, 2))
 })

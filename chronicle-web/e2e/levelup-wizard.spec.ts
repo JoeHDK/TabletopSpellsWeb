@@ -10,7 +10,7 @@
  *
  * Requires running dev stack (npm run dev + dotnet run).
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { createCharacter, deleteCharacter } from './helpers'
 
 async function openLevelUpWizard(page: import('@playwright/test').Page) {
@@ -24,15 +24,15 @@ async function openLevelUpWizard(page: import('@playwright/test').Page) {
 test.describe('Level Up Wizard', () => {
   let characterId: string
 
-  test.afterEach(async ({ request }) => {
-    if (characterId) await deleteCharacter(request, characterId)
+  test.afterEach(async ({ authedRequest }) => {
+    if (characterId) await deleteCharacter(authedRequest, characterId)
   })
 
   // -------------------------------------------------------------------------
   // 1. Cleric (prepared caster) — spell slots info only, no pick-spells step
   // -------------------------------------------------------------------------
-  test('Cleric 3 → spell slots info shown, no "pick spells" prompt', async ({ page, request }) => {
-    const char = await createCharacter(request, {
+  test('Cleric 3 → spell slots info shown, no "pick spells" prompt', async ({ page, authedRequest }) => {
+    const char = await createCharacter(authedRequest, {
       name: `E2E-LU-Cleric-${Date.now()}`,
       characterClass: 'Cleric',
       level: 3,
@@ -76,8 +76,8 @@ test.describe('Level Up Wizard', () => {
   // -------------------------------------------------------------------------
   // 2. Sorcerer 3 (known caster) — pick-spells step appears
   // -------------------------------------------------------------------------
-  test('Sorcerer 3 → pick-spells step appears', async ({ page, request }) => {
-    const char = await createCharacter(request, {
+  test('Sorcerer 3 → pick-spells step appears', async ({ page, authedRequest }) => {
+    const char = await createCharacter(authedRequest, {
       name: `E2E-LU-Sorc-${Date.now()}`,
       characterClass: 'Sorcerer',
       level: 3,
@@ -111,8 +111,8 @@ test.describe('Level Up Wizard', () => {
   // -------------------------------------------------------------------------
   // 3. Barbarian 3 (non-caster) — no spell steps at all
   // -------------------------------------------------------------------------
-  test('Barbarian 3 → no spell steps in wizard', async ({ page, request }) => {
-    const char = await createCharacter(request, {
+  test('Barbarian 3 → no spell steps in wizard', async ({ page, authedRequest }) => {
+    const char = await createCharacter(authedRequest, {
       name: `E2E-LU-Barb-${Date.now()}`,
       characterClass: 'Barbarian',
       level: 3,
@@ -146,8 +146,8 @@ test.describe('Level Up Wizard', () => {
   // -------------------------------------------------------------------------
   // 4. Warlock 3 — wizard completes without error
   // -------------------------------------------------------------------------
-  test('Warlock 3 → wizard opens and completes without error', async ({ page, request }) => {
-    const char = await createCharacter(request, {
+  test('Warlock 3 → wizard opens and completes without error', async ({ page, authedRequest }) => {
+    const char = await createCharacter(authedRequest, {
       name: `E2E-LU-Lock-${Date.now()}`,
       characterClass: 'Warlock',
       level: 3,
@@ -181,9 +181,9 @@ test.describe('Level Up Wizard', () => {
   // -------------------------------------------------------------------------
   // 5. Full confirm flow → character level increments by 1
   // -------------------------------------------------------------------------
-  test('Full Level Up confirm → character level increments by 1', async ({ page, request }) => {
+  test('Full Level Up confirm → character level increments by 1', async ({ page, authedRequest }) => {
     // Wizard 5 — known step: just HP + ASI (no new spells at level 6 for wizard)
-    const char = await createCharacter(request, {
+    const char = await createCharacter(authedRequest, {
       name: `E2E-LU-Full-${Date.now()}`,
       characterClass: 'Wizard',
       level: 5,

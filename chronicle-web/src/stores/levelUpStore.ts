@@ -48,7 +48,7 @@ interface LevelUpStore {
   cancelWizard: () => void
 }
 
-export const useLevelUpStore = create<LevelUpStore>((set, get) => ({
+export const useLevelUpStore = create<LevelUpStore>((set) => ({
   isActive: false,
   pending: null,
   wizardStep: 0,
