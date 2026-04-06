@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
 import { inventoryApi } from '../api/inventory'
 import { attacksApi } from '../api/attacks'
@@ -681,8 +681,24 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
       character!.level,
       character!.subclass !== 'None' ? character!.subclass?.toLowerCase() : undefined,
     ),
-    enabled: !!character,
+    enabled: !!character && !(character.classes && character.classes.length > 0),
   })
+
+  // For multiclass characters, fetch features for each class in parallel
+  const multiclassFeatureQueries = useQueries({
+    queries: (character?.classes && character.classes.length > 0 ? character.classes : []).map(entry => ({
+      queryKey: ['class-features', entry.characterClass, entry.level, entry.subclass],
+      queryFn: () => classFeaturesApi.getForCharacter(
+        entry.characterClass,
+        entry.level,
+        entry.subclass !== 'None' ? entry.subclass.toLowerCase() : undefined,
+      ),
+      enabled: !!character,
+    })),
+  })
+  const allClassFeatures: ClassFeature[] = character?.classes && character.classes.length > 0
+    ? multiclassFeatureQueries.flatMap(q => q.data ?? [])
+    : classFeatures
 
   const { data: race } = useQuery<Race>({
     queryKey: ['race', character?.race],
@@ -971,7 +987,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
 
   const totalScores = Object.fromEntries(ABILITY_KEYS.map(k => [k, totalAbilityScore(k)]))
 
-  const acInfo = calculateAC(character.characterClass, totalScores, inventory, d.baseArmorClass, charFeats, classFeatures)
+  const acInfo = calculateAC(character.characterClass, totalScores, inventory, d.baseArmorClass, charFeats, allClassFeatures)
 
   const save = useCallback(async (pendingDraft: NonNullable<typeof draft>) => {
     const { currentHp, maxHp, ...charUpdate } = pendingDraft
@@ -1001,15 +1017,15 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   const abilityMod = (key: string) => Math.floor((totalAbilityScore(key) - 10) / 2)
   const featInitBonus = getFeatModifier(charFeats, 'initiative')
   const featPassivePercBonus = getFeatModifier(charFeats, 'passive_perception')
-  const featHpPerLevel = getFeatModifier([...charFeats, ...classFeatures], 'hp_per_level')
-  const movementBonus = getMovementBonus(classFeatures)
+  const featHpPerLevel = getFeatModifier([...charFeats, ...allClassFeatures], 'hp_per_level')
+  const movementBonus = getMovementBonus(allClassFeatures)
   const charismaModifier = abilityMod('Charisma')
-  const savingThrowChaBonus = getFeatModifier(classFeatures, 'saving_throw_cha_mod') * charismaModifier
+  const savingThrowChaBonus = getFeatModifier(allClassFeatures, 'saving_throw_cha_mod') * charismaModifier
   const equippedSavingThrowBonus = inventory
     .filter(i => i.isEquipped)
     .reduce((s, i) => s + (i.savingThrowBonus ?? 0), 0)
   const profBonusNum = Math.floor((d.level - 1) / 4) + 2
-  const hasJackOfAllTrades = classFeatures.some(f => f.index === 'bard-jack-of-all-trades')
+  const hasJackOfAllTrades = allClassFeatures.some(f => f.index === 'bard-jack-of-all-trades')
   const jackBonus = hasJackOfAllTrades ? Math.floor(profBonusNum / 2) : 0
   const perceptionSkillBonus = d.skillExpertise.includes('Perception')
     ? profBonusNum * 2
@@ -1059,7 +1075,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
   const spellAttackBonus = castingAbilityMod !== null ? profBonusNum + castingAbilityMod : null
 
   // sneak_attack_dice entries each represent the TOTAL at that tier; take the highest, not sum
-  const sneakAttackDice = classFeatures
+  const sneakAttackDice = allClassFeatures
     .flatMap(f => f.modifiers)
     .filter(m => m.type === 'sneak_attack_dice')
     .reduce((max, m) => Math.max(max, m.value), 0)
@@ -1077,7 +1093,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
     ...bgSkillsForExpertise,
   ])).sort()
   const expertiseFeatureIndices = new Set(['rogue-expertise', 'rogue-expertise-2', 'bard-expertise'])
-  const totalExpertiseSlots = classFeatures.filter(f => expertiseFeatureIndices.has(f.index)).length * 2
+  const totalExpertiseSlots = allClassFeatures.filter(f => expertiseFeatureIndices.has(f.index)).length * 2
   const toggleExpertise = (skill: string) => {
     const already = d.skillExpertise.includes(skill)
     patch({
@@ -1694,9 +1710,8 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
               bare
               classResources={classResources}
               equipmentResources={equipmentResources}
-              classFeatures={classFeatures}
-              characterLevel={d.level}
-              onResourceAction={(args) => resourceMutation.mutate({ ...args, currentExhaustion: args.action === 'long-rest' ? d.exhaustionLevel : undefined })}
+              classFeatures={allClassFeatures}
+              characterLevel={d.level}}
               resourcePending={resourceMutation.isPending}
               onEquipResAction={(args) => equipResMutation.mutate(args)}
               equipResPending={equipResMutation.isPending}
@@ -1704,8 +1719,11 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
           )
           : <p className="px-4 pb-4 pt-2 text-xs text-gray-500">No class resources.</p>
 
-      case 'class-features':
-        if (resolveClassName(character.characterClass) !== 'druid') return null
+      case 'class-features': {
+        const hasDruid = character.classes && character.classes.length > 0
+          ? character.classes.some(c => resolveClassName(c.characterClass) === 'druid')
+          : resolveClassName(character.characterClass) === 'druid'
+        if (!hasDruid) return null
         return (
           <ClassFeaturesSection
             bare
@@ -1715,13 +1733,14 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
             wildShapePending={wildShapeMutation.isPending}
           />
         )
+      }
 
       case 'class-abilities':
         return character.gameType === 'dnd5e'
           ? (
             <ClassAbilitiesSection
               bare
-              classFeatures={classFeatures}
+              classFeatures={allClassFeatures}
               skillExpertise={d.skillExpertise}
               allProficientSkills={allProficientSkills}
               totalExpertiseSlots={totalExpertiseSlots}

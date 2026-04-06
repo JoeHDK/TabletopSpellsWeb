@@ -1,4 +1,4 @@
-import type { CharacterClass } from '../types/character'
+import type { CharacterClass, CharacterClassEntry } from '../types/character'
 
 // Hit die size per class
 export const HIT_DIE: Record<CharacterClass, number> = {
@@ -134,4 +134,140 @@ export function getSpellsKnown(cls: CharacterClass, level: number): number | nul
   const table = SPELLS_KNOWN_TABLE[cls]
   if (!table) return null
   return table[Math.min(level, table.length) - 1] ?? null
+}
+
+// ==============================================================
+// Multiclass Spell Slot Computation (PHB rules)
+// ==============================================================
+
+/**
+ * Multiclass spell slot table — indexed by combined caster level [1..20]
+ * Each row: [1st, 2nd, 3rd, 4th, 5th, 6th, 7th, 8th, 9th]
+ */
+const MULTICLASS_SLOT_TABLE: number[][] = [
+  /* 1  */ [2, 0, 0, 0, 0, 0, 0, 0, 0],
+  /* 2  */ [3, 0, 0, 0, 0, 0, 0, 0, 0],
+  /* 3  */ [4, 2, 0, 0, 0, 0, 0, 0, 0],
+  /* 4  */ [4, 3, 0, 0, 0, 0, 0, 0, 0],
+  /* 5  */ [4, 3, 2, 0, 0, 0, 0, 0, 0],
+  /* 6  */ [4, 3, 3, 0, 0, 0, 0, 0, 0],
+  /* 7  */ [4, 3, 3, 1, 0, 0, 0, 0, 0],
+  /* 8  */ [4, 3, 3, 2, 0, 0, 0, 0, 0],
+  /* 9  */ [4, 3, 3, 3, 1, 0, 0, 0, 0],
+  /* 10 */ [4, 3, 3, 3, 2, 0, 0, 0, 0],
+  /* 11 */ [4, 3, 3, 3, 2, 1, 0, 0, 0],
+  /* 12 */ [4, 3, 3, 3, 2, 1, 0, 0, 0],
+  /* 13 */ [4, 3, 3, 3, 2, 1, 1, 0, 0],
+  /* 14 */ [4, 3, 3, 3, 2, 1, 1, 0, 0],
+  /* 15 */ [4, 3, 3, 3, 2, 1, 1, 1, 0],
+  /* 16 */ [4, 3, 3, 3, 2, 1, 1, 1, 0],
+  /* 17 */ [4, 3, 3, 3, 2, 1, 1, 1, 1],
+  /* 18 */ [4, 3, 3, 3, 3, 1, 1, 1, 1],
+  /* 19 */ [4, 3, 3, 3, 3, 2, 1, 1, 1],
+  /* 20 */ [4, 3, 3, 3, 3, 2, 2, 1, 1],
+]
+
+/**
+ * Warlock Pact Magic slots — indexed by Warlock class level [1..20]
+ * Each row: [slotCount, slotLevel]
+ */
+export const WARLOCK_PACT_SLOTS: [number, number][] = [
+  /* 1  */ [1, 1],
+  /* 2  */ [2, 1],
+  /* 3  */ [2, 2],
+  /* 4  */ [2, 2],
+  /* 5  */ [2, 3],
+  /* 6  */ [2, 3],
+  /* 7  */ [2, 4],
+  /* 8  */ [2, 4],
+  /* 9  */ [2, 5],
+  /* 10 */ [2, 5],
+  /* 11 */ [3, 5],
+  /* 12 */ [3, 5],
+  /* 13 */ [3, 5],
+  /* 14 */ [3, 5],
+  /* 15 */ [3, 5],
+  /* 16 */ [3, 5],
+  /* 17 */ [4, 5],
+  /* 18 */ [4, 5],
+  /* 19 */ [4, 5],
+  /* 20 */ [4, 5],
+]
+
+type SpellSlotResult = {
+  /** Shared multiclass spell slots keyed by spell level (1-9). 0 means no slots. */
+  shared: Record<number, number>
+  /** Warlock Pact Magic: { count, level } or null if not a Warlock */
+  pact: { count: number; level: number } | null
+}
+
+/** Caster type determines fraction of class level that contributes to shared spell slots */
+type CasterType = 'full' | 'half' | 'artificer' | 'third' | 'none' | 'pact'
+
+function getCasterType(cls: CharacterClass, subclass?: string): CasterType {
+  const sub = subclass?.toLowerCase() ?? ''
+  switch (cls) {
+    case 'Bard': case 'Cleric': case 'Druid': case 'Sorcerer': case 'Wizard':
+      return 'full'
+    case 'Paladin': case 'Ranger':
+      return 'half'
+    case 'Artificer':
+      return 'artificer'
+    case 'Fighter':
+      return sub.includes('eldritchknight') || sub.includes('eldritch_knight') ? 'third' : 'none'
+    case 'Rogue':
+      return sub.includes('arcane') || sub.includes('arcanetrickster') ? 'third' : 'none'
+    case 'Warlock':
+      return 'pact'
+    default:
+      return 'none'
+  }
+}
+
+/**
+ * Compute spell slots for a multiclass character following PHB rules.
+ * Returns shared slot counts (summed caster levels → full-caster table)
+ * and separate Pact Magic slots if the character has Warlock levels.
+ */
+export function computeMulticlassSpellSlots(classes: CharacterClassEntry[]): SpellSlotResult {
+  let totalCasterLevel = 0
+  let pact: SpellSlotResult['pact'] = null
+
+  for (const entry of classes) {
+    const type = getCasterType(entry.characterClass, entry.subclass)
+    switch (type) {
+      case 'full':
+        totalCasterLevel += entry.level
+        break
+      case 'half':
+        totalCasterLevel += Math.floor(entry.level / 2)
+        break
+      case 'artificer':
+        // Artificer rounds up starting at level 1 (effectively ceil(level/2))
+        totalCasterLevel += Math.ceil(entry.level / 2)
+        break
+      case 'third':
+        totalCasterLevel += Math.floor(entry.level / 3)
+        break
+      case 'pact': {
+        const row = WARLOCK_PACT_SLOTS[Math.min(entry.level, 20) - 1]
+        if (row) pact = { count: row[0], level: row[1] }
+        break
+      }
+      case 'none':
+      default:
+        break
+    }
+  }
+
+  const casterLvl = Math.min(Math.max(totalCasterLevel, 0), 20)
+  const shared: Record<number, number> = {}
+  if (casterLvl > 0) {
+    const row = MULTICLASS_SLOT_TABLE[casterLvl - 1]
+    row.forEach((count, idx) => {
+      if (count > 0) shared[idx + 1] = count
+    })
+  }
+
+  return { shared, pact }
 }
