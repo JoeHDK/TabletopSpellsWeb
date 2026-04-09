@@ -55,15 +55,29 @@ public class AuthController : ControllerBase
     [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest req)
     {
-        // Accept email or username
-        var user = await _userManager.FindByEmailAsync(req.Identifier)
-                ?? await _userManager.FindByNameAsync(req.Identifier);
+        AppUser? user;
+        bool requiresEmail = false;
+
+        if (req.Identifier.Contains('@'))
+        {
+            user = await _userManager.FindByEmailAsync(req.Identifier);
+        }
+        else
+        {
+            user = await _userManager.FindByNameAsync(req.Identifier);
+            if (user != null && !string.IsNullOrEmpty(user.Email))
+                return BadRequest("Please sign in with your email address.");
+
+            // Legacy path: user has no email yet — allow login but flag that they must add one
+            if (user != null)
+                requiresEmail = true;
+        }
 
         if (user == null || !await _userManager.CheckPasswordAsync(user, req.Password))
             return Unauthorized("Invalid credentials.");
 
         await IssueRefreshToken(user);
-        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin, user.Email));
+        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin, user.Email, requiresEmail));
     }
 
     [HttpPost("refresh")]

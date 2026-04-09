@@ -85,6 +85,7 @@ export interface AuthResponse {
   userId: string
   isDm: boolean
   email?: string
+  requiresEmail?: boolean
 }
 
 export type FriendshipStatus = 'Pending' | 'Accepted' | 'Blocked'

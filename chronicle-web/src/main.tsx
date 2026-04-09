@@ -33,6 +33,7 @@ import CampaignImagesPage from './pages/CampaignImagesPage'
 import FeatsPage from './pages/FeatsPage'
 import FeaturesPage from './pages/FeaturesPage'
 import SettingsPage from './pages/SettingsPage'
+import AddEmailGatePage from './pages/AddEmailGatePage'
 
 const persister = createIDBPersister()
 
@@ -45,6 +46,7 @@ createRoot(document.getElementById('root')!).render(
         <InstallPromptBanner />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/add-email" element={<ProtectedRoute><AddEmailGatePage /></ProtectedRoute>} />
           <Route path="/" element={<Navigate to="/characters" replace />} />
           <Route path="/characters" element={<ProtectedRoute><CharacterSelectPage /></ProtectedRoute>} />
           <Route path="/characters/:id" element={<ProtectedRoute><CharacterSheetPage /></ProtectedRoute>} />

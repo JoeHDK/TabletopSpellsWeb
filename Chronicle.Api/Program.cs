@@ -152,6 +152,22 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
     await DataSeeder.SeedAdminAsync(scope.ServiceProvider);
+
+    // One-time: invalidate refresh tokens for users with no email, forcing them to re-login
+    // and go through the email registration gate. Safe to run on every startup (no-op once all
+    // users have emails).
+    var usersWithoutEmail = db.Users
+        .Where(u => (u.Email == null || u.Email == "") && u.RefreshTokenHash != null)
+        .ToList();
+    if (usersWithoutEmail.Count > 0)
+    {
+        foreach (var u in usersWithoutEmail)
+        {
+            u.RefreshTokenHash = null;
+            u.RefreshTokenExpiresAt = null;
+        }
+        await db.SaveChangesAsync();
+    }
 }
 
 app.Run();

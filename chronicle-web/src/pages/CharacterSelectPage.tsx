@@ -45,16 +45,16 @@ export default function CharacterSelectPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const setActive = useCharacterStore((s) => s.setActiveCharacter)
-  const { hasEmail, setHasEmail, token } = useAuthStore()
-  const [bannerDismissed, setBannerDismissed] = useState(false)
+  const { hasEmail, token } = useAuthStore()
 
-  // Check email status on mount for existing users who registered without email
+  // If user somehow reaches this page without an email, redirect them to the gate
   useEffect(() => {
-    if (!token || hasEmail) return
-    authApi.me().then((me) => {
-      setHasEmail(me.hasEmail)
-    }).catch(() => {/* ignore */})
-  }, [token, hasEmail, setHasEmail])
+    if (token && !hasEmail) {
+      authApi.me().then((me) => {
+        if (!me.hasEmail) navigate('/add-email', { replace: true })
+      }).catch(() => {/* ignore */})
+    }
+  }, [token, hasEmail, navigate])
 
   // Section collapse state — all open by default
   const [charsOpen, setCharsOpen] = useState(true)
@@ -170,26 +170,6 @@ export default function CharacterSelectPage() {
         <BurgerMenu />
       </header>
 
-      {/* Email migration banner for users without an email */}
-      {!hasEmail && !bannerDismissed && (
-        <div className="bg-yellow-900/40 border-b border-yellow-700/50 px-4 py-3 flex items-center gap-3 text-sm">
-          <span className="text-yellow-300 shrink-0">⚠️</span>
-          <p className="text-yellow-200 flex-1">
-            Add an email to your account to enable email login and account recovery.
-          </p>
-          <button
-            onClick={() => navigate('/settings')}
-            className="text-yellow-300 underline hover:text-yellow-100 shrink-0 font-medium"
-          >
-            Add email
-          </button>
-          <button
-            onClick={() => setBannerDismissed(true)}
-            className="text-yellow-500 hover:text-yellow-300 shrink-0 ml-1"
-            aria-label="Dismiss"
-          >✕</button>
-        </div>
-      )}
 
       <main className="max-w-2xl mx-auto p-6 space-y-10">
 

@@ -25,7 +25,11 @@ export default function LoginPage() {
         : await authApi.register(username, email, password)
       queryClient.clear()
       login(data.token, data.username, data.userId, data.isDm, data.email ?? undefined)
-      navigate('/characters')
+      if (data.requiresEmail) {
+        navigate('/add-email')
+      } else {
+        navigate('/characters')
+      }
     } catch (err: unknown) {
       const data = (err as { response?: { data?: unknown } })?.response?.data
       if (Array.isArray(data)) {
@@ -64,7 +68,7 @@ export default function LoginPage() {
         <form onSubmit={submit} className="space-y-4">
           {tab === 'login' ? (
             <div>
-              <label className="block text-sm text-gray-300 mb-1">Email or username</label>
+              <label className="block text-sm text-gray-300 mb-1">Email</label>
               <input
                 type="text"
                 autoComplete="username"

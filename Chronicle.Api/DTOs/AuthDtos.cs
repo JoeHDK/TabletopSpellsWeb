@@ -11,7 +11,7 @@ public record LoginRequest(
     [StringLength(256)] string Identifier,
     [StringLength(100)] string Password
 );
-public record AuthResponse(string Token, string Username, string UserId, bool IsDm, string? Email = null);
+public record AuthResponse(string Token, string Username, string UserId, bool IsDm, string? Email = null, bool RequiresEmail = false);
 public record ChangePasswordRequest(
     [StringLength(100)] string CurrentPassword,
     [StringLength(100, MinimumLength = 8)] string NewPassword
