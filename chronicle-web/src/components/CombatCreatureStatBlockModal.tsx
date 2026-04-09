@@ -138,7 +138,7 @@ function LoadingModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function CombatCreatureStatBlockModal({ monsterName, displayName, onClose }: Props) {
-  // Try SRD monster first
+  // Fetch SRD monster if we have a name
   const { data: srdMonster, isLoading: srdLoading, isError: srdError } = useQuery({
     queryKey: ['monster', monsterName],
     queryFn: () => monstersApi.getByName(monsterName!),
@@ -147,34 +147,36 @@ export default function CombatCreatureStatBlockModal({ monsterName, displayName,
     staleTime: Infinity,
   })
 
-  // Only fetch custom monsters if SRD fails or there's no monsterName
+  // Always fetch custom monsters in parallel — don't wait for SRD to fail first.
+  // This avoids an enabled-flip race where customLoading stays true indefinitely.
   const { data: customMonsters = [], isLoading: customLoading } = useQuery({
     queryKey: ['custom-monsters'],
     queryFn: customMonstersApi.getAll,
-    enabled: !monsterName || srdError,
+    retry: false,
     staleTime: 30_000,
   })
 
-  if (srdLoading || (!srdError && srdLoading)) {
+  const lookupName = (monsterName ?? displayName).toLowerCase()
+  const customMatch = customMonsters.find(c => c.name.toLowerCase() === lookupName)
+
+  // Still waiting on SRD (and we haven't already found a custom match)
+  if (srdLoading && !customMatch) {
     return <LoadingModal onClose={onClose} />
   }
 
-  // SRD monster found — use the existing stat block modal
+  // SRD hit — show full stat block
   if (srdMonster && !srdError) {
     return <CreatureStatBlockModal monster={srdMonster} onClose={onClose} />
   }
 
-  // Look for a custom monster by name
-  const customMatch = customMonsters.find(
-    c => c.name.toLowerCase() === (monsterName ?? displayName).toLowerCase()
-  )
-
-  if (customLoading && !customMatch) {
-    return <LoadingModal onClose={onClose} />
-  }
-
+  // Custom monster found
   if (customMatch) {
     return <CustomMonsterStatBlock monster={customMatch} onClose={onClose} />
+  }
+
+  // Still fetching custom monsters (SRD already failed or wasn't attempted)
+  if (customLoading) {
+    return <LoadingModal onClose={onClose} />
   }
 
   // Fallback: no data found — show minimal info
