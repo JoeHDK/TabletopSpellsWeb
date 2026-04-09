@@ -113,3 +113,98 @@
   font-weight: 700;
   color: #f9fafb;
 }
+
+/* ── Underline ────────────────────────────────────────────────────────────── */
+.tiptap u,
+.tiptap-prose u {
+  text-decoration: underline;
+}
+
+/* ── Links ────────────────────────────────────────────────────────────────── */
+.tiptap a.tiptap-link,
+.tiptap-prose a {
+  color: #818cf8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.tiptap a.tiptap-link:hover,
+.tiptap-prose a:hover {
+  color: #a5b4fc;
+}
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+.tiptap table,
+.tiptap-prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.tiptap table th,
+.tiptap-prose table th {
+  background: #1f2937;
+  color: #e5e7eb;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid #374151;
+}
+
+.tiptap table td,
+.tiptap-prose table td {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid #374151;
+  color: #d1d5db;
+  vertical-align: top;
+}
+
+.tiptap table tr:nth-child(even) td {
+  background: #1f2937;
+}
+
+/* Selected cell highlight (editor only) */
+.tiptap .selectedCell {
+  background: #312e81 !important;
+}
+
+/* ── Task lists ───────────────────────────────────────────────────────────── */
+.tiptap ul[data-type="taskList"],
+.tiptap-prose ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+
+.tiptap ul[data-type="taskList"] li,
+.tiptap-prose ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.tiptap ul[data-type="taskList"] li > label,
+.tiptap-prose ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tiptap ul[data-type="taskList"] li > div,
+.tiptap-prose ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+
+.tiptap ul[data-type="taskList"] input[type="checkbox"],
+.tiptap-prose ul[data-type="taskList"] input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #6366f1;
+  cursor: pointer;
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div,
+.tiptap-prose ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: #6b7280;
+  text-decoration: line-through;
+}
