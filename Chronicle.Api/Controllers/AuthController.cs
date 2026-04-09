@@ -39,25 +39,31 @@ public class AuthController : ControllerBase
         if (await _userManager.FindByNameAsync(req.Username) != null)
             return Conflict("Username already taken.");
 
-        var user = new AppUser { UserName = req.Username };
+        if (await _userManager.FindByEmailAsync(req.Email) != null)
+            return Conflict("Email already in use.");
+
+        var user = new AppUser { UserName = req.Username, Email = req.Email };
         var result = await _userManager.CreateAsync(user, req.Password);
         if (!result.Succeeded)
             return BadRequest(result.Errors.Select(e => e.Description));
 
         await IssueRefreshToken(user);
-        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin));
+        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin, user.Email));
     }
 
     [HttpPost("login")]
     [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest req)
     {
-        var user = await _userManager.FindByNameAsync(req.Username);
+        // Accept email or username
+        var user = await _userManager.FindByEmailAsync(req.Identifier)
+                ?? await _userManager.FindByNameAsync(req.Identifier);
+
         if (user == null || !await _userManager.CheckPasswordAsync(user, req.Password))
-            return Unauthorized("Invalid username or password.");
+            return Unauthorized("Invalid credentials.");
 
         await IssueRefreshToken(user);
-        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin));
+        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin, user.Email));
     }
 
     [HttpPost("refresh")]
@@ -73,7 +79,7 @@ public class AuthController : ControllerBase
         if (user == null) return Unauthorized();
 
         await IssueRefreshToken(user);
-        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin));
+        return Ok(new AuthResponse(_tokenService.CreateToken(user), user.UserName!, user.Id, user.IsDm || user.IsAdmin, user.Email));
     }
 
     [HttpPost("logout")]
@@ -96,6 +102,16 @@ public class AuthController : ControllerBase
     }
 
     [Authorize]
+    [HttpGet("me")]
+    public async Task<ActionResult<MeResponse>> Me()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var user = await _userManager.FindByIdAsync(userId!);
+        if (user == null) return Unauthorized();
+        return Ok(new MeResponse(!string.IsNullOrEmpty(user.Email), user.UserName!, user.Email));
+    }
+
+    [Authorize]
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword(ChangePasswordRequest req)
     {
@@ -108,6 +124,47 @@ public class AuthController : ControllerBase
             return BadRequest(result.Errors.Select(e => e.Description));
 
         return Ok();
+    }
+
+    [Authorize]
+    [HttpPatch("email")]
+    public async Task<IActionResult> ChangeEmail(ChangeEmailRequest req)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var user = await _userManager.FindByIdAsync(userId!);
+        if (user == null) return Unauthorized();
+
+        if (!await _userManager.CheckPasswordAsync(user, req.CurrentPassword))
+            return BadRequest("Current password is incorrect.");
+
+        if (await _userManager.FindByEmailAsync(req.NewEmail) != null)
+            return Conflict("Email already in use.");
+
+        user.Email = req.NewEmail;
+        user.NormalizedEmail = req.NewEmail.ToUpperInvariant();
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            return BadRequest(result.Errors.Select(e => e.Description));
+
+        return Ok(new { email = user.Email });
+    }
+
+    [Authorize]
+    [HttpPatch("username")]
+    public async Task<IActionResult> ChangeUsername(ChangeUsernameRequest req)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var user = await _userManager.FindByIdAsync(userId!);
+        if (user == null) return Unauthorized();
+
+        if (await _userManager.FindByNameAsync(req.NewUsername) != null)
+            return Conflict("Username already taken.");
+
+        var result = await _userManager.SetUserNameAsync(user, req.NewUsername);
+        if (!result.Succeeded)
+            return BadRequest(result.Errors.Select(e => e.Description));
+
+        return Ok(new { username = user.UserName });
     }
 
     private async Task IssueRefreshToken(AppUser user)

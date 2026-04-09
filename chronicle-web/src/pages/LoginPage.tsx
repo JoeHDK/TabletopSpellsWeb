@@ -8,7 +8,9 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const login = useAuthStore((s) => s.login)
   const [tab, setTab] = useState<'login' | 'register'>('login')
-  const [username, setUsername] = useState('')
+  const [identifier, setIdentifier] = useState('')  // email or username for login
+  const [username, setUsername] = useState('')       // only for register
+  const [email, setEmail] = useState('')             // only for register
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -18,10 +20,11 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      const fn = tab === 'login' ? authApi.login : authApi.register
-      const data = await fn(username, password)
+      const data = tab === 'login'
+        ? await authApi.login(identifier, password)
+        : await authApi.register(username, email, password)
       queryClient.clear()
-      login(data.token, data.username, data.userId, data.isDm)
+      login(data.token, data.username, data.userId, data.isDm, data.email ?? undefined)
       navigate('/characters')
     } catch (err: unknown) {
       const data = (err as { response?: { data?: unknown } })?.response?.data
@@ -59,17 +62,49 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">Username</label>
-            <input
-              type="text"
-              autoComplete="username"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
+          {tab === 'login' ? (
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">Email or username</label>
+              <input
+                type="text"
+                autoComplete="username"
+                required
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">Username</label>
+                <input
+                  type="text"
+                  autoComplete="username"
+                  required
+                  minLength={3}
+                  maxLength={50}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">This is your display name in campaigns.</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">Email</label>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">Used for login and account recovery.</p>
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-sm text-gray-300 mb-1">Password</label>
             <input
