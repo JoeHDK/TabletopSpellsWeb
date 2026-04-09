@@ -115,8 +115,8 @@ public class CustomMonstersController : ControllerBase
         Wisdom = e.Wisdom,
         Charisma = e.Charisma,
         Description = e.Description,
-        Attacks = JsonSerializer.Deserialize<List<MonsterAttackDto>>(e.AttacksJson) ?? [],
-        Spells = JsonSerializer.Deserialize<List<MonsterSpellDto>>(e.SpellsJson) ?? [],
+        Attacks = string.IsNullOrWhiteSpace(e.AttacksJson) ? [] : JsonSerializer.Deserialize<List<MonsterAttackDto>>(e.AttacksJson) ?? [],
+        Spells = string.IsNullOrWhiteSpace(e.SpellsJson) ? [] : JsonSerializer.Deserialize<List<MonsterSpellDto>>(e.SpellsJson) ?? [],
         CreatedAt = e.CreatedAt,
         UpdatedAt = e.UpdatedAt,
     };
