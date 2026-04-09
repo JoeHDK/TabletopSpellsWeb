@@ -14,6 +14,7 @@ import {
   getClassResourceGains,
   checkMulticlassPrereqs, unmetPrereqsText,
   MULTICLASS_SAVING_THROWS, MULTICLASS_SKILL_PICKS, CLASS_SKILL_LIST, ALL_DND5E_SKILLS,
+  SUBCLASSES, formatSubclass,
 } from '../utils/multiclassTables'
 
 const DND5E_CLASSES: CharacterClass[] = [
@@ -21,28 +22,6 @@ const DND5E_CLASSES: CharacterClass[] = [
   'Fighter', 'Monk', 'Paladin', 'Ranger', 'Rogue',
   'Sorcerer', 'Warlock', 'Wizard',
 ]
-
-const SUBCLASSES: Record<string, string[]> = {
-  Barbarian: ['BarbarianPathOfTheBerserker','BarbarianPathOfTheTotemWarrior','BarbarianPathOfTheWildMagic','BarbarianPathOfTheZealot','BarbarianPathOfTheAncestralGuardian','BarbarianPathOfTheRune','BarbarianPathOfTheBeast','BarbarianPathOfTheWildHunt'],
-  Bard: ['BardCollegeOfLore','BardCollegeOfPerformance','BardCollegeOfGlamour','BardCollegeOfWhispers','BardCollegeOfSwords','BardCollegeOfEloquence','BardCollegeOfSpirits','BardCollegeOfPuppets'],
-  Cleric: ['ClericAirDomain','ClericAnimalDomain','ClericArcanaDomain','ClericDeathDomain','ClericForgeDomain','ClericGraveDomain','ClericKnowledgeDomain','ClericLifeDomain','ClericLightDomain','ClericNatureDomain','ClericTempestDomain','ClericTrickeryDomain','ClericWarDomain','ClericTwilightDomain','ClericLoveDomain','ClericOrderDomain'],
-  Druid: ['DruidCircleOfTheLand','DruidCircleOfTheMoon','DruidCircleOfSpores','DruidCircleOfDreams','DruidCircleOfTheShepherd','DruidCircleOfWildFire','DruidCircleOfStar','DruidCircleOfTheTaiga'],
-  Fighter: ['FighterChampion','FighterBattleMaster','FighterEldritchKnight','FighterArcaneArcher','FighterCavalier','FighterRune','FighterPsiWarrior'],
-  Monk: ['MonkWayOfTheOpenHand','MonkWayOfTheLongDeath','MonkWayOfTheFourElements','MonkWayOfShadow','MonkWayOfTheSunSoul','MonkWayOfMercy','MonkWayOfTheKensei','MonkWayOfTheAstralSelf'],
-  Paladin: ['PaladinOathOfDevotion','PaladinOathOfTheAncients','PaladinOathOfVengeance','PaladinOathOfConquest','PaladinOathOfRedemption','PaladinOathOfTheeWatchers','PaladinOathOfTheCrown'],
-  Ranger: ['RangerHunter','RangerBeastMaster','RangerGloomStalker','RangerFeyWanderer','RangerSwiftBlade','RangerMonsterSlayer'],
-  Rogue: ['RogueAssassin','RogueThief','RogueTrickster','RogueArcaneConundrum','RogueSoulknife','RogueShadowdancer','RogueInquisitive','RogueSwashbuckler'],
-  Sorcerer: ['SorcererDraconicBloodline','SorcererWildMagic','SorcererStormSorcery','SorcererShadowMagic','SorcererDivineSource','SorcererSessionOfTheClockworkSoul','SorcererAbberantMind'],
-  Warlock: ['WarlockArchfey','WarlockFiend','WarlockGreatOldOne','WarlockCelestial','WarlockHexblade','WarlockUndying','WarlockGenies'],
-  Wizard: ['WizardAbjuration','WizardConjuration','WizardDivination','WizardEnchantment','WizardEvocation','WizardIllusion','WizardNecromancy','WizardTransmutation','WizardChronoturgy','WizardGravityMastery','WizardWar','WizardBladesingers'],
-  Artificer: ['ArtificerAlchemist','ArtificerArtillerist','ArtificerBattlesmith','ArtificerArmorer'],
-}
-
-function formatSubclass(value: string, cls: string): string {
-  if (!value || value === 'None') return '—'
-  const stripped = value.startsWith(cls) ? value.slice(cls.length) : value
-  return stripped.replace(/([A-Z])/g, ' $1').trim()
-}
 
 // ── Snapshot type (stored in DB for Level Down) ──────────────────────────────
 

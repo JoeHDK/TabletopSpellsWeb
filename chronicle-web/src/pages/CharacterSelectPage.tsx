@@ -177,7 +177,7 @@ export default function CharacterSelectPage() {
         <section>
           <SectionHeader title="Characters" count={characters.length} open={charsOpen} onToggle={() => setCharsOpen((v) => !v)}>
             <button
-              onClick={() => openCreate(false)}
+              onClick={() => navigate('/characters/create')}
               className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm font-medium"
             >
               + New

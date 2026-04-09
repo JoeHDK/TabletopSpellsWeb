@@ -34,6 +34,7 @@ import FeatsPage from './pages/FeatsPage'
 import FeaturesPage from './pages/FeaturesPage'
 import SettingsPage from './pages/SettingsPage'
 import AddEmailGatePage from './pages/AddEmailGatePage'
+import CharacterCreationPage from './pages/CharacterCreationPage'
 
 const persister = createIDBPersister()
 
@@ -49,6 +50,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/add-email" element={<ProtectedRoute><AddEmailGatePage /></ProtectedRoute>} />
           <Route path="/" element={<Navigate to="/characters" replace />} />
           <Route path="/characters" element={<ProtectedRoute><CharacterSelectPage /></ProtectedRoute>} />
+          <Route path="/characters/create" element={<ProtectedRoute><CharacterCreationPage /></ProtectedRoute>} />
           <Route path="/characters/:id" element={<ProtectedRoute><CharacterSheetPage /></ProtectedRoute>} />
           <Route path="/characters/:id/spells" element={<ProtectedRoute><SpellListPage /></ProtectedRoute>} />
           <Route path="/characters/:id/prepare" element={<ProtectedRoute><PrepareSpellsPage /></ProtectedRoute>} />

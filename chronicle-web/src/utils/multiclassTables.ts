@@ -141,6 +141,54 @@ export const MULTICLASS_SKILL_PICKS: Record<CharacterClass, { count: number; any
   Wizard:    { count: 0, anySkill: false },
 }
 
+/** Saving throw proficiencies granted to a first-level character (full class build, not multiclass) */
+export const CLASS_STARTING_SAVING_THROWS: Record<CharacterClass, string[]> = {
+  Artificer: ['Constitution', 'Intelligence'],
+  Barbarian: ['Strength', 'Constitution'],
+  Bard:      ['Dexterity', 'Charisma'],
+  Cleric:    ['Wisdom', 'Charisma'],
+  Druid:     ['Intelligence', 'Wisdom'],
+  Fighter:   ['Strength', 'Constitution'],
+  Monk:      ['Strength', 'Dexterity'],
+  Paladin:   ['Wisdom', 'Charisma'],
+  Ranger:    ['Strength', 'Dexterity'],
+  Rogue:     ['Dexterity', 'Intelligence'],
+  Sorcerer:  ['Constitution', 'Charisma'],
+  Warlock:   ['Wisdom', 'Charisma'],
+  Wizard:    ['Intelligence', 'Wisdom'],
+}
+
+/** Number of starting skill proficiency picks for a first-level character */
+export const CLASS_STARTING_SKILL_COUNT: Record<CharacterClass, number> = {
+  Artificer: 2, Barbarian: 2, Bard: 3, Cleric: 2, Druid: 2,
+  Fighter: 2, Monk: 2, Paladin: 2, Ranger: 3, Rogue: 4,
+  Sorcerer: 2, Warlock: 2, Wizard: 2,
+}
+
+/** Subclass options per class (stable IDs — used by LevelUpWizard and CharacterCreationPage) */
+export const SUBCLASSES: Record<string, string[]> = {
+  Barbarian: ['BarbarianPathOfTheBerserker','BarbarianPathOfTheTotemWarrior','BarbarianPathOfTheWildMagic','BarbarianPathOfTheZealot','BarbarianPathOfTheAncestralGuardian','BarbarianPathOfTheRune','BarbarianPathOfTheBeast','BarbarianPathOfTheWildHunt'],
+  Bard: ['BardCollegeOfLore','BardCollegeOfPerformance','BardCollegeOfGlamour','BardCollegeOfWhispers','BardCollegeOfSwords','BardCollegeOfEloquence','BardCollegeOfSpirits','BardCollegeOfPuppets'],
+  Cleric: ['ClericAirDomain','ClericAnimalDomain','ClericArcanaDomain','ClericDeathDomain','ClericForgeDomain','ClericGraveDomain','ClericKnowledgeDomain','ClericLifeDomain','ClericLightDomain','ClericNatureDomain','ClericTempestDomain','ClericTrickeryDomain','ClericWarDomain','ClericTwilightDomain','ClericLoveDomain','ClericOrderDomain'],
+  Druid: ['DruidCircleOfTheLand','DruidCircleOfTheMoon','DruidCircleOfSpores','DruidCircleOfDreams','DruidCircleOfTheShepherd','DruidCircleOfWildFire','DruidCircleOfStar','DruidCircleOfTheTaiga'],
+  Fighter: ['FighterChampion','FighterBattleMaster','FighterEldritchKnight','FighterArcaneArcher','FighterCavalier','FighterRune','FighterPsiWarrior'],
+  Monk: ['MonkWayOfTheOpenHand','MonkWayOfTheLongDeath','MonkWayOfTheFourElements','MonkWayOfShadow','MonkWayOfTheSunSoul','MonkWayOfMercy','MonkWayOfTheKensei','MonkWayOfTheAstralSelf'],
+  Paladin: ['PaladinOathOfDevotion','PaladinOathOfTheAncients','PaladinOathOfVengeance','PaladinOathOfConquest','PaladinOathOfRedemption','PaladinOathOfTheeWatchers','PaladinOathOfTheCrown'],
+  Ranger: ['RangerHunter','RangerBeastMaster','RangerGloomStalker','RangerFeyWanderer','RangerSwiftBlade','RangerMonsterSlayer'],
+  Rogue: ['RogueAssassin','RogueThief','RogueTrickster','RogueArcaneConundrum','RogueSoulknife','RogueShadowdancer','RogueInquisitive','RogueSwashbuckler'],
+  Sorcerer: ['SorcererDraconicBloodline','SorcererWildMagic','SorcererStormSorcery','SorcererShadowMagic','SorcererDivineSource','SorcererSessionOfTheClockworkSoul','SorcererAbberantMind'],
+  Warlock: ['WarlockArchfey','WarlockFiend','WarlockGreatOldOne','WarlockCelestial','WarlockHexblade','WarlockUndying','WarlockGenies'],
+  Wizard: ['WizardAbjuration','WizardConjuration','WizardDivination','WizardEnchantment','WizardEvocation','WizardIllusion','WizardNecromancy','WizardTransmutation','WizardChronoturgy','WizardGravityMastery','WizardWar','WizardBladesingers'],
+  Artificer: ['ArtificerAlchemist','ArtificerArtillerist','ArtificerBattlesmith','ArtificerArmorer'],
+}
+
+/** Format a subclass ID into a human-readable label */
+export function formatSubclass(value: string, cls: string): string {
+  if (!value || value === 'None') return '—'
+  const stripped = value.startsWith(cls) ? value.slice(cls.length) : value
+  return stripped.replace(/([A-Z])/g, ' $1').trim()
+}
+
 /** Skill options available to each class (used for both initial build and multiclass skill picks) */
 export const CLASS_SKILL_LIST: Record<CharacterClass, string[]> = {
   Artificer: ['Arcana', 'History', 'Investigation', 'Medicine', 'Nature', 'Perception', 'Sleight of Hand'],
