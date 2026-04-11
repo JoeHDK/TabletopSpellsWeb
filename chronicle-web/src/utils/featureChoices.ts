@@ -82,24 +82,24 @@ const FIGHTING_STYLE_OPTIONS: Record<string, FeatureChoiceOption[]> = {
 }
 
 const BATTLE_MASTER_MANEUVERS: FeatureChoiceOption[] = [
-  { id: 'Ambush', name: 'Ambush' },
-  { id: 'Brace', name: 'Brace' },
-  { id: "Commander's Strike", name: "Commander's Strike" },
-  { id: 'Disarming Attack', name: 'Disarming Attack' },
-  { id: 'Distracting Strike', name: 'Distracting Strike' },
-  { id: 'Evasive Footwork', name: 'Evasive Footwork' },
-  { id: 'Feinting Attack', name: 'Feinting Attack' },
-  { id: 'Goading Attack', name: 'Goading Attack' },
-  { id: 'Lunging Attack', name: 'Lunging Attack' },
-  { id: 'Maneuvering Attack', name: 'Maneuvering Attack' },
-  { id: 'Menacing Attack', name: 'Menacing Attack' },
-  { id: 'Parry', name: 'Parry' },
-  { id: 'Precision Attack', name: 'Precision Attack' },
-  { id: 'Pushing Attack', name: 'Pushing Attack' },
-  { id: 'Rally', name: 'Rally' },
-  { id: 'Riposte', name: 'Riposte' },
-  { id: 'Sweeping Attack', name: 'Sweeping Attack' },
-  { id: 'Trip Attack', name: 'Trip Attack' },
+  { id: 'Ambush', name: 'Ambush', description: 'Add a superiority die to Stealth or initiative rolls.' },
+  { id: 'Brace', name: 'Brace', description: 'Attack with your reaction when a creature enters your reach.' },
+  { id: "Commander's Strike", name: "Commander's Strike", description: 'Give up one attack to direct an ally to strike.' },
+  { id: 'Disarming Attack', name: 'Disarming Attack', description: 'Add damage and force a target to drop an item.' },
+  { id: 'Distracting Strike', name: 'Distracting Strike', description: 'Add damage and grant the next attacker advantage.' },
+  { id: 'Evasive Footwork', name: 'Evasive Footwork', description: 'Add a superiority die to AC while moving.' },
+  { id: 'Feinting Attack', name: 'Feinting Attack', description: 'Spend a bonus action to gain advantage and add damage.' },
+  { id: 'Goading Attack', name: 'Goading Attack', description: 'Add damage and pressure the target to attack you.' },
+  { id: 'Lunging Attack', name: 'Lunging Attack', description: 'Increase your melee reach by 5 feet for one attack.' },
+  { id: 'Maneuvering Attack', name: 'Maneuvering Attack', description: 'Add damage and let an ally move without opportunity attacks.' },
+  { id: 'Menacing Attack', name: 'Menacing Attack', description: 'Add damage and frighten the target on a failed save.' },
+  { id: 'Parry', name: 'Parry', description: 'Use your reaction to reduce melee damage taken.' },
+  { id: 'Precision Attack', name: 'Precision Attack', description: 'Add a superiority die to an attack roll after seeing it.' },
+  { id: 'Pushing Attack', name: 'Pushing Attack', description: 'Add damage and push a target away on a failed save.' },
+  { id: 'Rally', name: 'Rally', description: 'Use a bonus action to grant temporary hit points to an ally.' },
+  { id: 'Riposte', name: 'Riposte', description: 'Use your reaction to strike back after a miss.' },
+  { id: 'Sweeping Attack', name: 'Sweeping Attack', description: 'Carry some damage over to a second nearby creature.' },
+  { id: 'Trip Attack', name: 'Trip Attack', description: 'Add damage and knock the target prone on a failed save.' },
 ]
 
 const METAMAGIC_OPTIONS: FeatureChoiceOption[] = [
@@ -634,14 +634,14 @@ const ALL_FEATURE_CHOICE_DEFINITIONS: FeatureChoiceDefinition[] = [
     kind: 'resource_option',
     addToResourceKey: 'arcane_shot',
     options: [
-      { id: 'Banishing Arrow', name: 'Banishing Arrow' },
-      { id: 'Beguiling Arrow', name: 'Beguiling Arrow' },
-      { id: 'Bursting Arrow', name: 'Bursting Arrow' },
-      { id: 'Enfeebling Arrow', name: 'Enfeebling Arrow' },
-      { id: 'Grasping Arrow', name: 'Grasping Arrow' },
-      { id: 'Piercing Arrow', name: 'Piercing Arrow' },
-      { id: 'Seeking Arrow', name: 'Seeking Arrow' },
-      { id: 'Shadow Arrow', name: 'Shadow Arrow' },
+      { id: 'Banishing Arrow', name: 'Banishing Arrow', description: 'Force a hit creature toward the Feywild until the end of its next turn.' },
+      { id: 'Beguiling Arrow', name: 'Beguiling Arrow', description: 'Charm the target toward another creature you choose.' },
+      { id: 'Bursting Arrow', name: 'Bursting Arrow', description: 'Detonate force energy to damage the target and nearby creatures.' },
+      { id: 'Enfeebling Arrow', name: 'Enfeebling Arrow', description: 'Sap the target so its weapon attacks deal half damage.' },
+      { id: 'Grasping Arrow', name: 'Grasping Arrow', description: 'Wrap brambles around the target that deal damage when it moves.' },
+      { id: 'Piercing Arrow', name: 'Piercing Arrow', description: 'Fire a line of energy that can strike every creature in its path.' },
+      { id: 'Seeking Arrow', name: 'Seeking Arrow', description: 'Curve the shot toward a known target even without line of sight.' },
+      { id: 'Shadow Arrow', name: 'Shadow Arrow', description: 'Shroud the target in shadow and limit its vision.' },
     ],
   },
   {
@@ -1170,4 +1170,17 @@ export function featureChoiceSelectionsEqual(
 ): boolean {
   const keys = unique([...Object.keys(left), ...Object.keys(right)]).sort()
   return keys.every(key => arraysEqual(left[key] ?? [], right[key] ?? []))
+}
+
+const RESOURCE_OPTION_LOOKUP = new Map<string, Map<string, FeatureChoiceOption>>(
+  ALL_FEATURE_CHOICE_DEFINITIONS
+    .filter((definition) => definition.kind === 'resource_option' && !!definition.addToResourceKey)
+    .map((definition) => [
+      definition.addToResourceKey as string,
+      new Map(definition.options.map(option => [option.id, option])),
+    ]),
+)
+
+export function getResourceOptionInfo(resourceKey: string, optionId: string): FeatureChoiceOption | null {
+  return RESOURCE_OPTION_LOOKUP.get(resourceKey)?.get(optionId) ?? null
 }

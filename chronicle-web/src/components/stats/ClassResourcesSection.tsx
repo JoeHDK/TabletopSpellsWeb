@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ClassResource, EquipmentResource, ClassFeature } from '../../types'
+import { getResourceOptionInfo } from '../../utils/featureChoices'
 
 const RESOURCE_DESCRIPTIONS: Record<string, { title: string; desc: string }> = {
   rage: {
@@ -76,16 +77,40 @@ const RESOURCE_DESCRIPTIONS: Record<string, { title: string; desc: string }> = {
   },
 }
 
-function SelectedOptionsList({ options }: { options?: string[] }) {
+function SelectedOptionsList({
+  resourceKey,
+  options,
+  onOpenInfo,
+}: {
+  resourceKey: string
+  options?: string[]
+  onOpenInfo: (info: { title: string; desc: string }) => void
+}) {
   if (!options || options.length === 0) return null
 
   return (
     <div className="pl-2 space-y-1">
-      {options.map(option => (
-        <p key={option} className="text-xs text-gray-400">
-          - {option}
-        </p>
-      ))}
+      {options.map(option => {
+        const info = getResourceOptionInfo(resourceKey, option)
+        if (!info?.description) {
+          return (
+            <p key={option} className="text-xs text-gray-400">
+              - {option}
+            </p>
+          )
+        }
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onOpenInfo({ title: info.name, desc: info.description ?? '' })}
+            className="block text-xs text-left text-indigo-300 hover:text-indigo-200 transition-colors"
+            title={`About ${info.name}`}
+          >
+            - {option}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -121,6 +146,7 @@ export function ClassResourcesSection({
   bare,
 }: ClassResourcesSectionProps) {
   const [resourceInfoKey, setResourceInfoKey] = useState<string | null>(null)
+  const [optionInfo, setOptionInfo] = useState<{ title: string; desc: string } | null>(null)
 
   if (bare) return (
     <>
@@ -216,7 +242,7 @@ export function ClassResourcesSection({
                   </div>
                 </details>
               )}
-              <SelectedOptionsList options={res.selectedOptions} />
+              <SelectedOptionsList resourceKey={res.resourceKey} options={res.selectedOptions} onOpenInfo={setOptionInfo} />
             </div>
           )
         })}
@@ -279,6 +305,17 @@ export function ClassResourcesSection({
               <button onClick={() => setResourceInfoKey(null)} className="text-gray-400 hover:text-white text-xl leading-none shrink-0">✕</button>
             </div>
             <p className="text-sm text-gray-300 leading-relaxed">{RESOURCE_DESCRIPTIONS[resourceInfoKey].desc}</p>
+          </div>
+        </div>
+      )}
+      {optionInfo && (
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setOptionInfo(null)}>
+          <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="text-base font-bold">{optionInfo.title}</h2>
+              <button onClick={() => setOptionInfo(null)} className="text-gray-400 hover:text-white text-xl leading-none shrink-0">✕</button>
+            </div>
+            <p className="text-sm text-gray-300 leading-relaxed">{optionInfo.desc}</p>
           </div>
         </div>
       )}
@@ -405,7 +442,7 @@ export function ClassResourcesSection({
                       </div>
                     </details>
                   )}
-                  <SelectedOptionsList options={res.selectedOptions} />
+                  <SelectedOptionsList resourceKey={res.resourceKey} options={res.selectedOptions} onOpenInfo={setOptionInfo} />
                 </div>
               )
             })}
@@ -478,6 +515,17 @@ export function ClassResourcesSection({
               <button onClick={() => setResourceInfoKey(null)} className="text-gray-400 hover:text-white text-xl leading-none shrink-0">✕</button>
             </div>
             <p className="text-sm text-gray-300 leading-relaxed">{RESOURCE_DESCRIPTIONS[resourceInfoKey].desc}</p>
+          </div>
+        </div>
+      )}
+      {optionInfo && (
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setOptionInfo(null)}>
+          <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="text-base font-bold">{optionInfo.title}</h2>
+              <button onClick={() => setOptionInfo(null)} className="text-gray-400 hover:text-white text-xl leading-none shrink-0">✕</button>
+            </div>
+            <p className="text-sm text-gray-300 leading-relaxed">{optionInfo.desc}</p>
           </div>
         </div>
       )}
