@@ -1,3 +1,5 @@
+import type { Spell } from '../types'
+
 // Mirrors the backend Class enum order exactly, for handling legacy numeric values in cache
 export const CLASS_NAMES_BY_INDEX = [
   'barbarian', 'bard', 'cleric', 'druid', 'fighter', 'monk', 'paladin', 'ranger', 'rogue',
@@ -61,4 +63,21 @@ export function getLowestSpellLevel(spellLevel?: string): number | null {
   }
 
   return levels.length > 0 ? Math.min(...levels) : null
+}
+
+export function normalizeSpellKey(spellId: string): string {
+  return spellId
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+export function getSpellKey(spell: Pick<Spell, 'id' | 'name'> | null | undefined): string {
+  if (!spell) return ''
+  if (spell.name) return normalizeSpellKey(spell.name)
+  return normalizeSpellKey(spell.id ?? '')
 }

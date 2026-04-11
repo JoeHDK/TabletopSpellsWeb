@@ -6,7 +6,7 @@ import { charactersApi } from '../api/characters'
 import type { Spell, Character, SpellsPerDay, PreparedSpell } from '../types'
 import SpellDetailModal from '../components/SpellDetailModal'
 import LevelUpBanner from '../components/LevelUpBanner'
-import { getLevelForClass, parseFirstLevel, resolveClassName, isPreparingCaster } from '../utils/spellUtils'
+import { getLevelForClass, getSpellKey, normalizeSpellKey, parseFirstLevel, resolveClassName, isPreparingCaster } from '../utils/spellUtils'
 
 export default function SpellListPage({ embedded }: { embedded?: boolean } = {}) {
   const { id } = useParams<{ id: string }>()
@@ -48,12 +48,12 @@ function ArcaneSpellList({ characterId, character, embedded }: { characterId: st
     queryFn: () => spellsPerDayApi.getToday(characterId),
   })
 
-  const knownIds = new Set(preparedList.map((p) => p.spellId))
+  const knownIds = new Set(preparedList.map((p) => normalizeSpellKey(p.spellId)))
 
   const knownSpells = useMemo(() => {
     const charClass = resolveClassName(character.characterClass)
     return allSpells
-      .filter((s) => knownIds.has(s.id ?? s.name!))
+      .filter((s) => knownIds.has(getSpellKey(s)))
       .filter((s) => !search || s.name?.toLowerCase().includes(search.toLowerCase()))
       .sort((a, b) => {
         const aLvl = getLevelForClass(a.spell_level, charClass) ?? parseFirstLevel(a.spell_level)
@@ -65,18 +65,18 @@ function ArcaneSpellList({ characterId, character, embedded }: { characterId: st
 
   const canPrepare = isPreparingCaster(character.characterClass)
 
-  const knownSpellIds = useMemo(() => new Set(allSpells.map(s => s.id ?? s.name!)), [allSpells])
+  const knownSpellIds = useMemo(() => new Set(allSpells.map(s => getSpellKey(s))), [allSpells])
   const preparedCount = canPrepare ? preparedList.filter(
-    (p) => p.isPrepared && knownSpellIds.has(p.spellId)
+    (p) => p.isPrepared && knownSpellIds.has(normalizeSpellKey(p.spellId))
   ).length : 0
   const spellcastingMod = getSpellcastingModifier(character.abilityScores, character.characterClass)
   const maxPrepared = Math.max(1, character.level + spellcastingMod)
 
   const removeMutation = useMutation({
-    mutationFn: (spell: Spell) => preparedSpellsApi.delete(characterId, spell.id ?? spell.name!),
+    mutationFn: (spell: Spell) => preparedSpellsApi.delete(characterId, getSpellKey(spell)),
     onSuccess: (_void, spell) => {
-      const key = spell.id ?? spell.name!
-      qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => old?.filter(p => p.spellId !== key) ?? [])
+      const key = getSpellKey(spell)
+      qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => old?.filter(p => normalizeSpellKey(p.spellId) !== key) ?? [])
       qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
       setSelectedSpell(null)
     },
@@ -84,8 +84,8 @@ function ArcaneSpellList({ characterId, character, embedded }: { characterId: st
 
   const prepareMutation = useMutation({
     mutationFn: (spell: Spell) => {
-      const key = spell.id ?? spell.name!
-      const existing = preparedList.find((p) => p.spellId === key)
+      const key = getSpellKey(spell)
+      const existing = preparedList.find((p) => normalizeSpellKey(p.spellId) === key)
       const currentlyPrepared = existing?.isPrepared ?? false
       return preparedSpellsApi.upsert(characterId, key, {
         spellId: key,
@@ -160,10 +160,10 @@ function ArcaneSpellList({ characterId, character, embedded }: { characterId: st
           </div>
         ) : (
           knownSpells.map((spell) => {
-            const key = spell.id ?? spell.name!
+            const key = getSpellKey(spell)
             const charClass = resolveClassName(character.characterClass)
             const lvl = getLevelForClass(spell.spell_level, charClass) ?? parseFirstLevel(spell.spell_level)
-            const isPrepared = preparedList.find((p) => p.spellId === key)?.isPrepared ?? false
+            const isPrepared = preparedList.find((p) => normalizeSpellKey(p.spellId) === key)?.isPrepared ?? false
             const isRitual = spell.ritual
             // "ritual only" means: this spell can be cast (as ritual) but isn't prepared — only meaningful for preparing casters
             const ritualOnly = canPrepare && isRitual && !isPrepared && lvl > 0
@@ -203,11 +203,11 @@ function ArcaneSpellList({ characterId, character, embedded }: { characterId: st
       </div>
 
       {selectedSpell && (() => {
-        const key = selectedSpell.id ?? selectedSpell.name!
+        const key = getSpellKey(selectedSpell)
         const charClass = resolveClassName(character.characterClass)
         const spellLvl = getLevelForClass(selectedSpell.spell_level, charClass) ?? parseFirstLevel(selectedSpell.spell_level)
         const isCantrip = spellLvl === 0
-        const existing = preparedList.find((p) => p.spellId === key)
+        const existing = preparedList.find((p) => normalizeSpellKey(p.spellId) === key)
         const isPrepared = existing?.isPrepared ?? false
         const isRitual = selectedSpell.ritual
         const atMax = !isPrepared && preparedCount >= maxPrepared
@@ -309,13 +309,13 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
   })
 
   const preparedIds = new Set(
-    preparedList.filter((p) => p.isPrepared || p.isAlwaysPrepared).map((p) => p.spellId)
+    preparedList.filter((p) => p.isPrepared || p.isAlwaysPrepared).map((p) => normalizeSpellKey(p.spellId))
   )
-  const favoriteIds = new Set(preparedList.filter((p) => p.isFavorite).map((p) => p.spellId))
+  const favoriteIds = new Set(preparedList.filter((p) => p.isFavorite).map((p) => normalizeSpellKey(p.spellId)))
   // Only count spells that actually exist in the spell database to avoid stale/orphaned rows inflating the count
-  const knownSpellIds = useMemo(() => new Set(allSpells.map(s => s.id ?? s.name!)), [allSpells])
+  const knownSpellIds = useMemo(() => new Set(allSpells.map(s => getSpellKey(s))), [allSpells])
   const preparedCount = preparedList.filter(
-    (p) => p.isPrepared && !p.isAlwaysPrepared && knownSpellIds.has(p.spellId)
+    (p) => p.isPrepared && !p.isAlwaysPrepared && knownSpellIds.has(normalizeSpellKey(p.spellId))
   ).length
 
   const visibleSpells = useMemo(() => {
@@ -327,9 +327,9 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
       // All filter: search the entire spell database (no class restriction)
       pool = allSpells
     } else if (filter === 'prepared') {
-      pool = allSpells.filter((s) => preparedIds.has(s.id ?? s.name!))
+      pool = allSpells.filter((s) => preparedIds.has(getSpellKey(s)))
     } else if (filter === 'favorites') {
-      pool = allSpells.filter((s) => favoriteIds.has(s.id ?? s.name!))
+      pool = allSpells.filter((s) => favoriteIds.has(getSpellKey(s)))
     } else {
       // Level filter: restrict to class spells at that level
       pool = allSpells.filter((s) => getLevelForClass(s.spell_level, charClass) === filter)
@@ -347,8 +347,8 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
 
   const prepareMutation = useMutation({
     mutationFn: (spell: Spell) => {
-      const key = spell.id ?? spell.name!
-      const existing = preparedList.find((p) => p.spellId === key)
+      const key = getSpellKey(spell)
+      const existing = preparedList.find((p) => normalizeSpellKey(p.spellId) === key)
       // Toggle the isPrepared flag directly — don't use preparedIds which conflates isAlwaysPrepared
       const currentlyPrepared = existing?.isPrepared ?? false
       return preparedSpellsApi.upsert(characterId, key, {
@@ -372,9 +372,9 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
 
   const favoriteMutation = useMutation({
     mutationFn: (spell: Spell) => {
-      const key = spell.id ?? spell.name!
+      const key = getSpellKey(spell)
       const isFavorite = favoriteIds.has(key)
-      const existing = preparedList.find((p) => p.spellId === key)
+      const existing = preparedList.find((p) => normalizeSpellKey(p.spellId) === key)
       return preparedSpellsApi.upsert(characterId, key, {
         spellId: key,
         isPrepared: existing?.isPrepared ?? false,
@@ -395,8 +395,8 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
 
   const alwaysPreparedMutation = useMutation({
     mutationFn: (spell: Spell) => {
-      const key = spell.id ?? spell.name!
-      const existing = preparedList.find((p) => p.spellId === key)
+      const key = getSpellKey(spell)
+      const existing = preparedList.find((p) => normalizeSpellKey(p.spellId) === key)
       const currentlyAlways = existing?.isAlwaysPrepared ?? false
       return preparedSpellsApi.upsert(characterId, key, {
         spellId: key,
@@ -527,7 +527,7 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
           <div className="text-center text-gray-400 py-12">No spells found</div>
         ) : (
           visibleSpells.map((spell) => {
-            const key = spell.id ?? spell.name!
+            const key = getSpellKey(spell)
             const isPrepared = preparedIds.has(key)
             const isFavorite = favoriteIds.has(key)
             const charClass = resolveClassName(character.characterClass)
@@ -564,8 +564,8 @@ function DivineSpellList({ characterId, character, embedded }: { characterId: st
       </div>
 
       {selectedSpell && (() => {
-        const key = selectedSpell.id ?? selectedSpell.name!
-        const existing = preparedList.find((p) => p.spellId === key)
+        const key = getSpellKey(selectedSpell)
+        const existing = preparedList.find((p) => normalizeSpellKey(p.spellId) === key)
         const isPrepared = existing?.isPrepared ?? false
         const isAlwaysPrepared = existing?.isAlwaysPrepared ?? false
         const isFavorite = favoriteIds.has(key)

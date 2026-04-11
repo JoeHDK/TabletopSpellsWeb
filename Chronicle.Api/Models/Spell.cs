@@ -7,7 +7,7 @@ public class Spell
 {
     [JsonProperty("name")] public string? Name { get; set; }
     [JsonProperty("spell_level")] public string? SpellLevel { get; set; }
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Id { get; set; } = "";
     public School? School { get; set; }
     [JsonProperty("description")] public string? Description { get; set; }
     [JsonProperty("duration")] public string? Duration { get; set; }

@@ -15,7 +15,7 @@ import {
   type FeatureChoiceDefinition,
   withDynamicFeatureChoiceOptions,
 } from '../utils/featureChoices'
-import { getLevelForClass, getLowestSpellLevel, resolveClassName } from '../utils/spellUtils'
+import { getLevelForClass, getLowestSpellLevel, getSpellKey, normalizeSpellKey, resolveClassName } from '../utils/spellUtils'
 import { ABILITY_KEYS } from '../components/stats/statsConstants'
 import {
   HIT_DIE, ASI_LEVELS, SUBCLASS_LEVEL, PREPARED_CASTERS, KNOWN_CASTERS,
@@ -154,20 +154,20 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
     queryFn: () => featsApi.getAll(),
   })
 
-  const knownSpellIds = useMemo(() => new Set(preparedList.map(p => p.spellId)), [preparedList])
+  const knownSpellIds = useMemo(() => new Set(preparedList.map(p => normalizeSpellKey(p.spellId))), [preparedList])
   const knownSpellNames = useMemo(
     () => Array.from(new Set([
       ...preparedList
-        .map(prepared => allSpells.find(spell => (spell.id ?? spell.name) === prepared.spellId)?.name)
+        .map(prepared => allSpells.find(spell => getSpellKey(spell) === normalizeSpellKey(prepared.spellId))?.name)
         .filter((name): name is string => !!name),
       ...state.pickedSpells
-        .map(spellId => allSpells.find(spell => (spell.id ?? spell.name) === spellId)?.name)
+        .map(spellId => allSpells.find(spell => getSpellKey(spell) === normalizeSpellKey(spellId))?.name)
         .filter((name): name is string => !!name),
       ...state.pickedBonusSpells
-        .map(spellId => allSpells.find(spell => (spell.id ?? spell.name) === spellId)?.name)
+        .map(spellId => allSpells.find(spell => getSpellKey(spell) === normalizeSpellKey(spellId))?.name)
         .filter((name): name is string => !!name),
       ...state.pickedCantrips
-        .map(spellId => allSpells.find(spell => (spell.id ?? spell.name) === spellId)?.name)
+        .map(spellId => allSpells.find(spell => getSpellKey(spell) === normalizeSpellKey(spellId))?.name)
         .filter((name): name is string => !!name),
     ])),
     [allSpells, preparedList, state.pickedBonusSpells, state.pickedCantrips, state.pickedSpells],
@@ -226,7 +226,7 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
           } as const)[definition.id]
           const spellOptions = allSpells
             .filter(spell => spell.name && getLevelForClass(spell.spell_level, 'warlock') === arcanumLevel)
-            .filter(spell => !knownSpellIds.has(spell.id ?? spell.name ?? ''))
+            .filter(spell => !knownSpellIds.has(getSpellKey(spell)))
             .map(spell => ({
               id: spell.name,
               name: spell.name,
@@ -242,7 +242,7 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
               ? 2
               : 3
           const spellOptions = preparedList
-            .map(prepared => allSpells.find(spell => (spell.id ?? spell.name) === prepared.spellId))
+            .map(prepared => allSpells.find(spell => getSpellKey(spell) === normalizeSpellKey(prepared.spellId)))
             .filter((spell): spell is Spell => !!spell && !!spell.name)
             .filter(spell => getLevelForClass(spell.spell_level, 'wizard') === wizardSpellLevel)
             .map(spell => ({
@@ -360,7 +360,7 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
           .map(name => findSpellIdByName(allSpells, name))
           .filter((spellId): spellId is string => !!spellId && !allSpellPicks.includes(spellId) && !knownSpellIds.has(spellId))
         const extraFeatureCantripIds = extraFeatureSpellIds.filter(spellId => {
-          const spell = allSpells.find(s => (s.id ?? s.name) === spellId)
+          const spell = allSpells.find(s => getSpellKey(s) === normalizeSpellKey(spellId))
           return spell?.spell_level === '0' || spell?.spell_level === 'Cantrip'
         })
         const extraFeatureLeveledIds = extraFeatureSpellIds.filter(spellId => !extraFeatureCantripIds.includes(spellId))
@@ -370,7 +370,7 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
           charReq.lastLevelUpSnapshot = JSON.stringify(snapshot)
         }
         for (const spellId of [...allSpellPicks, ...extraFeatureSpellIds]) {
-          const spell = allSpells.find(s => (s.id ?? s.name) === spellId)
+          const spell = allSpells.find(s => getSpellKey(s) === normalizeSpellKey(spellId))
           const isCantrip = spell?.spell_level === '0' || spell?.spell_level === 'Cantrip'
           await preparedSpellsApi.upsert(characterId, spellId, {
             spellId, isPrepared: isCantrip, isAlwaysPrepared: false, isFavorite: false, isDomainSpell: false,
@@ -450,7 +450,7 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
         .map(name => findSpellIdByName(allSpells, name))
         .filter((spellId): spellId is string => !!spellId && !allSpellPicks.includes(spellId) && !knownSpellIds.has(spellId))
       const extraFeatureCantripIds = extraFeatureSpellIds.filter(spellId => {
-        const spell = allSpells.find(s => (s.id ?? s.name) === spellId)
+        const spell = allSpells.find(s => getSpellKey(s) === normalizeSpellKey(spellId))
         return spell?.spell_level === '0' || spell?.spell_level === 'Cantrip'
       })
       const extraFeatureLeveledIds = extraFeatureSpellIds.filter(spellId => !extraFeatureCantripIds.includes(spellId))
@@ -465,7 +465,7 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
 
       // Cantrips & spells → add to prepared list
       for (const spellId of [...allSpellPicks, ...extraFeatureSpellIds]) {
-        const spell = allSpells.find(s => (s.id ?? s.name) === spellId)
+        const spell = allSpells.find(s => getSpellKey(s) === normalizeSpellKey(spellId))
         const isCantrip = spell?.spell_level === '0' || spell?.spell_level === 'Cantrip'
         await preparedSpellsApi.upsert(characterId, spellId, {
           spellId,
@@ -692,8 +692,9 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
                 const isCantrip = s.spell_level === '0' || s.spell_level?.toLowerCase().includes('cantrip')
                 const lvlForClass = getLevelForClass(s.spell_level, resolveClassName(state.targetClass))
                 const forClass = isCantrip && lvlForClass === 0
-                const notKnown = !knownSpellIds.has(s.id ?? s.name ?? '')
-                const notPicked = !state.pickedCantrips.includes(s.id ?? s.name ?? '') && !state.pickedBonusSpells.includes(s.id ?? s.name ?? '')
+                const spellId = getSpellKey(s)
+                const notKnown = !knownSpellIds.has(spellId)
+                const notPicked = !state.pickedCantrips.includes(spellId) && !state.pickedBonusSpells.includes(spellId)
                 return forClass && notKnown && notPicked
               })}
               picked={state.pickedCantrips}
@@ -720,8 +721,9 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
                 const isLeveled = lvlForClass !== null && lvlForClass > 0
                 const maxSpellLvl = MAX_SPELL_LEVEL_TABLE[state.targetClass]?.[state.newClassLevel - 1] ?? 9
                 const withinLevel = lvlForClass !== null && lvlForClass <= maxSpellLvl
-                const notKnown = !knownSpellIds.has(s.id ?? s.name ?? '')
-                const notPicked = !state.pickedSpells.includes(s.id ?? s.name ?? '') && !state.pickedBonusSpells.includes(s.id ?? s.name ?? '')
+                const spellId = getSpellKey(s)
+                const notKnown = !knownSpellIds.has(spellId)
+                const notPicked = !state.pickedSpells.includes(spellId) && !state.pickedBonusSpells.includes(spellId)
                 return isLeveled && withinLevel && notKnown && notPicked
               })}
               picked={state.pickedSpells}
@@ -744,7 +746,7 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
               title="Magical Secrets"
               instruction={`Choose ${state.requiredBonusSpellPicks - state.pickedBonusSpells.length} Magical Secret${state.requiredBonusSpellPicks - state.pickedBonusSpells.length !== 1 ? 's' : ''} from any class up to a level you can cast, or a cantrip`}
               spells={allSpells.filter(spell => {
-                const spellId = spell.id ?? spell.name ?? ''
+                const spellId = getSpellKey(spell)
                 const lowestLevel = getLowestSpellLevel(spell.spell_level)
                 const bardMaxSpellLevel = MAX_SPELL_LEVEL_TABLE.Bard?.[state.newClassLevel - 1] ?? 9
                 const withinLevel = lowestLevel !== null && (lowestLevel === 0 || lowestLevel <= bardMaxSpellLevel)
@@ -1509,7 +1511,7 @@ function PickSpellsStep({ title, instruction, spells, picked, maxPicks, search, 
       <div className="space-y-1 max-h-52 overflow-y-auto">
         {filtered.length === 0 && <p className="text-xs text-gray-500 py-2">No spells found.</p>}
         {filtered.slice(0, 60).map(s => {
-          const id = s.id ?? s.name ?? ''
+          const id = getSpellKey(s)
           const isSelected = picked.includes(id)
           const isDisabled = !isSelected && picked.length >= maxPicks
           return (
@@ -1702,9 +1704,9 @@ function SummaryStep({ state, character, allSpells, allFeats, effectiveClasses, 
   effectiveClasses: CharacterClassEntry[]
   featureChoiceDefinitions: FeatureChoiceDefinition[]
 }) {
-  const resolvedSpells = state.pickedSpells.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id)
-  const resolvedBonusSpells = state.pickedBonusSpells.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id)
-  const resolvedCantrips = state.pickedCantrips.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id)
+  const resolvedSpells = state.pickedSpells.map(id => allSpells.find(s => getSpellKey(s) === normalizeSpellKey(id))?.name ?? id)
+  const resolvedBonusSpells = state.pickedBonusSpells.map(id => allSpells.find(s => getSpellKey(s) === normalizeSpellKey(id))?.name ?? id)
+  const resolvedCantrips = state.pickedCantrips.map(id => allSpells.find(s => getSpellKey(s) === normalizeSpellKey(id))?.name ?? id)
   const featName = state.pickedFeat?.name ?? (state.pickedFeatId ? allFeats.find(f => f.index === state.pickedFeatId)?.name : null)
   const featureChoiceSummary = featureChoiceDefinitions
     .map(definition => {

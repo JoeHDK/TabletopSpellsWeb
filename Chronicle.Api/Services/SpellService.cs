@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using Chronicle.Api.Models;
 using Chronicle.Api.Models.Enums;
+using System.Text;
 
 namespace Chronicle.Api.Services;
 
@@ -28,9 +29,45 @@ public class SpellService
                 Error = (_, args) => args.ErrorContext.Handled = true,
             };
             var spells = JsonConvert.DeserializeObject<List<Spell>>(json, settings) ?? new List<Spell>();
+            foreach (var spell in spells)
+            {
+                spell.Id = GetStableSpellId(spell.Name);
+            }
             _cache[game] = spells;
             return spells;
         }
+    }
+
+    public static string GetStableSpellId(string? spellName)
+    {
+        if (string.IsNullOrWhiteSpace(spellName)) return "";
+
+        var normalized = spellName.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder();
+        var previousWasHyphen = false;
+
+        foreach (var ch in normalized)
+        {
+            var category = char.GetUnicodeCategory(ch);
+            if (category == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
+
+            if (char.IsLetterOrDigit(ch))
+            {
+                builder.Append(ch);
+                previousWasHyphen = false;
+                continue;
+            }
+
+            if (ch == '\'' || ch == '’') continue;
+
+            if (!previousWasHyphen)
+            {
+                builder.Append('-');
+                previousWasHyphen = true;
+            }
+        }
+
+        return builder.ToString().Trim('-');
     }
 
     public List<Spell> GetSpellsByLevel(Game game, int level) =>

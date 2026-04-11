@@ -5,7 +5,7 @@ import { spellsApi, preparedSpellsApi } from '../api/spells'
 import { charactersApi } from '../api/characters'
 import type { Spell, PreparedSpell } from '../types'
 import SpellDetailModal from '../components/SpellDetailModal'
-import { getLevelForClass, parseFirstLevel, resolveClassName } from '../utils/spellUtils'
+import { getLevelForClass, getSpellKey, normalizeSpellKey, parseFirstLevel, resolveClassName } from '../utils/spellUtils'
 
 // Classes with spells in D&D 5e
 const DND5E_SPELL_CLASSES = ['bard', 'cleric', 'druid', 'paladin', 'ranger', 'sorcerer', 'warlock', 'wizard', 'artificer']
@@ -35,7 +35,7 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
     enabled: !!id,
   })
 
-  const knownIds = new Set(preparedList.map((p) => p.spellId))
+  const knownIds = new Set(preparedList.map((p) => normalizeSpellKey(p.spellId)))
 
   // Determine the effective class used for filtering
   const charClass = resolveClassName(character?.characterClass)
@@ -47,8 +47,8 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
   const addMutation = useMutation({
     mutationFn: (spell: Spell) => {
       const isCantrip = spell.spell_level === '0' || spell.spell_level === 'Cantrip'
-      return preparedSpellsApi.upsert(id!, spell.id ?? spell.name!, {
-        spellId: spell.id ?? spell.name!,
+      return preparedSpellsApi.upsert(id!, getSpellKey(spell), {
+        spellId: getSpellKey(spell),
         isPrepared: isCantrip,
         isAlwaysPrepared: false,
         isFavorite: false,
@@ -66,10 +66,10 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
   })
 
   const removeMutation = useMutation({
-    mutationFn: (spell: Spell) => preparedSpellsApi.delete(id!, spell.id ?? spell.name!),
+    mutationFn: (spell: Spell) => preparedSpellsApi.delete(id!, getSpellKey(spell)),
     onSuccess: (_void, spell) => {
       qc.setQueryData<PreparedSpell[]>(['preparedSpells', id], old =>
-        old?.filter(p => p.spellId !== (spell.id ?? spell.name!)) ?? []
+        old?.filter(p => normalizeSpellKey(p.spellId) !== getSpellKey(spell)) ?? []
       )
       qc.invalidateQueries({ queryKey: ['preparedSpells', id] })
     },
@@ -147,7 +147,7 @@ export default function SearchSpellsPage({ embedded }: { embedded?: boolean } = 
           <div className="text-center text-gray-400 py-12">No spells found</div>
         ) : (
           filtered.map((spell) => {
-            const key = spell.id ?? spell.name!
+          const key = getSpellKey(spell)
             const isInList = knownIds.has(key)
             const lvl = effectiveClass === 'all'
               ? parseFirstLevel(spell.spell_level)

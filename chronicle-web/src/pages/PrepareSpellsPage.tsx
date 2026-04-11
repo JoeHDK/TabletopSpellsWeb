@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { spellsApi, preparedSpellsApi } from '../api/spells'
 import { charactersApi } from '../api/characters'
-import { isPreparingCaster } from '../utils/spellUtils'
+import { getSpellKey, isPreparingCaster, normalizeSpellKey } from '../utils/spellUtils'
 import type { Spell, Character, PreparedSpell } from '../types'
 
 export default function PrepareSpellsPage({ embedded }: { embedded?: boolean } = {}) {
@@ -56,12 +56,12 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
     queryFn: () => preparedSpellsApi.getAll(characterId),
   })
 
-  const preparedIds = new Set(preparedList.filter((p) => p.isPrepared).map((p) => p.spellId))
+  const preparedIds = new Set(preparedList.filter((p) => p.isPrepared).map((p) => normalizeSpellKey(p.spellId)))
 
   // Cantrips are "known", not prepared daily
   const allCantrips = allSpells.filter((s) => s.spell_level === '0' || s.spell_level === 'Cantrip')
-  const knownCantripIds = new Set(preparedList.filter((p) => p.isPrepared && allCantrips.some(c => (c.id ?? c.name!) === p.spellId)).map((p) => p.spellId))
-  const knownCantrips = allCantrips.filter((s) => knownCantripIds.has(s.id ?? s.name!))
+  const knownCantripIds = new Set(preparedList.filter((p) => p.isPrepared && allCantrips.some(c => getSpellKey(c) === normalizeSpellKey(p.spellId))).map((p) => normalizeSpellKey(p.spellId)))
+  const knownCantrips = allCantrips.filter((s) => knownCantripIds.has(getSpellKey(s)))
 
   // Leveled spells only (exclude cantrips)
   const leveledSpells = allSpells.filter((s) => s.spell_level !== '0' && s.spell_level !== 'Cantrip')
@@ -70,14 +70,14 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
   )
 
   // Prepared count excludes cantrips
-  const preparedCount = preparedList.filter((p) => p.isPrepared && leveledSpells.some(s => (s.id ?? s.name!) === p.spellId)).length
+  const preparedCount = preparedList.filter((p) => p.isPrepared && leveledSpells.some(s => getSpellKey(s) === normalizeSpellKey(p.spellId))).length
   const maxPrepared = Math.max(1, character.level + getModifier(character.abilityScores, character.characterClass))
 
   const toggleMutation = useMutation({
     mutationFn: (spell: Spell) =>
-      preparedSpellsApi.upsert(characterId, spell.id ?? spell.name!, {
-        spellId: spell.id ?? spell.name!,
-        isPrepared: !preparedIds.has(spell.id ?? spell.name!),
+      preparedSpellsApi.upsert(characterId, getSpellKey(spell), {
+        spellId: getSpellKey(spell),
+        isPrepared: !preparedIds.has(getSpellKey(spell)),
         isAlwaysPrepared: false,
         isFavorite: false,
         isDomainSpell: false,
@@ -103,10 +103,10 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
   })
 
   const batchPrepare = (prepare: boolean) => {
-    const spells = filteredLeveled.filter(s => selectedIds.has(s.id ?? s.name!))
+    const spells = filteredLeveled.filter(s => selectedIds.has(getSpellKey(s)))
     Promise.all(spells.map(spell =>
-      preparedSpellsApi.upsert(characterId, spell.id ?? spell.name!, {
-        spellId: spell.id ?? spell.name!, isPrepared: prepare, isAlwaysPrepared: false, isFavorite: false, isDomainSpell: false,
+      preparedSpellsApi.upsert(characterId, getSpellKey(spell), {
+        spellId: getSpellKey(spell), isPrepared: prepare, isAlwaysPrepared: false, isFavorite: false, isDomainSpell: false,
       }).then(updated => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
         if (!old) return [updated]
         const exists = old.some(p => p.spellId === updated.spellId)
@@ -149,7 +149,7 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
           ) : (
             <div className="space-y-1">
               {knownCantrips.map((spell) => {
-                const key = spell.id ?? spell.name!
+                const key = getSpellKey(spell)
                 return (
                   <div key={key} className="flex items-center gap-3 bg-gray-900 rounded-xl px-4 py-2.5">
                     <span className="text-indigo-300 text-base shrink-0">✦</span>
@@ -180,7 +180,7 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
 
         <div className="px-4 pb-4 space-y-2">
           {filteredLeveled.map((spell) => {
-            const key = spell.id ?? spell.name!
+            const key = getSpellKey(spell)
             const isPrepared = preparedIds.has(key)
             return (
               <SpellToggleRow
@@ -227,7 +227,7 @@ function DivinePrepare({ characterId, character, embedded }: { characterId: stri
             </div>
             <div className="overflow-y-auto flex-1 p-2">
               {filteredCantripPicker.map((spell) => {
-                const key = spell.id ?? spell.name!
+                const key = getSpellKey(spell)
                 const isKnown = knownCantripIds.has(key)
                 return (
                   <button
@@ -276,22 +276,22 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
   // Cantrips are "known" (always ready), not in the daily spellbook prep cycle
   const allCantrips = allSpells.filter((s) => s.spell_level === '0' || s.spell_level === 'Cantrip')
   const knownCantripIds = useMemo(() => new Set(
-    preparedList.filter((p) => p.isPrepared && allCantrips.some(c => (c.id ?? c.name!) === p.spellId)).map((p) => p.spellId)
+    preparedList.filter((p) => p.isPrepared && allCantrips.some(c => getSpellKey(c) === normalizeSpellKey(p.spellId))).map((p) => normalizeSpellKey(p.spellId))
   ), [preparedList, allCantrips])
-  const knownCantrips = allCantrips.filter((s) => knownCantripIds.has(s.id ?? s.name!))
+  const knownCantrips = allCantrips.filter((s) => knownCantripIds.has(getSpellKey(s)))
 
   // Spellbook = leveled spells only (exclude cantrips)
   const spellbookIds = useMemo(() => new Set(
     preparedList.filter((p) => {
-      const isCantrip = allCantrips.some(c => (c.id ?? c.name!) === p.spellId)
+      const isCantrip = allCantrips.some(c => getSpellKey(c) === normalizeSpellKey(p.spellId))
       return !isCantrip
     }).map((p) => p.spellId)
   ), [preparedList, allCantrips])
-  const preparedIds = useMemo(() => new Set(preparedList.filter((p) => p.isPrepared).map((p) => p.spellId)), [preparedList])
+  const preparedIds = useMemo(() => new Set(preparedList.filter((p) => p.isPrepared).map((p) => normalizeSpellKey(p.spellId))), [preparedList])
 
   const leveledSpells = allSpells.filter((s) => s.spell_level !== '0' && s.spell_level !== 'Cantrip')
   const spellbookSpells = useMemo(() =>
-    leveledSpells.filter((s) => spellbookIds.has(s.id ?? s.name!)),
+    leveledSpells.filter((s) => spellbookIds.has(getSpellKey(s))),
     [leveledSpells, spellbookIds]
   )
 
@@ -301,9 +301,9 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
 
   const toggleMutation = useMutation({
     mutationFn: (spell: Spell) =>
-      preparedSpellsApi.upsert(characterId, spell.id ?? spell.name!, {
-        spellId: spell.id ?? spell.name!,
-        isPrepared: !preparedIds.has(spell.id ?? spell.name!),
+      preparedSpellsApi.upsert(characterId, getSpellKey(spell), {
+        spellId: getSpellKey(spell),
+        isPrepared: !preparedIds.has(getSpellKey(spell)),
         isAlwaysPrepared: false,
         isFavorite: false,
         isDomainSpell: false,
@@ -319,7 +319,7 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
   })
 
   // Prepared count excludes cantrips
-  const preparedCount = Array.from(preparedIds).filter(id => !allCantrips.some(c => (c.id ?? c.name!) === id)).length
+  const preparedCount = Array.from(preparedIds).filter(id => !allCantrips.some(c => getSpellKey(c) === id)).length
   const maxPrepared = Math.max(1, character.level + getModifier(character.abilityScores, character.characterClass))
   const spellbookCount = spellbookIds.size
   const expectedMin = 6 + (character.level - 1) * 2
@@ -335,10 +335,10 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
   })
 
   const batchPrepare = (prepare: boolean) => {
-    const spells = filtered.filter(s => selectedIds.has(s.id ?? s.name!))
+    const spells = filtered.filter(s => selectedIds.has(getSpellKey(s)))
     Promise.all(spells.map(spell =>
-      preparedSpellsApi.upsert(characterId, spell.id ?? spell.name!, {
-        spellId: spell.id ?? spell.name!, isPrepared: prepare, isAlwaysPrepared: false, isFavorite: false, isDomainSpell: false,
+      preparedSpellsApi.upsert(characterId, getSpellKey(spell), {
+        spellId: getSpellKey(spell), isPrepared: prepare, isAlwaysPrepared: false, isFavorite: false, isDomainSpell: false,
       }).then(updated => qc.setQueryData<PreparedSpell[]>(['preparedSpells', characterId], old => {
         if (!old) return [updated]
         const exists = old.some(p => p.spellId === updated.spellId)
@@ -381,7 +381,7 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
           ) : (
             <div className="space-y-1">
               {knownCantrips.map((spell) => {
-                const key = spell.id ?? spell.name!
+                const key = getSpellKey(spell)
                 return (
                   <div key={key} className="flex items-center gap-3 bg-gray-900 rounded-xl px-4 py-2.5">
                     <span className="text-indigo-300 text-base shrink-0">✦</span>
@@ -444,7 +444,7 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
             <p className="text-center text-gray-500 py-8 text-sm">No spells match your search.</p>
           ) : (
             filtered.map((spell) => {
-              const key = spell.id ?? spell.name!
+              const key = getSpellKey(spell)
               const isPrepared = preparedIds.has(key)
               return (
                 <SpellToggleRow
@@ -492,7 +492,7 @@ function ArcanePrepare({ characterId, character, embedded }: { characterId: stri
             </div>
             <div className="overflow-y-auto flex-1 p-2">
               {filteredCantripPicker.map((spell) => {
-                const key = spell.id ?? spell.name!
+                const key = getSpellKey(spell)
                 const isKnown = knownCantripIds.has(key)
                 return (
                   <button

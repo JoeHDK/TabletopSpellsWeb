@@ -23,7 +23,7 @@ import {
   getFeatureChoiceDefinitions,
   withDynamicFeatureChoiceOptions,
 } from '../utils/featureChoices'
-import { getLevelForClass, resolveClassName } from '../utils/spellUtils'
+import { getLevelForClass, getSpellKey, normalizeSpellKey, resolveClassName } from '../utils/spellUtils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -210,7 +210,7 @@ function startingSpellCount(cls: CharacterClass): number {
 
 function findSpellIdByName(spells: Spell[], name: string): string | null {
   const match = spells.find(spell => spell.name?.toLowerCase() === name.toLowerCase())
-  return match ? (match.id ?? match.name ?? null) : null
+  return match ? getSpellKey(match) : null
 }
 
 function computeSteps(state: CreationState): StepId[] {
@@ -387,7 +387,7 @@ function SpellPickList({ spells, picked, maxPicks, search, onSearchChange, onTog
       <div className="space-y-1 max-h-52 overflow-y-auto">
         {filtered.length === 0 && <p className="text-xs text-gray-500 py-2">No spells found.</p>}
         {filtered.slice(0, 80).map(s => {
-          const id = s.id ?? s.name ?? ''
+          const id = getSpellKey(s)
           const isSelected = picked.includes(id)
           const disabled = !isSelected && picked.length >= maxPicks
           return (
@@ -546,10 +546,10 @@ export default function CharacterCreationPage() {
   const knownSpellNames = useMemo(
     () => Array.from(new Set([
       ...state.pickedCantrips
-        .map(spellId => allSpells.find(spell => (spell.id ?? spell.name) === spellId)?.name)
+        .map(spellId => allSpells.find(spell => getSpellKey(spell) === normalizeSpellKey(spellId))?.name)
         .filter((name): name is string => !!name),
       ...state.pickedSpells
-        .map(spellId => allSpells.find(spell => (spell.id ?? spell.name) === spellId)?.name)
+        .map(spellId => allSpells.find(spell => getSpellKey(spell) === normalizeSpellKey(spellId))?.name)
         .filter((name): name is string => !!name),
     ])),
     [allSpells, state.pickedCantrips, state.pickedSpells],
@@ -687,7 +687,7 @@ export default function CharacterCreationPage() {
         .map(name => findSpellIdByName(allSpells, name))
         .filter((spellId): spellId is string => !!spellId && !allSpellPicks.includes(spellId))
       for (const spellId of [...allSpellPicks, ...featureCantripIds]) {
-        const spell = allSpells.find(s => (s.id ?? s.name) === spellId)
+        const spell = allSpells.find(s => getSpellKey(s) === normalizeSpellKey(spellId))
         const isCantrip = spell?.spell_level === '0' || spell?.spell_level === 'Cantrip'
         await preparedSpellsApi.upsert(newChar.id, spellId, {
           spellId,
@@ -1148,7 +1148,7 @@ export default function CharacterCreationPage() {
 
       case 'summary': {
         const spellNames = (ids: string[]) =>
-          ids.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id).join(', ')
+          ids.map(id => allSpells.find(s => getSpellKey(s) === normalizeSpellKey(id))?.name ?? id).join(', ')
         const featureChoiceSummary = featureChoiceDefinitions
           .map(definition => {
             const selected = state.featureChoices[definition.id] ?? []
