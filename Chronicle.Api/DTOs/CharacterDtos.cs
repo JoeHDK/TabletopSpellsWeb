@@ -11,6 +11,14 @@ public class CharacterClassEntryDto
     public int CantripsKnown { get; set; }
 }
 
+public class CharacterFeatureChoiceDto
+{
+    public string ChoiceId { get; set; } = "";
+    public string FeatureId { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public List<string> SelectedOptionIds { get; set; } = new();
+}
+
 public class CharacterDto
 {
     public Guid Id { get; set; }
@@ -28,6 +36,7 @@ public class CharacterDto
     public List<string> SkillProficiencies { get; set; } = new();
     public List<string> ClassSkillProficiencies { get; set; } = new();
     public List<string> SkillExpertise { get; set; } = new();
+    public List<CharacterFeatureChoiceDto> FeatureChoices { get; set; } = new();
     // Combat tracking
     public List<string> ActiveConditions { get; set; } = new();
     public int DeathSaveSuccesses { get; set; }
@@ -130,6 +139,7 @@ public class UpdateCharacterRequest
     public List<string>? SkillProficiencies { get; set; }
     public List<string>? ClassSkillProficiencies { get; set; }
     public List<string>? SkillExpertise { get; set; }
+    public List<CharacterFeatureChoiceDto>? FeatureChoices { get; set; }
     // Combat tracking
     public List<string>? ActiveConditions { get; set; }
     public int? DeathSaveSuccesses { get; set; }

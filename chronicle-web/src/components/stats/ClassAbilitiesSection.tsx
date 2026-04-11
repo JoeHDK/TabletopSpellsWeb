@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { ClassFeature } from '../../types'
+import type { CharacterFeatureChoice, ClassFeature } from '../../types'
+import { getFeatureChoiceDisplayMap } from '../../utils/featureChoices'
 
 // Features that grant skill expertise (2 slots each)
 const EXPERTISE_FEATURE_INDICES = new Set(['rogue-expertise', 'rogue-expertise-2', 'bard-expertise'])
@@ -7,6 +8,7 @@ const EXPERTISE_FEATURE_INDICES = new Set(['rogue-expertise', 'rogue-expertise-2
 interface ClassAbilitiesSectionProps {
   classFeatures: ClassFeature[]
   skillExpertise?: string[]
+  featureChoices?: CharacterFeatureChoice[]
   allProficientSkills?: string[]
   totalExpertiseSlots?: number
   onToggleExpertise?: (skill: string) => void
@@ -37,13 +39,14 @@ function deduplicateFeatures(features: ClassFeature[]): ClassFeature[] {
   return [...kept, ...replacementSeen.values()].sort((a, b) => a.min_level - b.min_level || a.name.localeCompare(b.name))
 }
 
-export function ClassAbilitiesSection({ classFeatures, skillExpertise = [], allProficientSkills = [], totalExpertiseSlots = 0, onToggleExpertise, bare }: ClassAbilitiesSectionProps) {
+export function ClassAbilitiesSection({ classFeatures, skillExpertise = [], featureChoices = [], allProficientSkills = [], totalExpertiseSlots = 0, onToggleExpertise, bare }: ClassAbilitiesSectionProps) {
   const [cardOpen, setCardOpen] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   if (classFeatures.length === 0) return null
 
   const features = deduplicateFeatures(classFeatures)
+  const choiceDisplayMap = getFeatureChoiceDisplayMap(featureChoices)
 
   const toggle = (index: string) =>
     setExpanded(prev => {
@@ -82,6 +85,14 @@ export function ClassAbilitiesSection({ classFeatures, skillExpertise = [], allP
                 {f.desc.map((para, i) => (
                   <p key={i} className="text-xs text-gray-400 leading-relaxed">{para}</p>
                 ))}
+                {(choiceDisplayMap[f.index] ?? []).length > 0 && (
+                  <div className="pt-1 space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-300">Selected</p>
+                    {(choiceDisplayMap[f.index] ?? []).map(option => (
+                      <p key={option} className="text-xs text-gray-300">- {option}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {EXPERTISE_FEATURE_INDICES.has(f.index) && onToggleExpertise && allProficientSkills.length > 0 && (

@@ -28,6 +28,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useUserPreferences } from '../hooks/useUserPreferences'
 import { resolveClassName } from '../utils/spellUtils'
 import { mergeClassResources } from '../utils/mergeClassResources'
+import { getSelectedFightingStyles } from '../utils/featureChoices'
 
 // D&D 5e SRD background skill proficiencies
 const BACKGROUND_SKILLS: Record<string, string[]> = {
@@ -147,6 +148,7 @@ function calculateAC(
   inventory: InventoryItem[],
   baseArmorClass: number,
   feats: CharacterFeat[],
+  featureChoices: Character['featureChoices'],
   classFeatures: ClassFeature[] = [],
 ): { total: number; breakdown: string; isAutoCalc: boolean } {
   const dexMod = Math.floor(((abilityScores['Dexterity'] ?? 10) - 10) / 2)
@@ -169,6 +171,7 @@ function calculateAC(
 
   // Flat AC bonuses from feats
   const featAcBonus = getFeatModifier(feats, 'ac')
+  const defenseStyleBonus = armorItem && getSelectedFightingStyles(featureChoices).includes('Defense') ? 1 : 0
 
   if (armorItem) {
     // Resolve AC base and armor type — prefer stored values, fall back to ARMOR_TABLE lookup
@@ -184,12 +187,13 @@ function calculateAC(
       if (medArmorMaxDex > 2) armorLabel += ' (+3 DEX cap)'
     }
     // no dex for Heavy
-    const total = base + dexContrib + shieldBonus + baseArmorClass + featAcBonus
+    const total = base + dexContrib + shieldBonus + baseArmorClass + featAcBonus + defenseStyleBonus
     const parts: string[] = [`${base} (${armorLabel})`]
     if (dexContrib !== 0) parts.push(`${dexContrib >= 0 ? '+' : ''}${dexContrib} DEX`)
     if (shieldBonus > 0) parts.push(`+${shieldBonus} shield`)
     if (baseArmorClass !== 0) parts.push(`${baseArmorClass >= 0 ? '+' : ''}${baseArmorClass} bonus`)
     if (featAcBonus !== 0) parts.push(`${featAcBonus >= 0 ? '+' : ''}${featAcBonus} feats`)
+    if (defenseStyleBonus > 0) parts.push(`+${defenseStyleBonus} Defense`)
     return { total, breakdown: parts.join(' '), isAutoCalc: true }
   }
 
@@ -1055,7 +1059,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
 
   const totalScores = Object.fromEntries(ABILITY_KEYS.map(k => [k, totalAbilityScore(k)]))
 
-  const acInfo = calculateAC(character.characterClass, totalScores, inventory, d.baseArmorClass, charFeats, allClassFeatures)
+  const acInfo = calculateAC(character.characterClass, totalScores, inventory, d.baseArmorClass, charFeats, character.featureChoices ?? [], allClassFeatures)
 
   const patch = (fields: Partial<typeof d>) => {
     const newDraft = { ...(draft ?? {}), ...fields }
@@ -1569,6 +1573,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
             abilityScores={totalScores}
             profBonusNum={profBonusNum}
             sneakAttackDice={sneakAttackDice}
+            featureChoices={character.featureChoices}
             showAttackForm={showAttackForm}
             setShowAttackForm={setShowAttackForm}
             editingAttack={editingAttack}
@@ -1731,6 +1736,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
               bare
               classFeatures={allClassFeatures}
               skillExpertise={d.skillExpertise}
+              featureChoices={character.featureChoices}
               allProficientSkills={allProficientSkills}
               totalExpertiseSlots={totalExpertiseSlots}
               onToggleExpertise={toggleExpertise}

@@ -2161,7 +2161,7 @@
     ],
     "is_passive": true,
     "modifiers": [],
-    "resource_key": null
+    "resource_key": "superiority_dice"
   },
   {
     "index": "thief-supreme-sneak",
@@ -2174,7 +2174,7 @@
     ],
     "is_passive": true,
     "modifiers": [],
-    "resource_key": null
+    "resource_key": "infusions"
   },
   {
     "index": "thief-use-magic-device",

@@ -43,3 +43,22 @@ export function parseFirstLevel(spellLevel?: string): number {
   const match = spellLevel.match(/(\d+)/)
   return match ? parseInt(match[1]) : 0
 }
+
+/** Returns the lowest spell level listed across all class entries for a spell. */
+export function getLowestSpellLevel(spellLevel?: string): number | null {
+  if (!spellLevel) return null
+
+  const levels: number[] = []
+  for (const entry of spellLevel.toLowerCase().split(',')) {
+    const trimmed = entry.trim()
+    if (trimmed.includes('cantrip') && !/\d/.test(trimmed)) {
+      levels.push(0)
+      continue
+    }
+
+    const match = trimmed.match(/(\d+)\s*$/)
+    if (match) levels.push(parseInt(match[1]))
+  }
+
+  return levels.length > 0 ? Math.min(...levels) : null
+}

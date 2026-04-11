@@ -11,6 +11,22 @@ export interface CharacterClassEntry {
   cantripsKnown: number
 }
 
+export type CharacterFeatureChoiceKind =
+  | 'skill'
+  | 'cantrip'
+  | 'spell'
+  | 'resource_option'
+  | 'fighting_style'
+  | 'expertise'
+  | 'choice'
+
+export interface CharacterFeatureChoice {
+  choiceId: string
+  featureId: string
+  kind: CharacterFeatureChoiceKind
+  selectedOptionIds: string[]
+}
+
 export interface Character {
   id: string
   name: string
@@ -27,6 +43,7 @@ export interface Character {
   skillProficiencies: string[]
   classSkillProficiencies: string[]
   skillExpertise: string[]
+  featureChoices: CharacterFeatureChoice[]
   // Combat tracking
   activeConditions: string[]
   deathSaveSuccesses: number
@@ -110,6 +127,7 @@ export interface UpdateCharacterRequest {
   skillProficiencies?: string[]
   classSkillProficiencies?: string[]
   skillExpertise?: string[]
+  featureChoices?: CharacterFeatureChoice[]
   // Combat tracking
   activeConditions?: string[]
   deathSaveSuccesses?: number

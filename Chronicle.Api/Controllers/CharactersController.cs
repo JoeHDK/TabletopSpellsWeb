@@ -94,6 +94,7 @@ public class CharactersController : ControllerBase
         if (req.SkillProficiencies != null) entity.SkillProficienciesJson = JsonConvert.SerializeObject(req.SkillProficiencies);
         if (req.ClassSkillProficiencies != null) entity.ClassSkillProficienciesJson = JsonConvert.SerializeObject(req.ClassSkillProficiencies);
         if (req.SkillExpertise != null) entity.SkillExpertiseJson = JsonConvert.SerializeObject(req.SkillExpertise);
+        if (req.FeatureChoices != null) entity.FeatureChoicesJson = JsonConvert.SerializeObject(req.FeatureChoices);
         if (req.ActiveConditions != null) entity.ActiveConditionsJson = JsonConvert.SerializeObject(req.ActiveConditions);
         if (req.DeathSaveSuccesses.HasValue) entity.DeathSaveSuccesses = Math.Clamp(req.DeathSaveSuccesses.Value, 0, 3);
         if (req.DeathSaveFailures.HasValue) entity.DeathSaveFailures = Math.Clamp(req.DeathSaveFailures.Value, 0, 3);
@@ -289,6 +290,14 @@ public class CharactersController : ControllerBase
         return JsonConvert.DeserializeObject<List<string>>(json) ?? new();
     }
 
+    private static List<CharacterFeatureChoiceDto> DeserializeFeatureChoices(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        var trimmed = json.TrimStart();
+        if (!trimmed.StartsWith('[')) return new();
+        return JsonConvert.DeserializeObject<List<CharacterFeatureChoiceDto>>(json) ?? new();
+    }
+
     private static CharacterDto MapToDto(CharacterEntity e) => new()
     {
         Id = e.Id,
@@ -306,6 +315,7 @@ public class CharactersController : ControllerBase
         SkillProficiencies = DeserializeList(e.SkillProficienciesJson),
         ClassSkillProficiencies = DeserializeList(e.ClassSkillProficienciesJson),
         SkillExpertise = DeserializeList(e.SkillExpertiseJson),
+        FeatureChoices = DeserializeFeatureChoices(e.FeatureChoicesJson),
         ActiveConditions = DeserializeList(e.ActiveConditionsJson),
         DeathSaveSuccesses = e.DeathSaveSuccesses,
         DeathSaveFailures = e.DeathSaveFailures,

@@ -24,6 +24,7 @@ public class CharacterEntity
     [Column(TypeName = "jsonb")] public string SkillProficienciesJson { get; set; } = "[]";
     [Column(TypeName = "jsonb")] public string ClassSkillProficienciesJson { get; set; } = "[]";
     [Column(TypeName = "jsonb")] public string SkillExpertiseJson { get; set; } = "[]";
+    [Column(TypeName = "jsonb")] public string FeatureChoicesJson { get; set; } = "[]";
 
     // Combat tracking
     [Column(TypeName = "jsonb")] public string ActiveConditionsJson { get; set; } = "[]";

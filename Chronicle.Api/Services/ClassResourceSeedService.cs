@@ -227,6 +227,18 @@ public class ClassResourceSeedService
             });
         }
 
+        if (level >= 3 && subclass == Subclass.FighterBattleMaster)
+        {
+            var superiorityDiceUses = level >= 15 ? 6 : level >= 7 ? 5 : 4;
+            resources.Add(new UpsertClassResourceRequest
+            {
+                ResourceKey = "superiority_dice",
+                Name = "Superiority Dice",
+                MaxUses = superiorityDiceUses,
+                ResetOn = "short_rest",
+            });
+        }
+
         return resources;
     }
 

@@ -7,6 +7,7 @@ import { backgroundsApi, type Background } from '../api/backgrounds'
 import { featsApi } from '../api/feats'
 import { characterFeatsApi } from '../api/characterFeats'
 import { spellsApi, preparedSpellsApi } from '../api/spells'
+import FeatureChoicePicker from '../components/FeatureChoicePicker'
 import type { CharacterClass, Feat, FeatPrerequisite, Race, Spell } from '../types'
 import { getExpectedSpellSlots } from '../utils/spellSlotsTable'
 import {
@@ -17,6 +18,11 @@ import {
   SUBCLASSES, formatSubclass,
 } from '../utils/multiclassTables'
 import { getAbilityModStr } from '../utils/abilityModifiers'
+import {
+  applyFeatureChoiceSelections,
+  getFeatureChoiceDefinitions,
+  withDynamicFeatureChoiceOptions,
+} from '../utils/featureChoices'
 import { getLevelForClass, resolveClassName } from '../utils/spellUtils'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -47,6 +53,7 @@ type StepId =
   | 'pick-cantrips'
   | 'pick-spells'
   | 'subclass'
+  | 'feature-choices'
   | 'enter-name'
   | 'summary'
 
@@ -60,6 +67,7 @@ const STEP_LABELS: Record<StepId, string> = {
   'pick-cantrips': 'Cantrips',
   'pick-spells': 'Spells',
   'subclass': 'Subclass',
+  'feature-choices': 'Choices',
   'enter-name': 'Name',
   'summary': 'Review',
 }
@@ -80,6 +88,7 @@ interface CreationState {
   pickedCantrips: string[]
   pickedSpells: string[]
   subclass: string | null
+  featureChoices: Record<string, string[]>
   name: string
 }
 
@@ -98,6 +107,7 @@ function defaultState(): CreationState {
     pickedCantrips: [],
     pickedSpells: [],
     subclass: null,
+    featureChoices: {},
     name: '',
   }
 }
@@ -183,12 +193,20 @@ function startingSpellCount(cls: CharacterClass): number {
   return 0
 }
 
+function findSpellIdByName(spells: Spell[], name: string): string | null {
+  const match = spells.find(spell => spell.name?.toLowerCase() === name.toLowerCase())
+  return match ? (match.id ?? match.name ?? null) : null
+}
+
 function computeSteps(state: CreationState): StepId[] {
   const steps: StepId[] = ['choose-class', 'choose-race', 'ability-scores', 'pick-background', 'pick-skills']
   if (getCantripCount(state.characterClass, 1) > 0) steps.push('pick-cantrips')
   if (needsSpellPick(state.characterClass)) steps.push('pick-spells')
   if (SUBCLASS_LEVEL[state.characterClass] === 1) steps.push('subclass')
   if (state.race && hasRaceChoices(state.race)) steps.push('race-choices')
+  if (getFeatureChoiceDefinitions({ targetClass: state.characterClass, subclass: state.subclass, level: 1, previousLevel: 0 }).length > 0) {
+    steps.push('feature-choices')
+  }
   steps.push('enter-name', 'summary')
   return steps
 }
@@ -235,6 +253,7 @@ function canGoNext(stepId: StepId, state: CreationState): boolean {
     case 'pick-spells':
       return state.pickedSpells.length >= startingSpellCount(state.characterClass)
     case 'subclass': return !!state.subclass
+    case 'feature-choices': return true
     case 'enter-name': return state.name.trim().length > 0
     default: return true
   }
@@ -454,7 +473,6 @@ export default function CharacterCreationPage() {
     return i >= 0 ? i : 0
   }, [steps, stepId])
   const step = steps[stepIdx]
-  const canProceed = useMemo(() => canGoNext(step, state), [step, state])
 
   // Queries
   const { data: allRaces = [] } = useQuery({ queryKey: ['races'], queryFn: () => racesApi.getAll() })
@@ -502,9 +520,65 @@ export default function CharacterCreationPage() {
     () => allFeats.filter(feat => isFeatQualified(feat, state, finalScores)),
     [allFeats, state, finalScores],
   )
+  const expertiseSkillOptions = useMemo(
+    () => Array.from(new Set([
+      ...state.pickedSkills,
+      ...backgroundSkills,
+      ...(state.raceSkillChoice ? [state.raceSkillChoice] : []),
+    ])).sort().map(skill => ({ id: skill, name: skill })),
+    [backgroundSkills, state.pickedSkills, state.raceSkillChoice],
+  )
+  const knownSpellNames = useMemo(
+    () => Array.from(new Set([
+      ...state.pickedCantrips
+        .map(spellId => allSpells.find(spell => (spell.id ?? spell.name) === spellId)?.name)
+        .filter((name): name is string => !!name),
+      ...state.pickedSpells
+        .map(spellId => allSpells.find(spell => (spell.id ?? spell.name) === spellId)?.name)
+        .filter((name): name is string => !!name),
+    ])),
+    [allSpells, state.pickedCantrips, state.pickedSpells],
+  )
+  const featureChoiceDefinitions = useMemo(() => {
+    const baseDefinitions = getFeatureChoiceDefinitions({
+      targetClass: state.characterClass,
+      subclass: state.subclass,
+      level: 1,
+      previousLevel: 0,
+      pendingSelections: state.featureChoices,
+      knownSpellNames,
+    })
+    return withDynamicFeatureChoiceOptions(
+      baseDefinitions,
+      Object.fromEntries(baseDefinitions.flatMap(definition => {
+        if (definition.kind === 'expertise') {
+          return [[definition.id, expertiseSkillOptions] as const]
+        }
+        if (definition.id === 'warlock-pact-of-the-tome-cantrips-choice') {
+          const cantripOptions = allSpells
+            .filter(spell => spell.name && (spell.spell_level ?? '').toLowerCase().includes('cantrip'))
+            .filter(spell => !knownSpellNames.includes(spell.name))
+            .map(spell => ({
+              id: spell.name,
+              name: spell.name,
+              description: spell.school ? `${spell.school} cantrip` : undefined,
+            }))
+            .sort((left, right) => left.name.localeCompare(right.name))
+          return [[definition.id, cantripOptions] as const]
+        }
+        return []
+      })),
+    )
+  }, [allSpells, expertiseSkillOptions, knownSpellNames, state.characterClass, state.featureChoices, state.subclass])
   const selectedRaceFeat = useMemo(
     () => allFeats.find(feat => feat.index === state.raceFeatId) ?? null,
     [allFeats, state.raceFeatId],
+  )
+  const canProceed = useMemo(
+    () => step === 'feature-choices'
+      ? featureChoiceDefinitions.every(definition => (state.featureChoices[definition.id] ?? []).length === definition.count)
+      : canGoNext(step, state),
+    [featureChoiceDefinitions, state, step],
   )
 
   useEffect(() => {
@@ -535,6 +609,7 @@ export default function CharacterCreationPage() {
       ...s,
       characterClass: cls,
       subclass: null,
+      featureChoices: {},
       pickedCantrips: [],
       pickedSpells: [],
     }))
@@ -560,6 +635,7 @@ export default function CharacterCreationPage() {
     setIsSubmitting(true)
     setError(null)
     try {
+      const appliedFeatureChoices = applyFeatureChoiceSelections(featureChoiceDefinitions, state.featureChoices)
       const newChar = await charactersApi.create({
         name: state.name.trim(),
         characterClass: state.characterClass,
@@ -573,12 +649,15 @@ export default function CharacterCreationPage() {
       const savingThrows = CLASS_STARTING_SAVING_THROWS[state.characterClass]
       const allSkillProfs = [...new Set([...state.pickedSkills, ...(state.raceSkillChoice ? [state.raceSkillChoice] : [])])]
       const classSkillProfs = [...backgroundSkills]
+      const finalSkillProfs = [...new Set([...allSkillProfs, ...appliedFeatureChoices.skillProficiencies])]
 
       await charactersApi.update(newChar.id, {
         maxHp: startingHp,
         savingThrowProficiencies: savingThrows,
-        skillProficiencies: allSkillProfs,
+        skillProficiencies: finalSkillProfs,
         classSkillProficiencies: classSkillProfs,
+        skillExpertise: appliedFeatureChoices.skillExpertise.length > 0 ? appliedFeatureChoices.skillExpertise : undefined,
+        featureChoices: appliedFeatureChoices.persistedFeatureChoices.length > 0 ? appliedFeatureChoices.persistedFeatureChoices : undefined,
         raceChoices: Object.keys(raceChoices).length > 0 ? raceChoices : undefined,
         maxSpellsPerDay: Object.keys(startingSlots).length > 0 ? startingSlots : undefined,
       })
@@ -588,7 +667,10 @@ export default function CharacterCreationPage() {
       }
 
       const allSpellPicks = [...state.pickedCantrips, ...state.pickedSpells]
-      for (const spellId of allSpellPicks) {
+      const featureCantripIds = appliedFeatureChoices.spellNames
+        .map(name => findSpellIdByName(allSpells, name))
+        .filter((spellId): spellId is string => !!spellId && !allSpellPicks.includes(spellId))
+      for (const spellId of [...allSpellPicks, ...featureCantripIds]) {
         const spell = allSpells.find(s => (s.id ?? s.name) === spellId)
         const isCantrip = spell?.spell_level === '0' || spell?.spell_level === 'Cantrip'
         await preparedSpellsApi.upsert(newChar.id, spellId, {
@@ -614,7 +696,7 @@ export default function CharacterCreationPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [state, finalScores, startingHp, startingSlots, backgroundSkills, raceChoices, allSpells, qc, navigate])
+  }, [allSpells, backgroundSkills, featureChoiceDefinitions, finalScores, navigate, qc, raceChoices, startingHp, startingSlots, state])
 
   // ── Step content ────────────────────────────────────────────────────────────
 
@@ -969,7 +1051,7 @@ export default function CharacterCreationPage() {
               {options.map(s => (
                 <button
                   key={s}
-                  onClick={() => setState(prev => ({ ...prev, subclass: s }))}
+                  onClick={() => setState(prev => ({ ...prev, subclass: s, featureChoices: {} }))}
                   className={`w-full text-left px-4 py-2.5 rounded-xl border text-sm transition-colors ${
                     state.subclass === s ? 'border-indigo-500 bg-indigo-900/30 text-white font-medium' : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
                   }`}
@@ -981,6 +1063,40 @@ export default function CharacterCreationPage() {
           </div>
         )
       }
+
+      case 'feature-choices':
+        return (
+          <FeatureChoicePicker
+            title="Feature Choices"
+            description="Finish the class and subclass choices granted at level 1."
+            definitions={featureChoiceDefinitions}
+            choices={state.featureChoices}
+            onToggle={(definitionId, optionId) => {
+              setState(current => {
+                const definition = featureChoiceDefinitions.find(item => item.id === definitionId)
+                if (!definition) return current
+                const selected = current.featureChoices[definitionId] ?? []
+                if (selected.includes(optionId)) {
+                  return {
+                    ...current,
+                    featureChoices: {
+                      ...current.featureChoices,
+                      [definitionId]: selected.filter(id => id !== optionId),
+                    },
+                  }
+                }
+                if (selected.length >= definition.count) return current
+                return {
+                  ...current,
+                  featureChoices: {
+                    ...current.featureChoices,
+                    [definitionId]: [...selected, optionId],
+                  },
+                }
+              })
+            }}
+          />
+        )
 
       case 'enter-name':
         return (
@@ -1004,6 +1120,13 @@ export default function CharacterCreationPage() {
       case 'summary': {
         const spellNames = (ids: string[]) =>
           ids.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id).join(', ')
+        const featureChoiceSummary = featureChoiceDefinitions
+          .map(definition => {
+            const selected = state.featureChoices[definition.id] ?? []
+            if (selected.length === 0) return null
+            return `${definition.prompt}: ${selected.join(', ')}`
+          })
+          .filter((value): value is string => !!value)
         return (
           <div className="space-y-4">
             <p className="text-sm font-semibold text-white">Review your character</p>
@@ -1046,6 +1169,9 @@ export default function CharacterCreationPage() {
                   <span className="text-gray-300 font-semibold">{state.characterClass === 'Wizard' ? 'Spellbook: ' : 'Known Spells: '}</span>
                   {spellNames(state.pickedSpells)}
                 </p>
+              )}
+              {featureChoiceSummary.length > 0 && (
+                <p><span className="text-gray-300 font-semibold">Feature Choices: </span>{featureChoiceSummary.join(' | ')}</p>
               )}
             </div>
 

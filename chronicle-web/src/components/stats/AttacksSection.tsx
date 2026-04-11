@@ -1,5 +1,6 @@
 import type React from 'react'
-import type { Character, InventoryItem, CharacterAttack, AddAttackRequest, AbilityModKey, Beast } from '../../types'
+import type { Character, InventoryItem, CharacterAttack, AddAttackRequest, AbilityModKey, Beast, CharacterFeatureChoice } from '../../types'
+import { getSelectedFightingStyles } from '../../utils/featureChoices'
 
 export const BLANK_ATTACK: AddAttackRequest = {
   name: '', damageFormula: '', damageType: '', abilityMod: 'Strength',
@@ -26,6 +27,7 @@ interface AttacksSectionProps {
   abilityScores: Record<string, number>
   profBonusNum: number
   sneakAttackDice: number
+  featureChoices?: CharacterFeatureChoice[]
   showAttackForm: boolean
   setShowAttackForm: (v: boolean) => void
   editingAttack: CharacterAttack | null
@@ -48,6 +50,7 @@ export function AttacksSection({
   abilityScores,
   profBonusNum,
   sneakAttackDice,
+  featureChoices = [],
   showAttackForm,
   setShowAttackForm,
   editingAttack,
@@ -124,6 +127,7 @@ export function AttacksSection({
 
   // Normal (non-wild-shape) attacks
   // Auto-generate attack profiles from equipped weapons
+  const fightingStyles = new Set(getSelectedFightingStyles(featureChoices))
   const equippedWeapons = inventory.filter(i => i.isEquipped && (
     i.equippedSlot === 'Weapon' || i.equippedSlot === 'Offhand' ||
     i.equippedSlot === 'MainHand' || i.equippedSlot === 'OffHand' ||
@@ -132,10 +136,18 @@ export function AttacksSection({
   const autoAttacks = equippedWeapons.map(item => {
     const isRanged = RANGED_RE.test(item.name) || RANGED_RE.test(item.notes ?? '')
       || item.equippedSlot === 'RangedMain' || item.equippedSlot === 'RangedOff'
+    const isMelee = !isRanged
     const ability = isRanged ? 'Dexterity' : 'Strength'
     const aMod = Math.floor(((abilityScores[ability] ?? 10) - 10) / 2)
     const isOffHand = item.equippedSlot === 'Offhand' || item.equippedSlot === 'OffHand' || item.equippedSlot === 'RangedOff'
-    const toHit = aMod + profBonusNum + (isOffHand ? -profBonusNum : 0)
+    const archeryBonus = fightingStyles.has('Archery') && isRanged ? 2 : 0
+    const duelingBonus = fightingStyles.has('Dueling') &&
+      isMelee &&
+      !item.isTwoHanded &&
+      equippedWeapons.filter(weapon => weapon.id !== item.id).length === 0
+      ? 2
+      : 0
+    const toHit = aMod + profBonusNum + (isOffHand ? -profBonusNum : 0) + archeryBonus
     const extraDmg = (item.damageEntries ?? []).map(e => `+${e.dice} ${e.damageType}`).join('')
 
     let dmgStr: string
@@ -148,15 +160,19 @@ export function AttacksSection({
         const match = item.damageOverride.match(/^(\S+)\s+(.+)$/)
         if (match) {
           const [, dice, type] = match
-          dmgStr = `${dice}${aMod !== 0 ? fmtMod(aMod) : ''} ${type}${extraDmg}`
+          dmgStr = `${dice}${aMod + duelingBonus !== 0 ? fmtMod(aMod + duelingBonus) : ''} ${type}${extraDmg}`
         } else {
-          dmgStr = `${item.damageOverride}${aMod !== 0 ? fmtMod(aMod) : ''}${extraDmg}`
+          dmgStr = `${item.damageOverride}${aMod + duelingBonus !== 0 ? fmtMod(aMod + duelingBonus) : ''}${extraDmg}`
         }
       }
     } else {
-      dmgStr = `${aMod !== 0 ? fmtMod(aMod) : '—'}${extraDmg}`
+      dmgStr = `${aMod + duelingBonus !== 0 ? fmtMod(aMod + duelingBonus) : '—'}${extraDmg}`
     }
-    return { id: item.id, name: item.name, toHit, dmgStr, slot: item.equippedSlot, isAuto: true }
+    const styleNotes = [
+      archeryBonus > 0 ? 'Archery +2 hit' : null,
+      duelingBonus > 0 ? 'Dueling +2 dmg' : null,
+    ].filter((note): note is string => !!note)
+    return { id: item.id, name: item.name, toHit, dmgStr, slot: item.equippedSlot, styleNotes, isAuto: true }
   })
 
   // Unarmed strike (always available)
@@ -167,6 +183,7 @@ export function AttacksSection({
     toHit: strMod + profBonusNum,
     dmgStr: `1${fmtMod(strMod)} bludgeoning`,
     slot: null as any,
+    styleNotes: [],
     isAuto: true,
   })
 
@@ -199,11 +216,12 @@ export function AttacksSection({
         {autoAttacks.map(atk => (
           <div key={atk.id} className="bg-gray-800 rounded-xl px-3 py-2.5 flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{atk.name}
-                <span className="text-[10px] text-gray-400 ml-1.5 font-normal">{atk.slot ?? 'unarmed'}</span>
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">{atk.dmgStr}</p>
-            </div>
+                <p className="font-medium text-sm truncate">{atk.name}
+                  <span className="text-[10px] text-gray-400 ml-1.5 font-normal">{atk.slot ?? 'unarmed'}</span>
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">{atk.dmgStr}</p>
+                {atk.styleNotes.length > 0 && <p className="text-[11px] text-indigo-300 mt-0.5">{atk.styleNotes.join(' • ')}</p>}
+              </div>
             <div className="text-right shrink-0">
               <p className="text-xs text-gray-400">To Hit</p>
               <p className="font-bold text-sm text-indigo-300">{fmtMod(atk.toHit)}</p>

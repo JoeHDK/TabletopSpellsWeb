@@ -32,7 +32,7 @@ const RESOURCE_DESCRIPTIONS: Record<string, { title: string; desc: string }> = {
   },
   sorcery_points: {
     title: 'Sorcery Points',
-    desc: 'Sorcery points are the currency of your magical power. You can convert them to spell slots (Flexible Casting) or expend them for Metamagic options. You regain all spent sorcery points after a long rest.',
+    desc: 'Sorcery points are the currency of your magical power. You can convert them to spell slots (Flexible Casting) or expend them for Metamagic options. Your learned Metamagic options are listed under the resource. You regain all spent sorcery points after a long rest.',
   },
   bardic_inspiration: {
     title: 'Bardic Inspiration',
@@ -69,6 +69,10 @@ const RESOURCE_DESCRIPTIONS: Record<string, { title: string; desc: string }> = {
   arcane_shot: {
     title: 'Arcane Shot',
     desc: 'Arcane Shot gives your Arcane Archer two special shots per short or long rest. The learned Arcane Shot options are listed under the resource.',
+  },
+  superiority_dice: {
+    title: 'Superiority Dice',
+    desc: 'Battle Master superiority dice fuel maneuvers and recharge on a short or long rest. The maneuvers you know are listed under the resource.',
   },
 }
 
