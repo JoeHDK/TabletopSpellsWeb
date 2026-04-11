@@ -2148,7 +2148,7 @@
     ],
     "is_passive": false,
     "modifiers": [],
-    "resource_key": null
+    "resource_key": "arcane_shot"
   },
   {
     "index": "thief-second-story-work",

@@ -14,6 +14,7 @@ public class ClassResourceSeedService
     public List<UpsertClassResourceRequest> GetExpectedResources(
         Class characterClass,
         int level,
+        Subclass? subclass,
         Dictionary<string, int> abilityScores)
     {
         int chaMod = GetMod(abilityScores, "Charisma");
@@ -26,7 +27,7 @@ public class ClassResourceSeedService
             Class.Monk => GetMonkResources(level),
             Class.Barbarian => GetBarbarianResources(level),
             Class.Sorcerer => GetSorcererResources(level),
-            Class.Fighter => GetFighterResources(level),
+            Class.Fighter => GetFighterResources(level, subclass),
             Class.Warlock => GetWarlockResources(level),
             Class.Bard => GetBardResources(level, chaMod),
             Class.Artificer => GetArtificerResources(level, wisMod),
@@ -178,7 +179,7 @@ public class ClassResourceSeedService
 
     // ── Fighter ───────────────────────────────────────────────────────────────
 
-    private static List<UpsertClassResourceRequest> GetFighterResources(int level)
+    private static List<UpsertClassResourceRequest> GetFighterResources(int level, Subclass? subclass)
     {
         var resources = new List<UpsertClassResourceRequest>
         {
@@ -212,6 +213,17 @@ public class ClassResourceSeedService
                 Name = "Indomitable",
                 MaxUses = indomitableUses,
                 ResetOn = "long_rest",
+            });
+        }
+
+        if (level >= 3 && subclass == Subclass.FighterArcaneArcher)
+        {
+            resources.Add(new UpsertClassResourceRequest
+            {
+                ResourceKey = "arcane_shot",
+                Name = "Arcane Shot",
+                MaxUses = 2,
+                ResetOn = "short_rest",
             });
         }
 

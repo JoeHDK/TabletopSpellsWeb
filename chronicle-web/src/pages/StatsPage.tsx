@@ -27,6 +27,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities'
 import { useUserPreferences } from '../hooks/useUserPreferences'
 import { resolveClassName } from '../utils/spellUtils'
+import { mergeClassResources } from '../utils/mergeClassResources'
 
 // D&D 5e SRD background skill proficiencies
 const BACKGROUND_SKILLS: Record<string, string[]> = {
@@ -754,11 +755,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
       return classResourcesApi.sync(id!)
     },
     onSuccess: (updated, { action }) => {
-      qc.setQueryData<ClassResource[]>(['classResources', id], old => {
-        if (!old) return updated
-        const map = new Map(updated.map(r => [r.resourceKey, r]))
-        return old.map(r => map.get(r.resourceKey) ?? r)
-      })
+      qc.setQueryData<ClassResource[]>(['classResources', id], old => mergeClassResources(old, updated))
       if (action === 'long-rest' || action === 'short-rest') {
         qc.invalidateQueries({ queryKey: ['equipment-resources', id] })
         qc.invalidateQueries({ queryKey: ['spellsPerDay', id] })
@@ -771,11 +768,7 @@ export default function StatsPage({ embedded, editMode: editModeProp, onSetEditM
 
   useEffect(() => {
     if (id) classResourcesApi.sync(id)
-      .then(updated => qc.setQueryData<ClassResource[]>(['classResources', id], old => {
-        if (!old) return updated
-        const map = new Map(updated.map(r => [r.resourceKey, r]))
-        return old.map(r => map.get(r.resourceKey) ?? r)
-      }))
+      .then(updated => qc.setQueryData<ClassResource[]>(['classResources', id], old => mergeClassResources(old, updated)))
       .catch(() => {/* endpoint not yet available */})
   }, [id, character?.characterClass, character?.level]) // eslint-disable-line react-hooks/exhaustive-deps
 

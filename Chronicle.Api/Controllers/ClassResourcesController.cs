@@ -50,6 +50,7 @@ public class ClassResourcesController(AppDbContext db, ClassResourceSeedService 
             existing.MaxUses = req.MaxUses;
             existing.ResetOn = req.ResetOn;
             existing.IsHpPool = req.IsHpPool;
+            existing.SelectedOptionsJson = req.SelectedOptions == null ? existing.SelectedOptionsJson : JsonConvert.SerializeObject(req.SelectedOptions);
             // Clamp remaining to new max; if max increased, restore the difference
             if (req.MaxUses > oldMax)
                 existing.UsesRemaining = Math.Min(existing.UsesRemaining + (req.MaxUses - oldMax), req.MaxUses);
@@ -67,6 +68,7 @@ public class ClassResourcesController(AppDbContext db, ClassResourceSeedService 
                 UsesRemaining = req.MaxUses, // start full
                 ResetOn = req.ResetOn,
                 IsHpPool = req.IsHpPool,
+                SelectedOptionsJson = req.SelectedOptions == null ? null : JsonConvert.SerializeObject(req.SelectedOptions),
             };
             db.ClassResources.Add(existing);
         }
@@ -156,7 +158,7 @@ public class ClassResourcesController(AppDbContext db, ClassResourceSeedService 
         if (character == null) return NotFound();
 
         var abilityScores = JsonConvert.DeserializeObject<Dictionary<string, int>>(character.AbilityScoresJson) ?? [];
-        var expected = seedService.GetExpectedResources(character.CharacterClass, character.Level, abilityScores);
+        var expected = seedService.GetExpectedResources(character.CharacterClass, character.Level, character.Subclass, abilityScores);
 
         foreach (var req in expected)
         {
@@ -217,5 +219,8 @@ public class ClassResourcesController(AppDbContext db, ClassResourceSeedService 
         UsesRemaining = e.UsesRemaining,
         ResetOn = e.ResetOn,
         IsHpPool = e.IsHpPool,
+        SelectedOptions = string.IsNullOrWhiteSpace(e.SelectedOptionsJson)
+            ? []
+            : JsonConvert.DeserializeObject<List<string>>(e.SelectedOptionsJson) ?? [],
     };
 }

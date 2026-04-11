@@ -22,5 +22,7 @@ public class ClassResourceEntity
     /// <summary>True for Lay on Hands — UsesRemaining tracks HP pool, not charge count.</summary>
     public bool IsHpPool { get; set; }
 
+    [Column(TypeName = "jsonb")] public string? SelectedOptionsJson { get; set; }
+
     [ForeignKey(nameof(CharacterId))] public CharacterEntity? Character { get; set; }
 }

@@ -11,6 +11,7 @@ export const classResourcesApi = {
     maxUses: number
     resetOn: string
     isHpPool?: boolean
+    selectedOptions?: string[]
   }) => api.put<ClassResource>(`/characters/${characterId}/resources/${key}`, req).then(r => r.data),
 
   use: (characterId: string, key: string, amount = 1) =>

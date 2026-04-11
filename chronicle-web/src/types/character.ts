@@ -233,6 +233,7 @@ export interface ClassResource {
   usesRemaining: number
   resetOn: 'short_rest' | 'long_rest' | 'daily' | 'weekly'
   isHpPool: boolean
+  selectedOptions?: string[]
 }
 
 export interface RaceModifier {

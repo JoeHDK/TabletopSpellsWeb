@@ -66,6 +66,24 @@ const RESOURCE_DESCRIPTIONS: Record<string, { title: string; desc: string }> = {
     title: 'Arcane Firearm',
     desc: 'After a long rest you can use woodcarver\'s tools to inscribe a firearm or wand as your arcane firearm. When you cast an Artificer spell through it, you can add 1d8 to one of the spell\'s damage rolls.',
   },
+  arcane_shot: {
+    title: 'Arcane Shot',
+    desc: 'Arcane Shot gives your Arcane Archer two special shots per short or long rest. The learned Arcane Shot options are listed under the resource.',
+  },
+}
+
+function SelectedOptionsList({ options }: { options?: string[] }) {
+  if (!options || options.length === 0) return null
+
+  return (
+    <div className="pl-2 space-y-1">
+      {options.map(option => (
+        <p key={option} className="text-xs text-gray-400">
+          - {option}
+        </p>
+      ))}
+    </div>
+  )
 }
 
 interface ClassResourcesSectionProps {
@@ -194,6 +212,7 @@ export function ClassResourcesSection({
                   </div>
                 </details>
               )}
+              <SelectedOptionsList options={res.selectedOptions} />
             </div>
           )
         })}
@@ -382,6 +401,7 @@ export function ClassResourcesSection({
                       </div>
                     </details>
                   )}
+                  <SelectedOptionsList options={res.selectedOptions} />
                 </div>
               )
             })}

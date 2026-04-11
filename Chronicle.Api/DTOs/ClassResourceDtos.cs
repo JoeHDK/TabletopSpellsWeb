@@ -11,6 +11,7 @@ public class ClassResourceDto
     public int UsesRemaining { get; set; }
     public string ResetOn { get; set; } = "long_rest";
     public bool IsHpPool { get; set; }
+    public List<string> SelectedOptions { get; set; } = new();
 }
 
 public class UpsertClassResourceRequest
@@ -20,6 +21,7 @@ public class UpsertClassResourceRequest
     [Range(0, 9999)] public int MaxUses { get; set; }
     [MaxLength(20)] public string ResetOn { get; set; } = "long_rest";
     public bool IsHpPool { get; set; }
+    public List<string>? SelectedOptions { get; set; }
 }
 
 public class UseClassResourceRequest

@@ -3,9 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { spellsApi, preparedSpellsApi } from '../api/spells'
 import { characterFeatsApi } from '../api/characterFeats'
 import { charactersApi } from '../api/characters'
+import { classResourcesApi } from '../api/classResources'
 import { featsApi } from '../api/feats'
-import type { Character, CharacterClass, CharacterClassEntry, Spell, Feat, UpdateCharacterRequest } from '../types'
+import type { Character, CharacterClass, CharacterClassEntry, Spell, Feat, UpdateCharacterRequest, ClassResource } from '../types'
 import { getExpectedSpellSlots } from '../utils/spellSlotsTable'
+import { mergeClassResources } from '../utils/mergeClassResources'
 import { getLevelForClass, resolveClassName } from '../utils/spellUtils'
 import { ABILITY_KEYS } from '../components/stats/statsConstants'
 import {
@@ -23,6 +25,46 @@ const DND5E_CLASSES: CharacterClass[] = [
   'Sorcerer', 'Warlock', 'Wizard',
 ]
 
+const ARCANE_ARCHER_CHOICE_DEFINITIONS: SubclassChoiceDefinition[] = [
+  {
+    id: 'arcane-archer-lore-skill',
+    prompt: 'Choose 1 skill proficiency for Arcane Archer Lore',
+    count: 1,
+    kind: 'skill',
+    options: [
+      { id: 'Arcana', name: 'Arcana' },
+      { id: 'Nature', name: 'Nature' },
+    ],
+  },
+  {
+    id: 'arcane-archer-lore-cantrip',
+    prompt: 'Choose 1 cantrip for Arcane Archer Lore',
+    count: 1,
+    kind: 'cantrip',
+    options: [
+      { id: 'Prestidigitation', name: 'Prestidigitation' },
+      { id: 'Druidcraft', name: 'Druidcraft' },
+    ],
+  },
+  {
+    id: 'arcane-shot-options',
+    prompt: 'Choose 2 Arcane Shot options',
+    count: 2,
+    kind: 'resource_option',
+    addToResourceKey: 'arcane_shot',
+    options: [
+      { id: 'Banishing Arrow', name: 'Banishing Arrow' },
+      { id: 'Beguiling Arrow', name: 'Beguiling Arrow' },
+      { id: 'Bursting Arrow', name: 'Bursting Arrow' },
+      { id: 'Enfeebling Arrow', name: 'Enfeebling Arrow' },
+      { id: 'Grasping Arrow', name: 'Grasping Arrow' },
+      { id: 'Piercing Arrow', name: 'Piercing Arrow' },
+      { id: 'Seeking Arrow', name: 'Seeking Arrow' },
+      { id: 'Shadow Arrow', name: 'Shadow Arrow' },
+    ],
+  },
+]
+
 // ── Snapshot type (stored in DB for Level Down) ──────────────────────────────
 
 interface LevelDownSnapshot {
@@ -33,6 +75,8 @@ interface LevelDownSnapshot {
   prevSubclass: string
   prevMaxSpellsPerDay: Record<number, number>
   prevAbilityScores: Record<string, number>
+  prevSavingThrowProficiencies: string[]
+  prevSkillProficiencies: string[]
   addedSpellIds: string[]
   addedCantripIds: string[]
   addedFeatId: string | null
@@ -50,8 +94,20 @@ type WizardStepId =
   | 'pick-cantrips'
   | 'pick-spells'
   | 'subclass'
+  | 'subclass-choices'
   | 'asi-or-feat'
   | 'summary'
+
+type SubclassChoiceKind = 'skill' | 'cantrip' | 'resource_option'
+
+interface SubclassChoiceDefinition {
+  id: string
+  prompt: string
+  count: number
+  kind: SubclassChoiceKind
+  options: { id: string; name: string }[]
+  addToResourceKey?: string
+}
 
 interface WizardState {
   mode: 'level-up' | 'add-class'
@@ -74,6 +130,7 @@ interface WizardState {
   pickedFeatId: string | null
   // Subclass
   pickedSubclass: string | null
+  subclassChoices: Record<string, string[]>
   // New spell slots (computed)
   newMaxSpellsPerDay: Record<number, number>
   // Add-class mode
@@ -177,6 +234,8 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
         prevSubclass: character.subclass,
         prevMaxSpellsPerDay: character.maxSpellsPerDay,
         prevAbilityScores: character.abilityScores,
+        prevSavingThrowProficiencies: character.savingThrowProficiencies ?? [],
+        prevSkillProficiencies: character.skillProficiencies ?? [],
         addedSpellIds: state.pickedSpells,
         addedCantripIds: state.pickedCantrips,
         addedFeatId: null,
@@ -219,6 +278,9 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
         if (allSpellPicks.length > 0) qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
 
         await updateMutation.mutateAsync(charReq)
+        const syncedResources = await classResourcesApi.sync(characterId)
+        qc.setQueryData<ClassResource[]>(['classResources', characterId], old => mergeClassResources(old, syncedResources))
+        qc.invalidateQueries({ queryKey: ['classResources', characterId] })
         onClose()
         return
       }
@@ -254,9 +316,38 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
         )
       }
 
-      // Cantrips & spells → add to prepared list
+      const selectedSubclass = state.pickedSubclass ?? effectiveClasses[state.targetClassIdx].subclass
+      const subclassChoiceDefs = getSubclassChoiceDefinitions(state.targetClass, selectedSubclass, state.newClassLevel)
+      const selectedLoreSkill = subclassChoiceDefs
+        .filter(def => def.kind === 'skill')
+        .flatMap(def => state.subclassChoices[def.id] ?? [])
+      const selectedLoreCantrips = subclassChoiceDefs
+        .filter(def => def.kind === 'cantrip')
+        .flatMap(def => state.subclassChoices[def.id] ?? [])
+      const selectedResourceOptions = subclassChoiceDefs
+        .filter(def => def.kind === 'resource_option' && def.addToResourceKey === 'arcane_shot')
+        .flatMap(def => state.subclassChoices[def.id] ?? [])
+
+      if (selectedLoreSkill.length > 0) {
+        const currentSkills = new Set(charReq.skillProficiencies ?? character.skillProficiencies ?? [])
+        selectedLoreSkill.forEach(skill => currentSkills.add(skill))
+        charReq.skillProficiencies = [...currentSkills]
+      }
+
       const allSpellPicks = [...state.pickedSpells, ...state.pickedCantrips]
-      for (const spellId of allSpellPicks) {
+      const extraCantripIds = selectedLoreCantrips
+        .map(name => findSpellIdByName(allSpells, name))
+        .filter((spellId): spellId is string => !!spellId && !allSpellPicks.includes(spellId) && !knownSpellIds.has(spellId))
+
+      if (extraCantripIds.length > 0) {
+        snapshot.addedCantripIds = [...snapshot.addedCantripIds, ...extraCantripIds]
+      }
+
+      charReq.lastLevelUpSnapshot = JSON.stringify(snapshot)
+      await updateMutation.mutateAsync(charReq)
+
+      // Cantrips & spells → add to prepared list
+      for (const spellId of [...allSpellPicks, ...extraCantripIds]) {
         const spell = allSpells.find(s => (s.id ?? s.name) === spellId)
         const isCantrip = spell?.spell_level === '0' || spell?.spell_level === 'Cantrip'
         await preparedSpellsApi.upsert(characterId, spellId, {
@@ -267,18 +358,33 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
           isDomainSpell: false,
         })
       }
-      qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
+      if (allSpellPicks.length > 0 || extraCantripIds.length > 0) {
+        qc.invalidateQueries({ queryKey: ['preparedSpells', characterId] })
+      }
 
       // Feat
       if (state.asiOrFeat === 'feat' && state.pickedFeatId) {
         const featResult = await characterFeatsApi.add(characterId, { featIndex: state.pickedFeatId })
         snapshot.addedFeatId = featResult.id
         qc.invalidateQueries({ queryKey: ['character-feats', characterId] })
+        await updateMutation.mutateAsync({ lastLevelUpSnapshot: JSON.stringify(snapshot) })
       }
 
-      // Store snapshot and patch character
-      charReq.lastLevelUpSnapshot = JSON.stringify(snapshot)
-      await updateMutation.mutateAsync(charReq)
+      let syncedResources = await classResourcesApi.sync(characterId)
+      if (selectedResourceOptions.length > 0) {
+        const updatedArcaneShot = await classResourcesApi.upsert(characterId, 'arcane_shot', {
+          resourceKey: 'arcane_shot',
+          name: 'Arcane Shot',
+          maxUses: 2,
+          resetOn: 'short_rest',
+          selectedOptions: selectedResourceOptions,
+        })
+        syncedResources = syncedResources.some(resource => resource.resourceKey === updatedArcaneShot.resourceKey)
+          ? syncedResources.map(resource => resource.resourceKey === updatedArcaneShot.resourceKey ? updatedArcaneShot : resource)
+          : [...syncedResources, updatedArcaneShot]
+      }
+      qc.setQueryData<ClassResource[]>(['classResources', characterId], old => mergeClassResources(old, syncedResources))
+      qc.invalidateQueries({ queryKey: ['classResources', characterId] })
 
       onClose()
     } catch (e) {
@@ -318,8 +424,14 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
         subclass: snap.prevSubclass,
         maxSpellsPerDay: snap.prevMaxSpellsPerDay,
         abilityScores: snap.prevAbilityScores,
+        savingThrowProficiencies: snap.prevSavingThrowProficiencies ?? character.savingThrowProficiencies ?? [],
+        skillProficiencies: snap.prevSkillProficiencies ?? character.skillProficiencies ?? [],
         lastLevelUpSnapshot: '', // clears the snapshot
       })
+
+      const syncedResources = await classResourcesApi.sync(characterId)
+      qc.setQueryData<ClassResource[]>(['classResources', characterId], old => mergeClassResources(old, syncedResources))
+      qc.invalidateQueries({ queryKey: ['classResources', characterId] })
 
       setShowLevelDown(false)
       onClose()
@@ -493,7 +605,47 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
               targetClass={state.targetClass}
               picked={state.pickedSubclass}
               currentSubclass={effectiveClasses[state.targetClassIdx].subclass}
-              onPick={sc => setState(s => ({ ...s, pickedSubclass: sc }))}
+              onPick={sc => setState(s => ({ ...s, pickedSubclass: sc, subclassChoices: {} }))}
+            />
+          )}
+
+          {step === 'subclass-choices' && (
+            <SubclassChoicesStep
+              definitions={getSubclassChoiceDefinitions(
+                state.targetClass,
+                state.pickedSubclass ?? effectiveClasses[state.targetClassIdx].subclass,
+                state.newClassLevel,
+              )}
+              choices={state.subclassChoices}
+              onToggle={(definitionId, optionId) => {
+                setState(s => {
+                  const definition = getSubclassChoiceDefinitions(
+                    s.targetClass,
+                    s.pickedSubclass ?? effectiveClasses[s.targetClassIdx].subclass,
+                    s.newClassLevel,
+                  ).find(def => def.id === definitionId)
+                  if (!definition) return s
+                  const current = s.subclassChoices[definitionId] ?? []
+                  const hasOption = current.includes(optionId)
+                  if (hasOption) {
+                    return {
+                      ...s,
+                      subclassChoices: {
+                        ...s.subclassChoices,
+                        [definitionId]: current.filter(id => id !== optionId),
+                      },
+                    }
+                  }
+                  if (current.length >= definition.count) return s
+                  return {
+                    ...s,
+                    subclassChoices: {
+                      ...s.subclassChoices,
+                      [definitionId]: [...current, optionId],
+                    },
+                  }
+                })
+              }}
             />
           )}
 
@@ -612,6 +764,24 @@ export default function LevelUpWizard({ character, characterId, initialMode, onC
 
 function getConMod(conScore: number) { return Math.floor((conScore - 10) / 2) }
 
+function getSubclassChoiceDefinitions(targetClass: CharacterClass, subclass: string | null, newClassLevel: number): SubclassChoiceDefinition[] {
+  if (targetClass === 'Fighter' && subclass === 'FighterArcaneArcher' && newClassLevel >= 3) {
+    return ARCANE_ARCHER_CHOICE_DEFINITIONS
+  }
+
+  return []
+}
+
+function areSubclassChoicesComplete(state: WizardState): boolean {
+  const definitions = getSubclassChoiceDefinitions(state.targetClass, state.pickedSubclass, state.newClassLevel)
+  return definitions.every(def => (state.subclassChoices[def.id] ?? []).length === def.count)
+}
+
+function findSpellIdByName(spells: Spell[], name: string): string | null {
+  const match = spells.find(spell => spell.name?.toLowerCase() === name.toLowerCase())
+  return match ? (match.id ?? match.name ?? null) : null
+}
+
 function buildInitialState(
   idx: number,
   cls: CharacterClassEntry,
@@ -680,6 +850,7 @@ function buildInitialState(
     pickedFeat: null,
     pickedFeatId: null,
     pickedSubclass: null,
+    subclassChoices: {},
     newMaxSpellsPerDay: mergedSlots,
     gainedSavingThrows: [],
     gainedSkills: [],
@@ -732,6 +903,7 @@ function buildAddClassState(
     pickedFeat: null,
     pickedFeatId: null,
     pickedSubclass: null,
+    subclassChoices: {},
     newMaxSpellsPerDay: mergedSlots,
     gainedSavingThrows: [],
     gainedSkills: [],
@@ -784,6 +956,10 @@ function computeSteps(state: WizardState, _character: Character, effectiveClasse
   if (currentSubclass === 'None' && state.newClassLevel === SUBCLASS_LEVEL[state.targetClass]) {
     steps.push('subclass')
   }
+  const selectedSubclass = state.pickedSubclass
+  if (selectedSubclass && getSubclassChoiceDefinitions(state.targetClass, selectedSubclass, state.newClassLevel).length > 0) {
+    steps.push('subclass-choices')
+  }
 
   const asiLevelsForClass = ASI_LEVELS[state.targetClass] ?? []
   if (asiLevelsForClass.includes(state.newClassLevel)) steps.push('asi-or-feat')
@@ -809,6 +985,7 @@ function canGoNext(step: WizardStepId, state: WizardState, asiOrFeatChoice: 'asi
     return !!state.pickedFeatId
   }
   if (step === 'subclass') return !!state.pickedSubclass
+  if (step === 'subclass-choices') return areSubclassChoicesComplete(state)
   return true
 }
 
@@ -1319,6 +1496,55 @@ function ClassResourcesInfoStep({ targetClass, fromLevel, toLevel }: {
   )
 }
 
+function SubclassChoicesStep({ definitions, choices, onToggle }: {
+  definitions: SubclassChoiceDefinition[]
+  choices: Record<string, string[]>
+  onToggle: (definitionId: string, optionId: string) => void
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-white">Subclass Choices</h3>
+        <p className="text-xs text-gray-400">Finish the required Arcane Archer choices before continuing.</p>
+      </div>
+
+      {definitions.map(definition => {
+        const selected = choices[definition.id] ?? []
+        return (
+          <div key={definition.id} className="space-y-2">
+            <div>
+              <p className="text-xs font-semibold text-gray-300">{definition.prompt}</p>
+              <p className="text-xs text-indigo-300 mt-1">{selected.length}/{definition.count} selected</p>
+            </div>
+            <div className="space-y-1.5">
+              {definition.options.map(option => {
+                const isSelected = selected.includes(option.id)
+                const isDisabled = !isSelected && selected.length >= definition.count
+                return (
+                  <button
+                    key={option.id}
+                    disabled={isDisabled}
+                    onClick={() => onToggle(definition.id, option.id)}
+                    className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-colors ${
+                      isSelected
+                        ? 'border-indigo-500 bg-indigo-900/30 text-white'
+                        : isDisabled
+                          ? 'border-gray-800 bg-gray-800/60 text-gray-600'
+                          : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
+                    }`}
+                  >
+                    {option.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function SummaryStep({ state, character, allSpells, allFeats, effectiveClasses }: {
   state: WizardState
   character: Character
@@ -1329,6 +1555,17 @@ function SummaryStep({ state, character, allSpells, allFeats, effectiveClasses }
   const resolvedSpells = state.pickedSpells.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id)
   const resolvedCantrips = state.pickedCantrips.map(id => allSpells.find(s => (s.id ?? s.name) === id)?.name ?? id)
   const featName = state.pickedFeat?.name ?? (state.pickedFeatId ? allFeats.find(f => f.index === state.pickedFeatId)?.name : null)
+  const subclassChoiceSummary = getSubclassChoiceDefinitions(
+    state.targetClass,
+    state.pickedSubclass,
+    state.newClassLevel,
+  )
+    .map(definition => {
+      const selected = state.subclassChoices[definition.id] ?? []
+      if (selected.length === 0) return null
+      return `${definition.prompt}: ${selected.join(', ')}`
+    })
+    .filter((value): value is string => !!value)
 
   if (state.mode === 'add-class') {
     const resourceGains = getClassResourceGains(state.targetClass, 0, 1)
@@ -1375,6 +1612,7 @@ function SummaryStep({ state, character, allSpells, allFeats, effectiveClasses }
         {resolvedCantrips.length > 0 && <SummaryRow label="New Cantrips" value={resolvedCantrips.join(', ')} />}
         {resolvedSpells.length > 0 && <SummaryRow label="New Spells" value={resolvedSpells.join(', ')} />}
         {state.pickedSubclass && <SummaryRow label="Subclass" value={state.pickedSubclass} highlight />}
+        {subclassChoiceSummary.length > 0 && <SummaryRow label="Subclass Choices" value={subclassChoiceSummary.join(' | ')} />}
         {state.asiOrFeat === 'asi' && Object.keys(state.asiChoices).length > 0 && (
           <SummaryRow label="ASI" value={
             Object.entries(state.asiChoices)
