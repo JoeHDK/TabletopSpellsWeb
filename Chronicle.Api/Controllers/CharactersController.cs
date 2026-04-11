@@ -83,6 +83,13 @@ public class CharactersController : ControllerBase
         if (req.MaxSpellsPerDay != null) entity.MaxSpellsPerDayJson = JsonConvert.SerializeObject(req.MaxSpellsPerDay);
         if (req.SpellsUsedToday != null) entity.SpellsUsedTodayJson = JsonConvert.SerializeObject(req.SpellsUsedToday);
         if (req.BaseArmorClass.HasValue) entity.BaseArmorClass = req.BaseArmorClass.Value;
+        if (req.MaxHp.HasValue)
+        {
+            var oldMaxHp = entity.MaxHp;
+            var newMaxHp = Math.Max(0, req.MaxHp.Value);
+            entity.MaxHp = newMaxHp;
+            entity.CurrentHp = Math.Clamp(entity.CurrentHp + (newMaxHp - oldMaxHp), 0, newMaxHp > 0 ? newMaxHp : int.MaxValue);
+        }
         if (req.SavingThrowProficiencies != null) entity.SavingThrowProficienciesJson = JsonConvert.SerializeObject(req.SavingThrowProficiencies);
         if (req.SkillProficiencies != null) entity.SkillProficienciesJson = JsonConvert.SerializeObject(req.SkillProficiencies);
         if (req.ClassSkillProficiencies != null) entity.ClassSkillProficienciesJson = JsonConvert.SerializeObject(req.ClassSkillProficiencies);

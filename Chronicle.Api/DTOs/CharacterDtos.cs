@@ -136,6 +136,8 @@ public class UpdateCharacterRequest
     public int? DeathSaveFailures { get; set; }
     public int? ExhaustionLevel { get; set; }
     public string? ConcentrationSpell { get; set; }
+    [Range(0, 9999)]
+    public int? MaxHp { get; set; }
     public string? Race { get; set; }
     public Dictionary<string, int>? RaceChoices { get; set; }
     public Class? CharacterClass { get; set; }

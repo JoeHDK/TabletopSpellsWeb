@@ -1,11 +1,13 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { charactersApi } from '../api/characters'
 import { racesApi } from '../api/races'
 import { backgroundsApi, type Background } from '../api/backgrounds'
+import { featsApi } from '../api/feats'
+import { characterFeatsApi } from '../api/characterFeats'
 import { spellsApi, preparedSpellsApi } from '../api/spells'
-import type { CharacterClass, Race, Spell } from '../types'
+import type { CharacterClass, Feat, FeatPrerequisite, Race, Spell } from '../types'
 import { getExpectedSpellSlots } from '../utils/spellSlotsTable'
 import {
   HIT_DIE, SUBCLASS_LEVEL, KNOWN_CASTERS, MAX_SPELL_LEVEL_TABLE,
@@ -38,8 +40,8 @@ const WIZARD_STARTING_SPELLS = 6
 type StepId =
   | 'choose-class'
   | 'choose-race'
-  | 'asi-choices'
   | 'ability-scores'
+  | 'race-choices'
   | 'pick-background'
   | 'pick-skills'
   | 'pick-cantrips'
@@ -51,8 +53,8 @@ type StepId =
 const STEP_LABELS: Record<StepId, string> = {
   'choose-class': 'Class',
   'choose-race': 'Race',
-  'asi-choices': 'ASI',
   'ability-scores': 'Scores',
+  'race-choices': 'Race Choices',
   'pick-background': 'Background',
   'pick-skills': 'Skills',
   'pick-cantrips': 'Cantrips',
@@ -68,6 +70,8 @@ interface CreationState {
   characterClass: CharacterClass
   race: Race | null
   raceAsiChoices: Record<string, number>
+  raceSkillChoice: string | null
+  raceFeatId: string | null
   abilityMode: 'pointbuy' | 'standard' | 'manual'
   baseScores: Record<string, number>
   standardAssignments: Record<string, number | null>
@@ -84,6 +88,8 @@ function defaultState(): CreationState {
     characterClass: 'Fighter',
     race: null,
     raceAsiChoices: {},
+    raceSkillChoice: null,
+    raceFeatId: null,
     abilityMode: 'pointbuy',
     baseScores: Object.fromEntries(ABILITY_KEYS.map(k => [k, 8])),
     standardAssignments: Object.fromEntries(ABILITY_KEYS.map(k => [k, null as number | null])),
@@ -98,8 +104,72 @@ function defaultState(): CreationState {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function selectableAsiCount(race: Race): number {
-  return race.modifiers.filter(m => !m.ability || m.ability.trim() === '').length
+const CLASS_ARMOR_PROFICIENCIES: Record<CharacterClass, string[]> = {
+  Artificer: ['Light Armor', 'Medium Armor', 'Shield'],
+  Barbarian: ['Light Armor', 'Medium Armor', 'Shield'],
+  Bard: ['Light Armor'],
+  Cleric: ['Light Armor', 'Medium Armor', 'Shield'],
+  Druid: ['Light Armor', 'Medium Armor', 'Shield'],
+  Fighter: ['Light Armor', 'Medium Armor', 'Heavy Armor', 'Shield'],
+  Monk: [],
+  Paladin: ['Light Armor', 'Medium Armor', 'Heavy Armor', 'Shield'],
+  Ranger: ['Light Armor', 'Medium Armor', 'Shield'],
+  Rogue: ['Light Armor'],
+  Sorcerer: [],
+  Warlock: ['Light Armor'],
+  Wizard: [],
+}
+
+function getRaceAbilityChoiceCount(race: Race): number {
+  const mod = race.modifiers.find(m => m.type === 'ability_score_choice')
+  if (!mod) return 0
+  return mod.condition === 'choose_2' ? 2 : 1
+}
+
+function hasRaceSkillChoice(race: Race): boolean {
+  return race.modifiers.some(m => m.type === 'skill_choice')
+}
+
+function hasRaceFeatChoice(race: Race): boolean {
+  return race.index === 'variant-human'
+}
+
+function hasRaceChoices(race: Race): boolean {
+  return getRaceAbilityChoiceCount(race) > 0 || hasRaceSkillChoice(race) || hasRaceFeatChoice(race)
+}
+
+function buildRaceChoices(state: CreationState): Record<string, number> {
+  const choices = { ...state.raceAsiChoices }
+  if (state.raceSkillChoice) choices[state.raceSkillChoice] = 1
+  return choices
+}
+
+function meetsFeatPrerequisite(
+  prerequisite: FeatPrerequisite,
+  finalScores: Record<string, number>,
+  proficiencies: Set<string>,
+): boolean {
+  if (prerequisite.type === 'ability_score') {
+    if (!prerequisite.ability || prerequisite.minimum_score == null) return true
+    return (finalScores[prerequisite.ability] ?? 0) >= prerequisite.minimum_score
+  }
+  if (prerequisite.type === 'proficiency') {
+    return prerequisite.proficiency ? proficiencies.has(prerequisite.proficiency) : true
+  }
+  return true
+}
+
+function isFeatQualified(feat: Feat, state: CreationState, finalScores: Record<string, number>): boolean {
+  if (feat.index === 'ability-score-improvement') return false
+  if (feat.required_class && feat.required_class.toLowerCase() !== state.characterClass.toLowerCase()) return false
+  if (feat.required_subclass) {
+    if (!state.subclass) return false
+    if (feat.required_subclass.toLowerCase() !== state.subclass.toLowerCase()) return false
+  }
+  if ((feat.required_min_level ?? 1) > 1) return false
+
+  const proficiencies = new Set(CLASS_ARMOR_PROFICIENCIES[state.characterClass] ?? [])
+  return feat.prerequisites.every(prerequisite => meetsFeatPrerequisite(prerequisite, finalScores, proficiencies))
 }
 
 function needsSpellPick(cls: CharacterClass): boolean {
@@ -114,12 +184,11 @@ function startingSpellCount(cls: CharacterClass): number {
 }
 
 function computeSteps(state: CreationState): StepId[] {
-  const steps: StepId[] = ['choose-class', 'choose-race']
-  if (state.race && selectableAsiCount(state.race) > 0) steps.push('asi-choices')
-  steps.push('ability-scores', 'pick-background', 'pick-skills')
+  const steps: StepId[] = ['choose-class', 'choose-race', 'ability-scores', 'pick-background', 'pick-skills']
   if (getCantripCount(state.characterClass, 1) > 0) steps.push('pick-cantrips')
   if (needsSpellPick(state.characterClass)) steps.push('pick-spells')
   if (SUBCLASS_LEVEL[state.characterClass] === 1) steps.push('subclass')
+  if (state.race && hasRaceChoices(state.race)) steps.push('race-choices')
   steps.push('enter-name', 'summary')
   return steps
 }
@@ -147,9 +216,12 @@ function canGoNext(stepId: StepId, state: CreationState): boolean {
   switch (stepId) {
     case 'choose-class': return true
     case 'choose-race': return true
-    case 'asi-choices': {
+    case 'race-choices': {
       if (!state.race) return true
-      return Object.keys(state.raceAsiChoices).length >= selectableAsiCount(state.race)
+      const abilityChoicesComplete = Object.keys(state.raceAsiChoices).length >= getRaceAbilityChoiceCount(state.race)
+      const skillChoiceComplete = !hasRaceSkillChoice(state.race) || !!state.raceSkillChoice
+      const featChoiceComplete = !hasRaceFeatChoice(state.race) || !!state.raceFeatId
+      return abilityChoicesComplete && skillChoiceComplete && featChoiceComplete
     }
     case 'ability-scores':
       if (state.abilityMode === 'standard')
@@ -303,6 +375,56 @@ function SpellPickList({ spells, picked, maxPicks, search, onSearchChange, onTog
   )
 }
 
+function FeatPickList({ feats, pickedId, search, onSearchChange, onPick }: {
+  feats: Feat[]
+  pickedId: string | null
+  search: string
+  onSearchChange: (s: string) => void
+  onPick: (id: string) => void
+}) {
+  const filtered = feats.filter(f => !search || f.name?.toLowerCase().includes(search.toLowerCase()))
+  return (
+    <>
+      {pickedId && (
+        <p className="text-xs text-indigo-300">
+          Selected: <span className="font-medium">{feats.find(f => f.index === pickedId)?.name ?? pickedId}</span>
+        </p>
+      )}
+      <input
+        type="text"
+        placeholder="Search feats…"
+        value={search}
+        onChange={e => onSearchChange(e.target.value)}
+        className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 border border-gray-700 focus:border-indigo-500 focus:outline-none text-sm"
+      />
+      <div className="space-y-1 max-h-56 overflow-y-auto">
+        {filtered.length === 0 && <p className="text-xs text-gray-500 py-2">No qualified feats found.</p>}
+        {filtered.slice(0, 60).map(feat => {
+          const isSelected = pickedId === feat.index
+          return (
+            <button
+              key={feat.index}
+              onClick={() => onPick(feat.index)}
+              className={`w-full text-left px-3 py-2 rounded-xl border text-xs transition-colors ${
+                isSelected ? 'border-indigo-500 bg-indigo-900/30 text-white' : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
+              }`}
+            >
+              <div className="font-medium">{feat.name}</div>
+              {feat.prerequisites.length > 0 && (
+                <div className="mt-1 text-[11px] text-gray-400">
+                  Requires: {feat.prerequisites.map(p =>
+                    p.type === 'ability_score' ? `${p.ability} ${p.minimum_score}+` : p.proficiency ?? p.ability ?? p.type,
+                  ).join(', ')}
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between text-sm">
@@ -322,6 +444,7 @@ export default function CharacterCreationPage() {
   const [stepId, setStepId] = useState<StepId>('choose-class')
   const [spellSearch, setSpellSearch] = useState('')
   const [cantripSearch, setCantripSearch] = useState('')
+  const [featSearch, setFeatSearch] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -336,6 +459,11 @@ export default function CharacterCreationPage() {
   // Queries
   const { data: allRaces = [] } = useQuery({ queryKey: ['races'], queryFn: () => racesApi.getAll() })
   const { data: allBackgrounds = [] } = useQuery({ queryKey: ['backgrounds'], queryFn: backgroundsApi.getAll })
+  const { data: allFeats = [] } = useQuery({
+    queryKey: ['feats'],
+    queryFn: () => featsApi.getAll(),
+    staleTime: Infinity,
+  })
   const { data: allSpells = [] } = useQuery({
     queryKey: ['spells', 'dnd5e'],
     queryFn: () => spellsApi.getAll('dnd5e'),
@@ -365,6 +493,31 @@ export default function CharacterCreationPage() {
   const startingHp = (HIT_DIE[state.characterClass] ?? 8) + conMod
   const startingSlots = useMemo(() => getExpectedSpellSlots(state.characterClass, 1), [state.characterClass])
   const backgroundSkills = state.background?.skillProficiencies ?? []
+  const raceChoices = useMemo(() => buildRaceChoices(state), [state])
+  const raceSkillOptions = useMemo(
+    () => ALL_DND5E_SKILLS.filter(skill => !backgroundSkills.includes(skill) && !state.pickedSkills.includes(skill)),
+    [backgroundSkills, state.pickedSkills],
+  )
+  const qualifiedRaceFeats = useMemo(
+    () => allFeats.filter(feat => isFeatQualified(feat, state, finalScores)),
+    [allFeats, state, finalScores],
+  )
+  const selectedRaceFeat = useMemo(
+    () => allFeats.find(feat => feat.index === state.raceFeatId) ?? null,
+    [allFeats, state.raceFeatId],
+  )
+
+  useEffect(() => {
+    if (state.raceFeatId && !qualifiedRaceFeats.some(feat => feat.index === state.raceFeatId)) {
+      setState(prev => ({ ...prev, raceFeatId: null }))
+    }
+  }, [qualifiedRaceFeats, state.raceFeatId])
+
+  useEffect(() => {
+    if (state.raceSkillChoice && !raceSkillOptions.includes(state.raceSkillChoice)) {
+      setState(prev => ({ ...prev, raceSkillChoice: null }))
+    }
+  }, [raceSkillOptions, state.raceSkillChoice])
 
   const goNext = useCallback(() => {
     const idx = steps.indexOf(stepId)
@@ -418,7 +571,7 @@ export default function CharacterCreationPage() {
       })
 
       const savingThrows = CLASS_STARTING_SAVING_THROWS[state.characterClass]
-      const allSkillProfs = [...state.pickedSkills]
+      const allSkillProfs = [...new Set([...state.pickedSkills, ...(state.raceSkillChoice ? [state.raceSkillChoice] : [])])]
       const classSkillProfs = [...backgroundSkills]
 
       await charactersApi.update(newChar.id, {
@@ -426,7 +579,7 @@ export default function CharacterCreationPage() {
         savingThrowProficiencies: savingThrows,
         skillProficiencies: allSkillProfs,
         classSkillProficiencies: classSkillProfs,
-        raceChoices: Object.keys(state.raceAsiChoices).length > 0 ? state.raceAsiChoices : undefined,
+        raceChoices: Object.keys(raceChoices).length > 0 ? raceChoices : undefined,
         maxSpellsPerDay: Object.keys(startingSlots).length > 0 ? startingSlots : undefined,
       })
 
@@ -447,7 +600,13 @@ export default function CharacterCreationPage() {
         })
       }
 
+      if (state.raceFeatId) {
+        await characterFeatsApi.add(newChar.id, { featIndex: state.raceFeatId, takenAtLevel: 1 })
+        qc.invalidateQueries({ queryKey: ['character-feats', newChar.id] })
+      }
+
       qc.invalidateQueries({ queryKey: ['characters'] })
+      qc.invalidateQueries({ queryKey: ['character', newChar.id] })
       navigate(`/characters/${newChar.id}`)
     } catch (e) {
       setError('Something went wrong. Please try again.')
@@ -455,7 +614,7 @@ export default function CharacterCreationPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [state, finalScores, startingHp, startingSlots, backgroundSkills, allSpells, qc, navigate])
+  }, [state, finalScores, startingHp, startingSlots, backgroundSkills, raceChoices, allSpells, qc, navigate])
 
   // ── Step content ────────────────────────────────────────────────────────────
 
@@ -489,7 +648,7 @@ export default function CharacterCreationPage() {
           <div className="space-y-3">
             <p className="text-sm text-gray-400">Choose your race (optional)</p>
             <button
-              onClick={() => setState(s => ({ ...s, race: null, raceAsiChoices: {} }))}
+              onClick={() => setState(s => ({ ...s, race: null, raceAsiChoices: {}, raceSkillChoice: null, raceFeatId: null }))}
               className={`w-full text-left px-4 py-2.5 rounded-xl border text-sm transition-colors ${
                 !state.race ? 'border-indigo-500 bg-indigo-900/30 text-white' : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
               }`}
@@ -500,7 +659,7 @@ export default function CharacterCreationPage() {
               {allRaces.map(r => (
                 <button
                   key={r.index}
-                  onClick={() => setState(s => ({ ...s, race: r, raceAsiChoices: {} }))}
+                  onClick={() => setState(s => ({ ...s, race: r, raceAsiChoices: {}, raceSkillChoice: null, raceFeatId: null }))}
                   className={`w-full text-left px-4 py-2.5 rounded-xl border text-sm transition-colors ${
                     state.race?.index === r.index ? 'border-indigo-500 bg-indigo-900/30 text-white' : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
                   }`}
@@ -509,10 +668,10 @@ export default function CharacterCreationPage() {
                   {r.modifiers.length > 0 && (
                     <span className="ml-2 text-xs text-gray-400">
                       {r.modifiers
-                        .filter(m => m.ability && m.ability.trim() !== '')
+                        .filter(m => m.type === 'ability_score' && m.ability && m.ability.trim() !== '')
                         .map(m => `${m.ability!.slice(0, 3)} ${m.value > 0 ? '+' : ''}${m.value}`)
                         .join(', ')}
-                      {r.modifiers.some(m => !m.ability || m.ability.trim() === '') && ' +choice'}
+                      {hasRaceChoices(r) && ' +choice'}
                     </span>
                   )}
                 </button>
@@ -521,45 +680,97 @@ export default function CharacterCreationPage() {
           </div>
         )
 
-      case 'asi-choices': {
+      case 'race-choices': {
         if (!state.race) return null
-        const freeSlots = state.race.modifiers.filter(m => !m.ability || m.ability.trim() === '')
+        const abilityChoiceCount = getRaceAbilityChoiceCount(state.race)
         const chosen = Object.keys(state.raceAsiChoices)
         return (
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-semibold text-white">{state.race.name} — Ability Score Choices</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Choose {freeSlots.length} ability score{freeSlots.length > 1 ? 's' : ''} to receive +1 each.
-              </p>
-              <p className="text-xs text-indigo-300 mt-1">{chosen.length}/{freeSlots.length} chosen</p>
+              <p className="text-sm font-semibold text-white">{state.race.name} — Race Choices</p>
+              <p className="text-xs text-gray-400 mt-1">Complete any choices granted by your race.</p>
             </div>
-            <div className="space-y-1">
-              {ABILITY_KEYS.map(ability => {
-                const isChosen = chosen.includes(ability)
-                const disabled = !isChosen && chosen.length >= freeSlots.length
-                return (
-                  <button
-                    key={ability}
-                    disabled={disabled}
-                    onClick={() => {
-                      if (isChosen) {
-                        const updated = { ...state.raceAsiChoices }
-                        delete updated[ability]
-                        setState(s => ({ ...s, raceAsiChoices: updated }))
-                      } else if (!disabled) {
-                        setState(s => ({ ...s, raceAsiChoices: { ...s.raceAsiChoices, [ability]: 1 } }))
-                      }
-                    }}
-                    className={`w-full text-left px-4 py-2 rounded-xl border text-sm transition-colors ${
-                      isChosen ? 'border-indigo-500 bg-indigo-900/30 text-white' : disabled ? 'border-gray-700/40 bg-gray-800/30 text-gray-600 cursor-not-allowed' : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
-                    }`}
-                  >
-                    {ability}{isChosen ? ' (+1)' : ''}
-                  </button>
-                )
-              })}
-            </div>
+            {abilityChoiceCount > 0 && (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-semibold text-gray-300">Ability Score Choices</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Choose {abilityChoiceCount} ability score{abilityChoiceCount > 1 ? 's' : ''} to receive +1 each.
+                  </p>
+                  <p className="text-xs text-indigo-300 mt-1">{chosen.length}/{abilityChoiceCount} chosen</p>
+                </div>
+                <div className="space-y-1">
+                  {ABILITY_KEYS.map(ability => {
+                    const isChosen = chosen.includes(ability)
+                    const disabled = !isChosen && chosen.length >= abilityChoiceCount
+                    return (
+                      <button
+                        key={ability}
+                        disabled={disabled}
+                        onClick={() => {
+                          if (isChosen) {
+                            const updated = { ...state.raceAsiChoices }
+                            delete updated[ability]
+                            setState(s => ({ ...s, raceAsiChoices: updated }))
+                          } else if (!disabled) {
+                            setState(s => ({ ...s, raceAsiChoices: { ...s.raceAsiChoices, [ability]: 1 } }))
+                          }
+                        }}
+                        className={`w-full text-left px-4 py-2 rounded-xl border text-sm transition-colors ${
+                          isChosen ? 'border-indigo-500 bg-indigo-900/30 text-white' : disabled ? 'border-gray-700/40 bg-gray-800/30 text-gray-600 cursor-not-allowed' : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
+                        }`}
+                      >
+                        {ability}{isChosen ? ' (+1)' : ''}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {hasRaceSkillChoice(state.race) && (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-semibold text-gray-300">Bonus Skill Proficiency</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Choose 1 bonus skill proficiency.
+                    {state.raceSkillChoice && <span className="text-green-400 ml-1">{state.raceSkillChoice} selected</span>}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {raceSkillOptions.map(skill => {
+                    const isSelected = state.raceSkillChoice === skill
+                    return (
+                      <button
+                        key={skill}
+                        onClick={() => setState(s => ({ ...s, raceSkillChoice: isSelected ? null : skill }))}
+                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                          isSelected ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        }`}
+                      >
+                        {skill}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {hasRaceFeatChoice(state.race) && (
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-semibold text-gray-300">Feat Choice</p>
+                  <p className="text-xs text-gray-400 mt-1">Choose 1 feat you qualify for at level 1.</p>
+                </div>
+                <FeatPickList
+                  feats={qualifiedRaceFeats}
+                  pickedId={state.raceFeatId}
+                  search={featSearch}
+                  onSearchChange={setFeatSearch}
+                  onPick={id => setState(s => ({ ...s, raceFeatId: s.raceFeatId === id ? null : id }))}
+                />
+              </div>
+            )}
           </div>
         )
       }
@@ -661,7 +872,7 @@ export default function CharacterCreationPage() {
       case 'pick-skills': {
         const needed = CLASS_STARTING_SKILL_COUNT[state.characterClass]
         const skillPool = state.characterClass === 'Bard' ? ALL_DND5E_SKILLS : (CLASS_SKILL_LIST[state.characterClass] ?? [])
-        const available = skillPool.filter(s => !backgroundSkills.includes(s))
+        const available = skillPool.filter(s => !backgroundSkills.includes(s) && s !== state.raceSkillChoice)
         return (
           <div className="space-y-3">
             <div>
@@ -802,6 +1013,8 @@ export default function CharacterCreationPage() {
               <SummaryRow label="Class" value={state.characterClass} />
               {state.subclass && <SummaryRow label="Subclass" value={formatSubclass(state.subclass, state.characterClass)} />}
               {state.race && <SummaryRow label="Race" value={state.race.name} />}
+              {state.raceSkillChoice && <SummaryRow label="Race Skill" value={state.raceSkillChoice} />}
+              {selectedRaceFeat && <SummaryRow label="Race Feat" value={selectedRaceFeat.name} />}
               {state.background && <SummaryRow label="Background" value={state.background.name} />}
               <SummaryRow label="Starting HP" value={`${startingHp}`} />
             </div>
@@ -823,7 +1036,7 @@ export default function CharacterCreationPage() {
             <div className="space-y-1 text-xs text-gray-400">
               <p><span className="text-gray-300 font-semibold">Saving Throws: </span>{CLASS_STARTING_SAVING_THROWS[state.characterClass].join(', ')}</p>
               {(state.pickedSkills.length > 0 || backgroundSkills.length > 0) && (
-                <p><span className="text-gray-300 font-semibold">Skills: </span>{[...state.pickedSkills, ...backgroundSkills].join(', ')}</p>
+                <p><span className="text-gray-300 font-semibold">Skills: </span>{[...state.pickedSkills, ...backgroundSkills, ...(state.raceSkillChoice ? [state.raceSkillChoice] : [])].join(', ')}</p>
               )}
               {state.pickedCantrips.length > 0 && (
                 <p><span className="text-gray-300 font-semibold">Cantrips: </span>{spellNames(state.pickedCantrips)}</p>
