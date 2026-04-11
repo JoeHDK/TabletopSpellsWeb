@@ -78,7 +78,7 @@ interface CreationState {
   characterClass: CharacterClass
   race: Race | null
   raceAsiChoices: Record<string, number>
-  raceSkillChoice: string | null
+  raceSkillChoices: string[]
   raceFeatId: string | null
   abilityMode: 'pointbuy' | 'standard' | 'manual'
   baseScores: Record<string, number>
@@ -97,7 +97,7 @@ function defaultState(): CreationState {
     characterClass: 'Fighter',
     race: null,
     raceAsiChoices: {},
-    raceSkillChoice: null,
+    raceSkillChoices: [],
     raceFeatId: null,
     abilityMode: 'pointbuy',
     baseScores: Object.fromEntries(ABILITY_KEYS.map(k => [k, 8])),
@@ -136,8 +136,23 @@ function getRaceAbilityChoiceCount(race: Race): number {
   return mod.condition === 'choose_2' ? 2 : 1
 }
 
+function getRaceSkillChoiceCount(race: Race): number {
+  const mod = race.modifiers.find(m => m.type === 'skill_choice')
+  if (!mod) return 0
+  return mod.condition === 'choose_2' ? 2 : 1
+}
+
+function getRaceAbilityChoiceOptions(race: Race): string[] {
+  const fixedAbilities = new Set(
+    race.modifiers
+      .filter(m => m.type === 'ability_score' && m.ability && m.ability.trim() !== '')
+      .map(m => m.ability as string),
+  )
+  return ABILITY_KEYS.filter(ability => !fixedAbilities.has(ability))
+}
+
 function hasRaceSkillChoice(race: Race): boolean {
-  return race.modifiers.some(m => m.type === 'skill_choice')
+  return getRaceSkillChoiceCount(race) > 0
 }
 
 function hasRaceFeatChoice(race: Race): boolean {
@@ -150,7 +165,7 @@ function hasRaceChoices(race: Race): boolean {
 
 function buildRaceChoices(state: CreationState): Record<string, number> {
   const choices = { ...state.raceAsiChoices }
-  if (state.raceSkillChoice) choices[state.raceSkillChoice] = 1
+  for (const skill of state.raceSkillChoices) choices[skill] = 1
   return choices
 }
 
@@ -237,7 +252,7 @@ function canGoNext(stepId: StepId, state: CreationState): boolean {
     case 'race-choices': {
       if (!state.race) return true
       const abilityChoicesComplete = Object.keys(state.raceAsiChoices).length >= getRaceAbilityChoiceCount(state.race)
-      const skillChoiceComplete = !hasRaceSkillChoice(state.race) || !!state.raceSkillChoice
+      const skillChoiceComplete = state.raceSkillChoices.length >= getRaceSkillChoiceCount(state.race)
       const featChoiceComplete = !hasRaceFeatChoice(state.race) || !!state.raceFeatId
       return abilityChoicesComplete && skillChoiceComplete && featChoiceComplete
     }
@@ -524,9 +539,9 @@ export default function CharacterCreationPage() {
     () => Array.from(new Set([
       ...state.pickedSkills,
       ...backgroundSkills,
-      ...(state.raceSkillChoice ? [state.raceSkillChoice] : []),
+      ...state.raceSkillChoices,
     ])).sort().map(skill => ({ id: skill, name: skill })),
-    [backgroundSkills, state.pickedSkills, state.raceSkillChoice],
+    [backgroundSkills, state.pickedSkills, state.raceSkillChoices],
   )
   const knownSpellNames = useMemo(
     () => Array.from(new Set([
@@ -588,10 +603,11 @@ export default function CharacterCreationPage() {
   }, [qualifiedRaceFeats, state.raceFeatId])
 
   useEffect(() => {
-    if (state.raceSkillChoice && !raceSkillOptions.includes(state.raceSkillChoice)) {
-      setState(prev => ({ ...prev, raceSkillChoice: null }))
+    const validRaceSkillChoices = state.raceSkillChoices.filter(skill => raceSkillOptions.includes(skill))
+    if (validRaceSkillChoices.length !== state.raceSkillChoices.length) {
+      setState(prev => ({ ...prev, raceSkillChoices: validRaceSkillChoices }))
     }
-  }, [raceSkillOptions, state.raceSkillChoice])
+  }, [raceSkillOptions, state.raceSkillChoices])
 
   const goNext = useCallback(() => {
     const idx = steps.indexOf(stepId)
@@ -647,7 +663,7 @@ export default function CharacterCreationPage() {
       })
 
       const savingThrows = CLASS_STARTING_SAVING_THROWS[state.characterClass]
-      const allSkillProfs = [...new Set([...state.pickedSkills, ...(state.raceSkillChoice ? [state.raceSkillChoice] : [])])]
+      const allSkillProfs = [...new Set([...state.pickedSkills, ...state.raceSkillChoices])]
       const classSkillProfs = [...backgroundSkills]
       const finalSkillProfs = [...new Set([...allSkillProfs, ...appliedFeatureChoices.skillProficiencies])]
 
@@ -730,7 +746,7 @@ export default function CharacterCreationPage() {
           <div className="space-y-3">
             <p className="text-sm text-gray-400">Choose your race (optional)</p>
             <button
-              onClick={() => setState(s => ({ ...s, race: null, raceAsiChoices: {}, raceSkillChoice: null, raceFeatId: null }))}
+              onClick={() => setState(s => ({ ...s, race: null, raceAsiChoices: {}, raceSkillChoices: [], raceFeatId: null }))}
               className={`w-full text-left px-4 py-2.5 rounded-xl border text-sm transition-colors ${
                 !state.race ? 'border-indigo-500 bg-indigo-900/30 text-white' : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
               }`}
@@ -741,7 +757,7 @@ export default function CharacterCreationPage() {
               {allRaces.map(r => (
                 <button
                   key={r.index}
-                  onClick={() => setState(s => ({ ...s, race: r, raceAsiChoices: {}, raceSkillChoice: null, raceFeatId: null }))}
+                  onClick={() => setState(s => ({ ...s, race: r, raceAsiChoices: {}, raceSkillChoices: [], raceFeatId: null }))}
                   className={`w-full text-left px-4 py-2.5 rounded-xl border text-sm transition-colors ${
                     state.race?.index === r.index ? 'border-indigo-500 bg-indigo-900/30 text-white' : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500'
                   }`}
@@ -765,6 +781,8 @@ export default function CharacterCreationPage() {
       case 'race-choices': {
         if (!state.race) return null
         const abilityChoiceCount = getRaceAbilityChoiceCount(state.race)
+        const skillChoiceCount = getRaceSkillChoiceCount(state.race)
+        const abilityChoiceOptions = getRaceAbilityChoiceOptions(state.race)
         const chosen = Object.keys(state.raceAsiChoices)
         return (
           <div className="space-y-4">
@@ -782,7 +800,7 @@ export default function CharacterCreationPage() {
                   <p className="text-xs text-indigo-300 mt-1">{chosen.length}/{abilityChoiceCount} chosen</p>
                 </div>
                 <div className="space-y-1">
-                  {ABILITY_KEYS.map(ability => {
+                  {abilityChoiceOptions.map(ability => {
                     const isChosen = chosen.includes(ability)
                     const disabled = !isChosen && chosen.length >= abilityChoiceCount
                     return (
@@ -810,24 +828,35 @@ export default function CharacterCreationPage() {
               </div>
             )}
 
-            {hasRaceSkillChoice(state.race) && (
+            {skillChoiceCount > 0 && (
               <div className="space-y-2">
                 <div>
                   <p className="text-xs font-semibold text-gray-300">Bonus Skill Proficiency</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    Choose 1 bonus skill proficiency.
-                    {state.raceSkillChoice && <span className="text-green-400 ml-1">{state.raceSkillChoice} selected</span>}
+                    Choose {skillChoiceCount} bonus skill {skillChoiceCount > 1 ? 'proficiencies' : 'proficiency'}.
                   </p>
+                  <p className="text-xs text-indigo-300 mt-1">{state.raceSkillChoices.length}/{skillChoiceCount} chosen</p>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {raceSkillOptions.map(skill => {
-                    const isSelected = state.raceSkillChoice === skill
+                    const isSelected = state.raceSkillChoices.includes(skill)
+                    const disabled = !isSelected && state.raceSkillChoices.length >= skillChoiceCount
                     return (
                       <button
                         key={skill}
-                        onClick={() => setState(s => ({ ...s, raceSkillChoice: isSelected ? null : skill }))}
+                        disabled={disabled}
+                        onClick={() => setState(s => ({
+                          ...s,
+                          raceSkillChoices: isSelected
+                            ? s.raceSkillChoices.filter(choice => choice !== skill)
+                            : disabled ? s.raceSkillChoices : [...s.raceSkillChoices, skill],
+                        }))}
                         className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                          isSelected ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                          isSelected
+                            ? 'bg-indigo-600 text-white'
+                            : disabled
+                              ? 'bg-gray-800/30 text-gray-600 cursor-not-allowed'
+                              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                         }`}
                       >
                         {skill}
@@ -954,7 +983,7 @@ export default function CharacterCreationPage() {
       case 'pick-skills': {
         const needed = CLASS_STARTING_SKILL_COUNT[state.characterClass]
         const skillPool = state.characterClass === 'Bard' ? ALL_DND5E_SKILLS : (CLASS_SKILL_LIST[state.characterClass] ?? [])
-        const available = skillPool.filter(s => !backgroundSkills.includes(s) && s !== state.raceSkillChoice)
+        const available = skillPool.filter(s => !backgroundSkills.includes(s) && !state.raceSkillChoices.includes(s))
         return (
           <div className="space-y-3">
             <div>
@@ -1136,7 +1165,7 @@ export default function CharacterCreationPage() {
               <SummaryRow label="Class" value={state.characterClass} />
               {state.subclass && <SummaryRow label="Subclass" value={formatSubclass(state.subclass, state.characterClass)} />}
               {state.race && <SummaryRow label="Race" value={state.race.name} />}
-              {state.raceSkillChoice && <SummaryRow label="Race Skill" value={state.raceSkillChoice} />}
+              {state.raceSkillChoices.length > 0 && <SummaryRow label="Race Skills" value={state.raceSkillChoices.join(', ')} />}
               {selectedRaceFeat && <SummaryRow label="Race Feat" value={selectedRaceFeat.name} />}
               {state.background && <SummaryRow label="Background" value={state.background.name} />}
               <SummaryRow label="Starting HP" value={`${startingHp}`} />
@@ -1158,8 +1187,8 @@ export default function CharacterCreationPage() {
 
             <div className="space-y-1 text-xs text-gray-400">
               <p><span className="text-gray-300 font-semibold">Saving Throws: </span>{CLASS_STARTING_SAVING_THROWS[state.characterClass].join(', ')}</p>
-              {(state.pickedSkills.length > 0 || backgroundSkills.length > 0) && (
-                <p><span className="text-gray-300 font-semibold">Skills: </span>{[...state.pickedSkills, ...backgroundSkills, ...(state.raceSkillChoice ? [state.raceSkillChoice] : [])].join(', ')}</p>
+              {(state.pickedSkills.length > 0 || backgroundSkills.length > 0 || state.raceSkillChoices.length > 0) && (
+                <p><span className="text-gray-300 font-semibold">Skills: </span>{[...state.pickedSkills, ...backgroundSkills, ...state.raceSkillChoices].join(', ')}</p>
               )}
               {state.pickedCantrips.length > 0 && (
                 <p><span className="text-gray-300 font-semibold">Cantrips: </span>{spellNames(state.pickedCantrips)}</p>

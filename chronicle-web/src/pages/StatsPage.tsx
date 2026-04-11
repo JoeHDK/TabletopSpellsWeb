@@ -302,12 +302,22 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices, currentSki
   const choiceModifier = selectedRace?.modifiers.find(m => m.type === 'ability_score_choice')
   const choiceCount = choiceModifier?.condition === 'choose_2' ? 2 : choiceModifier ? 1 : 0
   const skillChoiceModifier = selectedRace?.modifiers.find(m => m.type === 'skill_choice')
+  const skillChoiceCount = skillChoiceModifier?.condition === 'choose_2' ? 2 : skillChoiceModifier ? 1 : 0
   const choices = currentRaceChoices ?? {}
   const chosenKeys = Object.keys(choices).filter(k => (choices[k] ?? 0) > 0 && ABILITY_CHOICE_KEYS.includes(k))
-  const chosenSkill = Object.keys(choices).find(k => !ABILITY_CHOICE_KEYS.includes(k) && (choices[k] ?? 0) > 0)
+  const chosenSkills = Object.keys(choices).filter(k => !ABILITY_CHOICE_KEYS.includes(k) && (choices[k] ?? 0) > 0)
+  const fixedAbilityChoices = new Set(
+    selectedRace?.modifiers
+      .filter(m => m.type === 'ability_score' && m.ability && m.ability.trim() !== '')
+      .map(m => m.ability as string) ?? [],
+  )
+  const availableAbilityChoices = ABILITY_CHOICE_KEYS.filter(ability => !fixedAbilityChoices.has(ability))
 
   const getRaceSkillsFromChoices = (raceChoices: Record<string, number>) =>
     Object.keys(raceChoices).filter(k => !ABILITY_CHOICE_KEYS.includes(k) && (raceChoices[k] ?? 0) > 0)
+  const availableSkillChoices = DND5E_SKILLS
+    .map(s => s.name)
+    .filter(skill => !currentSkillProficiencies.includes(skill) || chosenSkills.includes(skill))
 
   const handleParentChange = (parentValue: string) => {
     setSelectedParent(parentValue)
@@ -339,17 +349,18 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices, currentSki
 
   const handleSkillChoiceToggle = (skill: string) => {
     const next = { ...choices }
-    // Remove any previous skill choice
-    getRaceSkillsFromChoices(next).forEach(k => delete next[k])
-    let newSkillProfs = currentSkillProficiencies.filter(s => getRaceSkillsFromChoices(currentRaceChoices ?? {}).includes(s) ? false : true)
-    if (chosenSkill === skill) {
-      // Deselect: just remove it
-      newSkillProfs = currentSkillProficiencies.filter(s => s !== skill)
+    const currentRaceSkills = getRaceSkillsFromChoices(currentRaceChoices ?? {})
+    const retainedSkills = currentSkillProficiencies.filter(s => !currentRaceSkills.includes(s))
+    let nextChosenSkills = [...chosenSkills]
+    if (chosenSkills.includes(skill)) {
+      delete next[skill]
+      nextChosenSkills = chosenSkills.filter(chosen => chosen !== skill)
     } else {
-      // Select new skill
+      if (chosenSkills.length >= skillChoiceCount) return
       next[skill] = 1
-      newSkillProfs = [...currentSkillProficiencies.filter(s => s !== chosenSkill), skill]
+      nextChosenSkills = [...chosenSkills, skill]
     }
+    const newSkillProfs = [...new Set([...retainedSkills, ...nextChosenSkills])]
     choiceMutation.mutate({ raceChoices: next, skillProficiencies: newSkillProfs })
   }
 
@@ -388,14 +399,14 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices, currentSki
           </select>
         </div>
       </div>
-      {choiceCount > 0 && chosenKeys.length < choiceCount && (
+      {choiceCount > 0 && (
         <div className="mt-1">
           <div className="text-xs text-gray-400 mb-1">
             Choose {choiceCount} ability score{choiceCount > 1 ? 's' : ''} (+{choiceModifier?.value ?? 1} each):
             <span className="text-yellow-400 ml-1">{chosenKeys.length}/{choiceCount}</span>
           </div>
           <div className="flex flex-wrap gap-1">
-            {['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma'].map(ab => {
+            {availableAbilityChoices.map(ab => {
               const isChosen = !!choices[ab]
               const isFull = chosenKeys.length >= choiceCount && !isChosen
               return (
@@ -418,27 +429,30 @@ function RaceSelector({ characterId, currentRace, currentRaceChoices, currentSki
           </div>
         </div>
       )}
-      {skillChoiceModifier && (
+      {skillChoiceCount > 0 && (
         <div className="mt-1">
           <div className="text-xs text-gray-400 mb-1">
-            Choose 1 bonus skill proficiency:
-            {chosenSkill && <span className="text-green-400 ml-1">{chosenSkill} ✓</span>}
+            Choose {skillChoiceCount} bonus skill {skillChoiceCount > 1 ? 'proficiencies' : 'proficiency'}:
+            <span className="text-green-400 ml-1">{chosenSkills.length}/{skillChoiceCount}</span>
           </div>
           <div className="flex flex-wrap gap-1">
-            {DND5E_SKILLS.map(s => {
-              const isChosen = chosenSkill === s.name
+            {availableSkillChoices.map(skill => {
+              const isChosen = chosenSkills.includes(skill)
+              const isFull = chosenSkills.length >= skillChoiceCount && !isChosen
               return (
                 <button
-                  key={s.name}
-                  onClick={() => handleSkillChoiceToggle(s.name)}
-                  disabled={choiceMutation.isPending}
+                  key={skill}
+                  onClick={() => handleSkillChoiceToggle(skill)}
+                  disabled={choiceMutation.isPending || isFull}
                   className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
                     isChosen
                       ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : isFull
+                        ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
-                  {s.name}
+                  {skill}
                 </button>
               )
             })}

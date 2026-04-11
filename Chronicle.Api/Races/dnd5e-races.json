@@ -638,6 +638,10 @@
         "condition": "choose_2"
       },
       {
+        "type": "skill_choice",
+        "condition": "choose_2"
+      },
+      {
         "type": "darkvision",
         "value": 60
       }
